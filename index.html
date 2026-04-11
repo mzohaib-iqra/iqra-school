@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IQRA School – Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin.css">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<!-- School config -->
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+</head>
+<body>
+
+<!-- ── LOGIN OVERLAY ──────────────────────────────────────────── -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <img src="logo.png" class="login-logo" alt="IQRA Logo">
+    <div class="login-title">IQRA Admin Panel</div>
+    <div class="login-sub">Sign in with your teacher account</div>
+    <input class="login-field" id="loginUser" type="text" placeholder="Username" autocomplete="username">
+    <input class="login-field" id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-err" id="loginErr">Invalid username or password</div>
+  </div>
+</div>
+
+<!-- ── HEADER ──────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="hinner">
+    <div class="hrow">
+      <img src="logo.png" class="hlogo" alt="IQRA Logo">
+      <div>
+        <div class="hname">IQRA PUBLIC SCHOOL &amp; COLLEGE – DARA PEZU<br>
+          <span style="font-size:.8em;font-weight:600;">Admin Panel · Boys &amp; Girls</span></div>
+        <div class="hsub">Principal: Muhammad Zohaib · 0347-1575196 / 0370-1575196</div>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <button class="ntab active" onclick="switchSec('marks')">📊 Marks</button>
+      <button class="ntab" onclick="switchSec('planner')">📅 Planner</button>
+      <button class="ntab admin-only" onclick="switchSec('boards')" style="display:none">🏆 Boards</button>
+      <button class="ntab admin-only" onclick="switchSec('weekly')" style="display:none">📝 Weekly</button>
+      <a class="ntab parent-link" href="parent-portal.html" target="_blank">👨‍👩‍👧 Parent Portal ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONTAINER ──────────────────────────────────────────────── -->
+<div class="container">
+
+  <div class="sync-bar">
+    <div class="sync-dot off" id="syncDot"></div>
+    <span id="syncStatus">Connecting…</span>
+    <div class="teacher-chip" id="teacherChip" style="display:none">
+      👤 <span id="teacherName"></span>
+      <span style="margin-left:6px;color:var(--muted);cursor:pointer;" onclick="doLogout()">Sign out</span>
+    </div>
+    <span style="margin-left:auto;font-size:11px;color:var(--muted);" id="lastSaved"></span>
+  </div>
+
+  <!-- MARKS -->
+  <div class="section active" id="sec-marks">
+    <div class="cdgrid" id="countdowns"></div>
+    <div class="ctabs" id="mtabs"></div>
+    <div id="mpanels"></div>
+  </div>
+
+  <!-- PLANNER -->
+  <div class="section" id="sec-planner">
+    <div class="mnav" id="mnav"></div>
+    <div id="mholder"></div>
+  </div>
+
+  <!-- BOARDS (admin only) -->
+  <div class="section" id="sec-boards">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Board results sync live to Parent Portal.</p>
+    <div class="ctabs" id="brdTabs">
+      <button class="ctab active" onclick="selBrd(this,'9')">Class 9</button>
+      <button class="ctab" onclick="selBrd(this,'10')">Class 10</button>
+      <button class="ctab" onclick="selBrd(this,'11')">Class 11</button>
+      <button class="ctab" onclick="selBrd(this,'12')">Class 12</button>
+    </div>
+    <div id="brdPanel"></div>
+  </div>
+
+  <!-- WEEKLY (admin only) -->
+  <div class="section" id="sec-weekly">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Weekly tests — &lt;60% = FAIL. Toppers auto-calculated.</p>
+    <div class="wt-seg">
+      <button class="wt-seg-btn active" id="wkseg-matric" onclick="selWk('matric')">Matric (9 &amp; 10)</button>
+      <button class="wt-seg-btn" id="wkseg-fsc" onclick="selWk('fsc')">FSc (11 &amp; 12)</button>
+    </div>
+    <div id="wkPanel"></div>
+  </div>
+</div>
+
+<div class="save-ind" id="saveInd">☁️ Saved to Cloud</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════════════════
+let currentTeacher = null;
+
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const t = TEACHER_ACCOUNTS.find(a => a.username===u && a.password===p);
+  if(!t){ document.getElementById('loginErr').style.display='block'; return; }
+  currentTeacher = t;
+  sessionStorage.setItem('iqra_teacher', JSON.stringify(t));
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('teacherChip').style.display='flex';
+  document.getElementById('teacherName').textContent = t.name;
+  // Show admin-only tabs
+  if(t.role==='admin'){
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+  }
+  initFirebase();
+}
+
+function doLogout(){
+  sessionStorage.removeItem('iqra_teacher');
+  location.reload();
+}
+
+// Auto-restore session
+(function(){
+  const saved = sessionStorage.getItem('iqra_teacher');
+  if(saved){
+    try{
+      currentTeacher = JSON.parse(saved);
+      document.getElementById('loginOverlay').style.display='none';
+      document.getElementById('teacherChip').style.display='flex';
+      document.getElementById('teacherName').textContent = currentTeacher.name;
+      if(currentTeacher.role==='admin') document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+      initFirebase();
+    } catch(e){ sessionStorage.removeItem('iqra_teacher'); }
+  }
+})();
+
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+// ═══════════════════════════════════════════════════════════════
+//  FIREBASE
+// ═══════════════════════════════════════════════════════════════
+let db, DB = {}, fbReady = false;
+
+function initFirebase(){
+  if(FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY'){
+    setSyncStatus('off','⚠ Firebase not configured – edit js/firebase-config.js');
+    renderAll(); return;
+  }
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    db.ref('.info/connected').on('value', snap=>{
+      const live = snap.val();
+      setSyncStatus(live?'live':'off', live?'🟢 Live – all changes sync instantly':'🔴 Offline – will sync when reconnected');
+    });
+    db.ref('iqra').on('value', snap=>{
+      DB = snap.val() || {};
+      fbReady = true;
+      renderAll();
+    });
+  } catch(e){
+    setSyncStatus('off','❌ Firebase error: '+e.message);
+    renderAll();
+  }
+}
+
+function setSyncStatus(state, msg){
+  document.getElementById('syncDot').className = 'sync-dot '+state;
+  document.getElementById('syncStatus').textContent = msg;
+}
+
+function cloudSave(path, value){
+  setSyncStatus('saving','💾 Saving…');
+  if(db && fbReady){
+    db.ref('iqra/'+path).set(value===undefined?null:value)
+      .then(()=>{
+        setSyncStatus('live','🟢 Live – all changes sync instantly');
+        showToast('☁️ Saved to Cloud');
+        document.getElementById('lastSaved').textContent = 'Saved: '+new Date().toLocaleTimeString();
+      })
+      .catch(e=>setSyncStatus('off','❌ Save error: '+e.message));
+  } else {
+    showToast('💾 Saved locally');
+  }
+}
+
+function showToast(msg){
+  const el = document.getElementById('saveInd');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTION SWITCH
+// ═══════════════════════════════════════════════════════════════
+function switchSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
+  document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>{
+    t.classList.toggle('active',['marks','planner','boards','weekly'][i]===id);
+  });
+  if(id==='boards') renderBrdPanel('9');
+  if(id==='weekly') renderWkPanel('matric');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COUNTDOWNS
+// ═══════════════════════════════════════════════════════════════
+function renderCD(){
+  document.getElementById('countdowns').innerHTML = TERMS.map(t=>{
+    const ed=daysTo(t.exam), sd=daysTo(t.syllabus);
+    return `<div class="cdcard cdt${t.id.slice(1)}">
+      <div class="cdlbl">${t.label} · Exam</div>
+      <div class="cddays">${ed<0?'✓':ed}<em>${ed<0?'Done':'days'}</em></div>
+      <div class="cddate">${fmtDate(t.exam)}</div>
+      <div class="cdmini">
+        <div class="cdrow"><span class="l">Syllabus by</span><span>${fmtDate(t.syllabus)}</span></div>
+        <div class="cdrow"><span class="l">Syllabus in</span><span>${sd<0?'✓ Done':sd+' days'}</span></div>
+        <div class="cdrow"><span class="l">Prep window</span><span>${sd>0&&ed>0?(ed-sd)+' days':'—'}</span></div>
+      </div></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MARKS
+// ═══════════════════════════════════════════════════════════════
+function canEditClass(cls){ return currentTeacher && currentTeacher.classes.includes(cls); }
+
+function renderMTabs(){
+  const el = document.getElementById('mtabs'); el.innerHTML='';
+  for(let c=1;c<=10;c++){
+    const locked = !canEditClass(c);
+    const b = document.createElement('button');
+    b.className = 'ctab'+(c===1?' active':'')+(locked?' locked':'');
+    b.textContent = 'Class '+c+(locked?' 🔒':'');
+    b.title = locked?'You do not have access to this class':'';
+    b.onclick = (cls=>()=>{
+      document.querySelectorAll('#mtabs .ctab').forEach((x,i)=>x.classList.toggle('active',i+1===cls));
+      document.querySelectorAll('.mpanel-m').forEach(p=>p.classList.toggle('active',+p.dataset.c===cls));
+    })(c);
+    el.appendChild(b);
+  }
+}
+
+function renderMPanels(){
+  const cont = document.getElementById('mpanels'); cont.innerHTML='';
+  for(let cls=1;cls<=10;cls++){
+    const subs = SUBS[cls];
+    const editable = canEditClass(cls);
+    const panel = document.createElement('div');
+    panel.className='cpanel mpanel-m'+(cls===1?' active':''); panel.dataset.c=cls;
+    panel.innerHTML=`
+      <div class="ph">
+        <div class="ptitle">Class ${cls} ${editable?'':'<span style="font-size:12px;color:var(--muted)">🔒 View only</span>'}</div>
+        <div class="obadge" id="ob-${cls}" style="border-color:#8b949e;color:#8b949e">Avg: —</div>
+      </div>
+      <div class="mtbl">
+        <div class="mth"><div>Subject</div>
+          ${TERMS.map(t=>`<div><span class="tl tl${t.id.slice(1)}">${t.label}</span></div>`).join('')}
+          <div>Grade</div></div>
+        <div id="mrows-${cls}"></div>
+      </div>
+      <div class="sbar">${TERMS.map(t=>`<div class="si"><div class="sl">${t.label}</div><div class="sv" id="sa-${cls}-${t.id}">—</div></div>`).join('')}
+        <div class="si" style="margin-left:auto"><div class="sl">Overall</div><div class="sv" id="so-${cls}">—</div></div></div>
+      <div class="nbox"><label>📝 Notes – Class ${cls}</label>
+        <textarea id="nt-${cls}" placeholder="Remarks, weak areas…" ${editable?'':'disabled'}>${getN(DB,['marks','notes','c'+cls])||''}</textarea></div>`;
+    cont.appendChild(panel);
+
+    const rowEl = document.getElementById('mrows-'+cls);
+    subs.forEach(sub=>{
+      const row=document.createElement('div'); row.className='mrow';
+      const sd = getN(DB,['marks','scores','c'+cls,fbKey(sub)])||{};
+      row.innerHTML=`<div class="sname">${sub}</div>
+        ${TERMS.map(t=>`<div><input class="minp" type="number" min="0" max="100"
+          value="${sd[t.id]!==undefined?sd[t.id]:''}" placeholder="/100"
+          data-c="${cls}" data-s="${fbKey(sub)}" data-t="${t.id}"
+          ${editable?'oninput="onM(this)"':'disabled'}></div>`).join('')}
+        <div id="g-${cls}-${fbKey(sub)}"></div>`;
+      rowEl.appendChild(row);
+    });
+
+    if(editable){
+      document.getElementById('nt-'+cls).addEventListener('input',function(){
+        cloudSave('marks/notes/c'+cls, this.value||null);
+      });
+    }
+    updM(cls);
+  }
+}
+
+function onM(inp){
+  const {c,s,t} = inp.dataset;
+  const v = inp.value.trim();
+  const sd = getN(DB,['marks','scores','c'+c,s])||{};
+  if(v==='') delete sd[t]; else sd[t]=parseFloat(v);
+  setN(DB,['marks','scores','c'+c,s],sd);
+  cloudSave('marks/scores/c'+c+'/'+s, Object.keys(sd).length?sd:null);
+  updM(parseInt(c));
+}
+
+function updM(cls){
+  const subs=SUBS[cls];
+  subs.forEach(sub=>{
+    const sd=getN(DB,['marks','scores','c'+cls,fbKey(sub)])||{};
+    const sc=TERMS.map(t=>sd[t.id]).filter(v=>v!==undefined&&!isNaN(v));
+    const avg=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null;
+    const g=grade(avg);
+    const el=document.getElementById(`g-${cls}-${fbKey(sub)}`);
+    if(el) el.innerHTML=`<span class="gbadge" style="background:${g.c}22;color:${g.c}">${g.l}</span>`;
+  });
+  TERMS.forEach(t=>{
+    const sc=subs.map(s=>(getN(DB,['marks','scores','c'+cls,fbKey(s)])||{})[t.id]).filter(v=>v!==undefined&&!isNaN(v));
+    const avg=sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):null;
+    const el=document.getElementById(`sa-${cls}-${t.id}`);
+    if(el){ const g=grade(avg); el.textContent=avg?avg+'%':'—'; el.style.color=avg?g.c:'#8b949e'; }
+  });
+  const all=subs.flatMap(s=>TERMS.map(t=>(getN(DB,['marks','scores','c'+cls,fbKey(s)])||{})[t.id]).filter(v=>v!==undefined&&!isNaN(v)));
+  const ov=all.length?(all.reduce((a,b)=>a+b,0)/all.length).toFixed(1):null;
+  const oEl=document.getElementById('so-'+cls);
+  if(oEl){ const g=grade(ov); oEl.textContent=ov?ov+'%':'—'; oEl.style.color=ov?g.c:'#8b949e'; }
+  const badge=document.getElementById('ob-'+cls);
+  if(badge){
+    if(ov){ const g=grade(ov); badge.textContent=`Avg: ${ov}% (${g.l})`; badge.style.borderColor=g.c; badge.style.color=g.c; }
+    else { badge.textContent='Avg: —'; badge.style.borderColor='#8b949e'; badge.style.color='#8b949e'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PLANNER
+// ═══════════════════════════════════════════════════════════════
+function renderMNav(){
+  const el=document.getElementById('mnav'); el.innerHTML='';
+  MONTHS.forEach((m,i)=>{
+    const btn=document.createElement('button');
+    btn.className=`mbtn mt${m.term.slice(1)}`+(i===0?' active':'');
+    btn.textContent=m.label; btn.id='mb-'+m.key;
+    btn.onclick=(mk=>()=>{
+      document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.mpanel').forEach(p=>p.classList.toggle('active',p.dataset.mk===mk));
+    })(m.key);
+    el.appendChild(btn);
+  });
+}
+
+function renderPlannerPanels(){
+  const holder=document.getElementById('mholder'); holder.innerHTML='';
+  MONTHS.forEach((m,mi)=>{
+    const panel=document.createElement('div');
+    panel.className='mpanel'+(mi===0?' active':''); panel.dataset.mk=m.key;
+    panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:5px;">
+      <span style="font-family:Playfair Display,serif;font-size:17px;font-weight:700;">${m.label} ${m.yr}</span>
+      <span class="tl tl${m.term.slice(1)}" style="padding:3px 10px;border-radius:100px;">${TLbl[m.term]}</span>
+    </div><div class="pacc" id="pacc-${m.key}"></div>`;
+    holder.appendChild(panel);
+    const acc=document.getElementById('pacc-'+m.key);
+    for(let cls=1;cls<=10;cls++){
+      const item=document.createElement('div');
+      item.className='pacc-item'; item.id=`pai-${m.key}-${cls}`;
+      item.innerHTML=`<div class="pacc-head" onclick="toggleAcc('${m.key}',${cls})">
+        <div class="pacc-htitle">Class ${cls}<div class="pacc-prog"><div class="pacc-progf" id="ppf-${m.key}-${cls}" style="background:${TC[m.term]}"></div></div></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="pacc-pct" id="ppct-${m.key}-${cls}">0%</span><span class="pacc-arrow">▼</span></div>
+      </div>
+      <div class="pacc-body"><div class="subj-scroll">
+        <div class="subj-table" id="stbl-${m.key}-${cls}" style="grid-template-columns:repeat(${SUBS[cls].length},1fr);display:grid;"></div>
+      </div></div>`;
+      acc.appendChild(item);
+      renderSubjCols(m.key, cls, TC[m.term]);
+    }
+  });
+}
+
+function toggleAcc(mk,cls){ document.getElementById(`pai-${mk}-${cls}`).classList.toggle('open'); }
+
+function renderSubjCols(mk,cls,color){
+  const grid=document.getElementById(`stbl-${mk}-${cls}`); if(!grid) return;
+  const subs=SUBS[cls], editable=canEditClass(cls);
+  let total=0,done=0;
+  subs.forEach(sub=>{
+    const t=getN(DB,['planner',mk,'c'+cls,fbKey(sub)])||[];
+    total+=t.length; done+=t.filter(x=>x.done).length;
+  });
+  const p=total?Math.round(done/total*100):0;
+  const pf=document.getElementById(`ppf-${mk}-${cls}`);
+  const ppct=document.getElementById(`ppct-${mk}-${cls}`);
+  if(pf) pf.style.width=p+'%'; if(ppct) ppct.textContent=p+'%';
+  grid.innerHTML='';
+  subs.forEach(sub=>{
+    const sk=fbKey(sub);
+    const topics=getN(DB,['planner',mk,'c'+cls,sk])||[];
+    const sd=topics.filter(t=>t.done).length;
+    const col=document.createElement('div'); col.className='subj-column';
+    col.innerHTML=`<div class="subj-col-title"><span>${esc(sub)}</span><span style="font-size:10px;color:var(--muted);font-weight:400">${sd}/${topics.length}</span></div>
+      <div class="subj-col-body">
+        ${topics.map((t,i)=>`<div class="trow2">
+          <div class="tck${t.done?' on':''}" onclick="${editable?`togT('${mk}',${cls},'${sk}',${i})`:''}">
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="ttxt${t.done?' dn':''}">${esc(t.text)}</div>
+            ${t.date?`<div class="tdate">📅 ${esc(t.date)}</div>`:''}
+          </div>
+          ${editable?`<span class="tdel2" onclick="delT('${mk}',${cls},'${sk}',${i})">×</span>`:''}
+        </div>`).join('')}
+      </div>
+      ${editable?`<div class="add-area">
+        <input class="ainp" id="ti-${mk}-${cls}-${sk}" placeholder="Topic…" onkeydown="if(event.key==='Enter')addT('${mk}',${cls},'${sub}','${sk}')">
+        <div class="arow">
+          <input class="dateinp" id="di-${mk}-${cls}-${sk}" type="text" placeholder="Date (opt.)">
+          <button class="addbtn" onclick="addT('${mk}',${cls},'${sub}','${sk}')">+</button>
+        </div>
+      </div>`:''}`;
+    grid.appendChild(col);
+  });
+}
+
+function saveTopics(mk,cls,sk){
+  const topics=getN(DB,['planner',mk,'c'+cls,sk])||[];
+  const m=MONTHS.find(x=>x.key===mk);
+  cloudSave(`planner/${mk}/c${cls}/${sk}`, topics.length?topics:null);
+  renderSubjCols(mk,cls,m?TC[m.term]:TC.t1);
+}
+function addT(mk,cls,sub,sk){
+  const tinp=document.getElementById(`ti-${mk}-${cls}-${sk}`);
+  const dinp=document.getElementById(`di-${mk}-${cls}-${sk}`);
+  const txt=tinp.value.trim(); if(!txt) return;
+  const topics=getN(DB,['planner',mk,'c'+cls,sk])||[];
+  topics.push({text:txt,date:dinp.value.trim(),done:false});
+  setN(DB,['planner',mk,'c'+cls,sk],topics);
+  saveTopics(mk,cls,sk);
+  tinp.value=''; dinp.value=''; tinp.focus();
+}
+function togT(mk,cls,sk,i){
+  const topics=getN(DB,['planner',mk,'c'+cls,sk])||[];
+  if(topics[i]) topics[i].done=!topics[i].done;
+  setN(DB,['planner',mk,'c'+cls,sk],topics);
+  saveTopics(mk,cls,sk);
+}
+function delT(mk,cls,sk,i){
+  const topics=getN(DB,['planner',mk,'c'+cls,sk])||[];
+  topics.splice(i,1);
+  setN(DB,['planner',mk,'c'+cls,sk],topics);
+  saveTopics(mk,cls,sk);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOARD RESULTS (admin only)
+// ═══════════════════════════════════════════════════════════════
+function selBrd(btn,cls){
+  document.querySelectorAll('#brdTabs .ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderBrdPanel(cls);
+}
+function renderBrdPanel(cls){
+  const students=getN(DB,['boards','c'+cls])||[];
+  document.getElementById('brdPanel').innerHTML=`<div class="card">
+    <div class="card-head"><div class="card-title">Class ${cls} · Board Results</div></div>
+    <div style="overflow-x:auto;"><table class="tbl">
+      <thead><tr><th>Student Name</th><th>Father Name</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
+      <tbody>${students.map((s,i)=>`<tr>
+        <td><input class="ainp2" value="${esc(s.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td>
+        <td><input class="ainp2" value="${esc(s.father)}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:120px;"></td>
+        <td><input class="ainp2" type="number" value="${s.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td>
+        <td><input class="ainp2" type="number" value="${s.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td>
+        <td><input class="ainp2" type="number" value="${s.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:68px;"></td>
+        <td style="font-weight:700;color:#22c55e">${s.total?((s.obtained/s.total)*100).toFixed(1)+'%':'—'}</td>
+        <td><button onclick="delBrd('${cls}',${i})" style="padding:2px 8px;border-radius:4px;border:none;background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-size:11px;">✕</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;">
+      <input class="ainp2" id="bn-${cls}" placeholder="Student Name" style="flex:2;min-width:110px;">
+      <input class="ainp2" id="bf-${cls}" placeholder="Father Name" style="flex:2;min-width:110px;">
+      <input class="ainp2" id="by-${cls}" type="number" placeholder="Year" style="width:68px;" value="${new Date().getFullYear()}">
+      <input class="ainp2" id="bt-${cls}" type="number" placeholder="Total" style="width:62px;">
+      <input class="ainp2" id="bo-${cls}" type="number" placeholder="Obtained" style="width:72px;">
+      <button class="addbtn2" onclick="addBrd('${cls}')">+ Add Student</button>
+    </div></div>`;
+}
+function saveBrd(cls){
+  const s=getN(DB,['boards','c'+cls])||[];
+  cloudSave('boards/c'+cls, s.length?s:null);
+  renderBrdPanel(cls);
+}
+function addBrd(cls){
+  const name=document.getElementById('bn-'+cls).value.trim(); if(!name) return;
+  const father=document.getElementById('bf-'+cls).value.trim();
+  const year=parseInt(document.getElementById('by-'+cls).value)||new Date().getFullYear();
+  const total=parseFloat(document.getElementById('bt-'+cls).value)||0;
+  const obtained=parseFloat(document.getElementById('bo-'+cls).value)||0;
+  const s=getN(DB,['boards','c'+cls])||[];
+  s.push({name,father,year,total,obtained});
+  setN(DB,['boards','c'+cls],s); saveBrd(cls);
+}
+function updBrd(cls,i,f,v){
+  const s=getN(DB,['boards','c'+cls])||[];
+  if(s[i]) s[i][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;
+  setN(DB,['boards','c'+cls],s); cloudSave('boards/c'+cls, s.length?s:null);
+}
+function delBrd(cls,i){
+  const s=getN(DB,['boards','c'+cls])||[]; s.splice(i,1);
+  setN(DB,['boards','c'+cls],s); saveBrd(cls);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WEEKLY TESTS (admin only)
+// ═══════════════════════════════════════════════════════════════
+function selWk(sec){
+  document.getElementById('wkseg-matric').classList.toggle('active',sec==='matric');
+  document.getElementById('wkseg-fsc').classList.toggle('active',sec==='fsc');
+  renderWkPanel(sec);
+}
+function renderWkPanel(sec){
+  const tests=getN(DB,['weekly',sec])||[];
+  const classes=sec==='matric'?['9','10']:['11','12'];
+  let html=`<div class="card" style="margin-bottom:12px;"><div class="card-head"><div class="card-title">➕ New Weekly Test</div></div>
+    <div style="padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Class</label>
+        <select class="ainp2" id="wk-cls" style="width:82px;">${classes.map(c=>`<option value="${c}">Class ${c}</option>`).join('')}</select></div>
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Date</label>
+        <input class="ainp2" id="wk-date" placeholder="e.g. 5 Apr 2025" style="width:128px;"></div>
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Subject</label>
+        <input class="ainp2" id="wk-subj" placeholder="Subject" style="width:108px;"></div>
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Total Marks</label>
+        <input class="ainp2" id="wk-total" type="number" value="50" style="width:78px;"></div>
+      <button class="addbtn2" style="align-self:flex-end;" onclick="addWkTest('${sec}')">+ Create Test</button>
+    </div></div>`;
+  if(!tests.length) html+='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px;">No tests yet.</div>';
+  else tests.forEach((test,ti)=>{
+    html+=`<div class="card"><div class="card-head">
+      <div class="card-title">📝 ${esc(test.subject)} · Class ${esc(test.class)} · ${esc(test.date)} · /${test.total}</div>
+      <button onclick="delWkTest('${sec}',${ti})" style="padding:2px 9px;border-radius:4px;border:none;background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">✕ Delete</button>
+    </div>
+    <div style="overflow-x:auto;"><table class="tbl"><thead><tr>
+      <th>Student Name</th><th>Father Name</th><th>Obtained / ${test.total}</th><th>% · Status</th><th></th>
+    </tr></thead><tbody>
+    ${(test.students||[]).map((s,si)=>{
+      const p=test.total?((s.obtained/test.total)*100).toFixed(1):0;
+      const pass=parseFloat(p)>=60;
+      return `<tr>
+        <td><input class="ainp2" value="${esc(s.name)}" onchange="updWkS('${sec}',${ti},${si},'name',this.value)" style="min-width:100px;width:100%;"></td>
+        <td><input class="ainp2" value="${esc(s.father)}" onchange="updWkS('${sec}',${ti},${si},'father',this.value)" style="min-width:100px;width:100%;"></td>
+        <td style="white-space:nowrap;"><input class="ainp2" type="number" value="${s.obtained}" style="width:58px;" onchange="updWkS('${sec}',${ti},${si},'obtained',parseFloat(this.value));renderWkPanel('${sec}')"> / ${test.total}</td>
+        <td style="font-weight:700;color:${pass?'#22c55e':'#ef4444'}">${p}% <span class="${pass?'pass-pill':'fail-pill'}">${pass?'PASS':'FAIL'}</span></td>
+        <td><button onclick="delWkS('${sec}',${ti},${si})" style="padding:2px 7px;border-radius:4px;border:none;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-size:11px;">✕</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>
+    <div style="padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;">
+      <input class="ainp2" id="ws-n-${sec}-${ti}" placeholder="Student Name" style="flex:2;min-width:100px;">
+      <input class="ainp2" id="ws-f-${sec}-${ti}" placeholder="Father Name" style="flex:2;min-width:100px;">
+      <input class="ainp2" id="ws-m-${sec}-${ti}" type="number" placeholder="Marks" style="width:68px;">
+      <button class="addbtn2" onclick="addWkS('${sec}',${ti})">+ Student</button>
+    </div></div>`;
+  });
+  document.getElementById('wkPanel').innerHTML=html;
+}
+function saveWk(sec){ cloudSave('weekly/'+sec, getN(DB,['weekly',sec])||null); }
+function addWkTest(sec){
+  const cls=document.getElementById('wk-cls').value;
+  const date=document.getElementById('wk-date').value.trim();
+  const subj=document.getElementById('wk-subj').value.trim();
+  const total=parseFloat(document.getElementById('wk-total').value)||50;
+  if(!subj||!date) return;
+  const t=getN(DB,['weekly',sec])||[];
+  t.push({class:cls,date,subject:subj,total,students:[]});
+  setN(DB,['weekly',sec],t); saveWk(sec); renderWkPanel(sec);
+}
+function delWkTest(sec,ti){
+  const t=getN(DB,['weekly',sec])||[]; t.splice(ti,1);
+  setN(DB,['weekly',sec],t); saveWk(sec); renderWkPanel(sec);
+}
+function addWkS(sec,ti){
+  const name=document.getElementById(`ws-n-${sec}-${ti}`).value.trim(); if(!name) return;
+  const father=document.getElementById(`ws-f-${sec}-${ti}`).value.trim();
+  const obtained=parseFloat(document.getElementById(`ws-m-${sec}-${ti}`).value)||0;
+  const t=getN(DB,['weekly',sec])||[];
+  if(!t[ti].students) t[ti].students=[];
+  t[ti].students.push({name,father,obtained});
+  setN(DB,['weekly',sec],t); saveWk(sec); renderWkPanel(sec);
+}
+function updWkS(sec,ti,si,f,v){
+  const t=getN(DB,['weekly',sec])||[];
+  if(t[ti]&&t[ti].students&&t[ti].students[si]) t[ti].students[si][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;
+  setN(DB,['weekly',sec],t); saveWk(sec);
+}
+function delWkS(sec,ti,si){
+  const t=getN(DB,['weekly',sec])||[];
+  if(t[ti]&&t[ti].students) t[ti].students.splice(si,1);
+  setN(DB,['weekly',sec],t); saveWk(sec); renderWkPanel(sec);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER ALL (called after Firebase snapshot loads)
+// ═══════════════════════════════════════════════════════════════
+function renderAll(){
+  renderCD();
+  renderMTabs();
+  renderMPanels();
+  renderMNav();
+  renderPlannerPanels();
+}
+</script>
+</body>
+</html>
