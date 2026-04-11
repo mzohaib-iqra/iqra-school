@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>IQRA School – Parent Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/portal.css">
@@ -15,7 +14,7 @@
 
 <div class="header">
   <div class="school-banner">
-    <img src="logo.png" class="school-logo" alt="IQRA Logo">
+    <img src="logo.png" class="school-logo">
     <div>
       <div class="school-name">IQRA PUBLIC SCHOOL AND COLLEGE<br>DARA PEZU (Boys &amp; Girls)</div>
       <div class="school-sub">Excellence in Education · Nurturing Future Leaders</div>
@@ -37,198 +36,228 @@
 
 <div class="nav-strip">
   <div class="nav-inner">
-    <button class="ntab active" onclick="switchTab('progress')">📊 Class Progress</button>
-    <button class="ntab" onclick="switchTab('boards')">🏆 Board Results</button>
-    <button class="ntab" onclick="switchTab('weekly')">📝 Weekly Tests</button>
+    <button class="ntab active" onclick="switchTab('progress')">📊 Progress</button>
+    <button class="ntab" onclick="switchTab('results')">📋 Term Results</button>
+    <button class="ntab" onclick="switchTab('diary')">📔 Daily Diary</button>
+    <button class="ntab" onclick="switchTab('boards')">🏆 Boards</button>
+    <button class="ntab" onclick="switchTab('weekly')">📝 Weekly</button>
     <button class="ntab" onclick="switchTab('toppers')">⭐ Toppers</button>
   </div>
 </div>
 
 <div class="container">
 
-  <!-- CLASS PROGRESS -->
-  <div class="tab-section active" id="tab-progress">
-    <div class="sel-wrap">
-      <span class="sel-lbl">Select Your Child's Class</span>
-      <select class="sel" id="classSelect" onchange="loadClass(this.value)">
-        <option value="">— Choose a class —</option>
-        <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
-        <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
-        <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
-        <option value="10">Class 10</option>
-      </select>
-    </div>
-    <div id="noData" class="no-data"><h3>👆 Select a class to view progress</h3><p>Choose your child's class from the dropdown above.</p></div>
-    <div id="mainContent" style="display:none;">
-      <div class="ov-grid" id="ovGrid"></div>
-      <div style="margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Overall Performance</span>
-          <span id="ovPctLbl" style="font-size:12px;font-weight:700;"></span>
-        </div>
-        <div class="prog-bar"><div class="prog-fill" id="ovFill" style="width:0%;background:#1e3a5f"></div></div>
+<!-- CLASS PROGRESS -->
+<div class="tab-section active" id="tab-progress">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Your Child's Class</span>
+    <select class="sel" id="classSelect" onchange="loadClass(this.value)">
+      <option value="">— Choose a class —</option>
+      <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+      <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+      <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+      <option value="10">Class 10</option>
+    </select>
+  </div>
+  <div id="noData" class="no-data"><h3>👆 Select a class above</h3><p>Choose your child's class to view progress.</p></div>
+  <div id="mainContent" style="display:none;">
+    <div class="ov-grid" id="ovGrid"></div>
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Overall Performance</span>
+        <span id="ovPctLbl" style="font-size:12px;font-weight:700;"></span>
       </div>
-      <div class="card" id="notesCard" style="display:none;">
-        <div class="card-head"><div class="card-title">📝 Teacher's Remarks</div></div>
-        <div style="padding:12px 15px;font-size:13px;line-height:1.7;" id="notesTxt"></div>
-      </div>
-      <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Subject-wise Marks</div><div class="sec-hdr-line"></div></div>
-      <div class="card"><div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Subject</th><th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Grade</th></tr></thead>
-        <tbody id="marksRows"></tbody>
-      </table></div></div>
-      <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Monthly Syllabus Coverage</div><div class="sec-hdr-line"></div></div>
-      <div class="ms-tabs" id="msTabs"></div>
-      <div id="msViews"></div>
+      <div class="prog-bar"><div class="prog-fill" id="ovFill" style="width:0%;background:var(--navy)"></div></div>
     </div>
-  </div>
-
-  <!-- BOARD RESULTS -->
-  <div class="tab-section" id="tab-boards">
-    <div class="term-tabs" id="brdTabs">
-      <button class="ttab active" onclick="selBrd(this,'9')">Class 9</button>
-      <button class="ttab" onclick="selBrd(this,'10')">Class 10</button>
-      <button class="ttab" onclick="selBrd(this,'11')">Class 11</button>
-      <button class="ttab" onclick="selBrd(this,'12')">Class 12</button>
+    <div class="card" id="notesCard" style="display:none;">
+      <div class="card-head"><div class="card-title">📝 Teacher's Remarks</div></div>
+      <div style="padding:11px 14px;font-size:13px;line-height:1.7;" id="notesTxt"></div>
     </div>
-    <div id="brdContent"></div>
+    <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Subject-wise Marks</div><div class="sec-hdr-line"></div></div>
+    <div class="card"><div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Subject</th><th>Term 1 (Obt)</th><th>Term 2 (Obt)</th><th>Term 3 (Obt)</th><th>Avg %</th><th>Grade</th></tr></thead>
+      <tbody id="marksRows"></tbody>
+    </table></div></div>
+    <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Monthly Syllabus</div><div class="sec-hdr-line"></div></div>
+    <div class="ms-tabs" id="msTabs"></div>
+    <div id="msViews"></div>
   </div>
+</div>
 
-  <!-- WEEKLY TESTS -->
-  <div class="tab-section" id="tab-weekly">
-    <div class="wt-seg">
-      <button class="wt-seg-btn active" onclick="selWk('matric')">Matric (9 &amp; 10)</button>
-      <button class="wt-seg-btn" onclick="selWk('fsc')">FSc (11 &amp; 12)</button>
-    </div>
-    <div id="weeklyContent"></div>
+<!-- TERM RESULTS -->
+<div class="tab-section" id="tab-results">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="resClassSel" onchange="loadResults(this.value,'t1')">
+      <option value="">— Choose a class —</option>
+      <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+      <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+      <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+      <option value="10">Class 10</option>
+    </select>
   </div>
+  <div class="term-tabs" id="resTabs" style="display:none;"></div>
+  <div id="resContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+</div>
 
-  <!-- TOPPERS -->
-  <div class="tab-section" id="tab-toppers">
-    <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Overall Toppers · Weekly Tests</div><div class="sec-hdr-line"></div></div>
-    <div class="topper-grid" id="topperCards"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="positionLists"></div>
+<!-- DAILY DIARY -->
+<div class="tab-section" id="tab-diary">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="diaryClassSel" onchange="loadDiary(this.value)">
+      <option value="">— Choose a class —</option>
+      <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+      <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+      <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+      <option value="10">Class 10</option>
+    </select>
   </div>
+  <div id="diaryContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+</div>
+
+<!-- BOARDS -->
+<div class="tab-section" id="tab-boards">
+  <div class="term-tabs" id="brdTabs">
+    <button class="ttab active" onclick="selBrd(this,'9')">Class 9</button>
+    <button class="ttab" onclick="selBrd(this,'10')">Class 10</button>
+    <button class="ttab" onclick="selBrd(this,'11')">Class 11</button>
+    <button class="ttab" onclick="selBrd(this,'12')">Class 12</button>
+  </div>
+  <div id="brdContent"></div>
+</div>
+
+<!-- WEEKLY -->
+<div class="tab-section" id="tab-weekly">
+  <div class="wt-seg">
+    <button class="wt-seg-btn active" onclick="selWk('matric')">Matric (9 &amp; 10)</button>
+    <button class="wt-seg-btn" onclick="selWk('fsc')">FSc (11 &amp; 12)</button>
+  </div>
+  <div id="weeklyContent"></div>
+</div>
+
+<!-- TOPPERS -->
+<div class="tab-section" id="tab-toppers">
+  <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Weekly Test Toppers</div><div class="sec-hdr-line"></div></div>
+  <div class="topper-grid" id="topperCards"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="positionLists"></div>
+</div>
 
 </div>
 <div class="footer">IQRA Public School and College Dara Pezu · Founded 1999 · Parent Portal — Live Data<br>For queries: 0347-1575196 / 0370-1575196</div>
 
 <script>
-let DB={}, curCls=null, curBrd='9', curWkSec='matric';
+let DB={}, curCls=null, curBrd='9', curWkSec='matric', curResCls=null;
 
-// ── FIREBASE ──────────────────────────────────────────────────
 function initFirebase(){
   if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){
-    document.getElementById('syncMsg').textContent='⚠ Contact school admin – system not configured';
-    document.getElementById('liveDot').style.background='#ef4444';
-    document.getElementById('liveDot').style.animation='none';
+    document.getElementById('syncMsg').textContent='⚠ Contact school — system not yet configured';
+    document.getElementById('liveDot').style.cssText='background:#ef4444;animation:none';
     return;
   }
   try{
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     const db=firebase.database();
-    db.ref('.info/connected').on('value',snap=>{
-      const live=snap.val();
+    db.ref('.info/connected').on('value',s=>{
+      const live=s.val();
       document.getElementById('syncMsg').textContent=live?'🟢 Live data — updates automatically':'🔴 Reconnecting…';
       document.getElementById('liveDot').style.background=live?'#22c55e':'#ef4444';
     });
-    db.ref('iqra').on('value',snap=>{
-      DB=snap.val()||{};
+    db.ref('iqra').on('value',s=>{
+      DB=s.val()||{};
+      if(DB.settings){
+        if(DB.settings.terms) TERMS=DB.settings.terms;
+        if(DB.settings.months) MONTHS=DB.settings.months;
+      }
       if(curCls) loadClass(curCls);
-      const tabs=['tab-boards','tab-weekly','tab-toppers'];
+      if(curResCls) loadResults(curResCls,curResTermId||'t1');
       if(document.getElementById('tab-boards').classList.contains('active')) renderBrdContent(curBrd);
       if(document.getElementById('tab-weekly').classList.contains('active')) renderWeekly(curWkSec);
       if(document.getElementById('tab-toppers').classList.contains('active')) renderToppers();
     });
-  } catch(e){
-    document.getElementById('syncMsg').textContent='❌ Connection error: '+e.message;
-  }
+  }catch(e){document.getElementById('syncMsg').textContent='❌ Error: '+e.message;}
 }
 
-// ── TAB SWITCHING ─────────────────────────────────────────────
 function switchTab(id){
   document.querySelectorAll('.tab-section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+id));
-  document.querySelectorAll('.ntab').forEach((t,i)=>t.classList.toggle('active',['progress','boards','weekly','toppers'][i]===id));
+  document.querySelectorAll('.ntab').forEach((t,i)=>t.classList.toggle('active',['progress','results','diary','boards','weekly','toppers'][i]===id));
   if(id==='boards') renderBrdContent(curBrd);
   if(id==='weekly') renderWeekly(curWkSec);
   if(id==='toppers') renderToppers();
 }
 
-// ── CLASS PROGRESS ────────────────────────────────────────────
+function getTM(){return parseFloat(getN(DB,['settings','totalMarks'])||100);}
+
+// ── PROGRESS ──────────────────────────────────────────────────
 function loadClass(cls){
-  cls=parseInt(cls); curCls=cls||null;
+  cls=parseInt(cls);curCls=cls||null;
   document.getElementById('noData').style.display=cls?'none':'block';
   document.getElementById('mainContent').style.display=cls?'block':'none';
-  if(!cls) return;
-  renderOv(cls); renderMarks(cls); renderNotes(cls); renderPlanner(cls);
+  if(!cls)return;
+  renderOv(cls);renderMarks(cls);renderNotes(cls);renderPlanner(cls);
 }
-
 function renderOv(cls){
-  const subs=SUBS[cls], grid=document.getElementById('ovGrid'); grid.innerHTML='';
+  const subs=SUBS[cls],grid=document.getElementById('ovGrid'),total=getTM();grid.innerHTML='';
   TERMS.forEach((t,i)=>{
     const scores=subs.map(s=>getN(DB,['marks','scores','c'+cls,fbKey(s),t.id])).filter(v=>v!==undefined&&!isNaN(v));
     const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:null;
-    const g=grade(avg);
+    const avgPct=avg!==null?(avg/total*100):null;
+    const g=grade(avgPct);
     grid.innerHTML+=`<div class="ovc t${i+1}">
       <div class="ovc-lbl">${TLbl[t.id]}</div>
-      <div class="ovc-val" style="color:${avg!==null?g.c:'#ccc'}">${avg!==null?avg.toFixed(1)+'%':'—'}</div>
-      <div class="ovc-sub">${avg!==null?gradeMsg(avg):'No data yet'}</div>
-      ${avg!==null?`<span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span>`:''}
+      <div class="ovc-val" style="color:${avgPct!==null?g.c:'#ccc'}">${avgPct!==null?avgPct.toFixed(1)+'%':'—'}</div>
+      <div class="ovc-sub">${avgPct!==null?gradeMsg(avgPct):'No data yet'}</div>
+      ${avgPct!==null?`<span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span>`:''}
     </div>`;
   });
   const all=subs.flatMap(s=>TERMS.map(t=>getN(DB,['marks','scores','c'+cls,fbKey(s),t.id])).filter(v=>v!==undefined&&!isNaN(v)));
   const ov=all.length?(all.reduce((a,b)=>a+b,0)/all.length):null;
-  const fill=document.getElementById('ovFill'), lbl=document.getElementById('ovPctLbl');
-  if(ov!==null){const g=grade(ov);fill.style.width=ov+'%';fill.style.background=g.c;lbl.textContent=ov.toFixed(1)+'% · '+g.l+' · '+gradeMsg(ov);lbl.style.color=g.c;}
+  const ovPct=ov!==null?(ov/total*100):null;
+  const fill=document.getElementById('ovFill'),lbl=document.getElementById('ovPctLbl');
+  if(ovPct!==null){const g=grade(ovPct);fill.style.width=ovPct+'%';fill.style.background=g.c;lbl.textContent=ovPct.toFixed(1)+'% · '+g.l+' · '+gradeMsg(ovPct);lbl.style.color=g.c;}
   else{fill.style.width='0%';lbl.textContent='No marks yet';lbl.style.color='#8a7f72';}
 }
-
 function renderMarks(cls){
-  const subs=SUBS[cls], el=document.getElementById('marksRows'); el.innerHTML='';
+  const subs=SUBS[cls],el=document.getElementById('marksRows'),total=getTM();el.innerHTML='';
   subs.forEach(sub=>{
     const scores=TERMS.map(t=>getN(DB,['marks','scores','c'+cls,fbKey(sub),t.id])).filter(v=>v!==undefined&&!isNaN(v));
     const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:null;
-    const g=grade(avg);
+    const avgPct=avg!==null?(avg/total*100):null;
+    const g=grade(avgPct);
     el.innerHTML+=`<tr><td style="font-weight:600">${esc(sub)}</td>
-      ${TERMS.map(t=>{const v=getN(DB,['marks','scores','c'+cls,fbKey(sub),t.id]);return`<td style="color:${v!==undefined?'inherit':'#ccc'}">${v!==undefined?v+'/100':'—'}</td>`;}).join('')}
+      ${TERMS.map(t=>{const v=getN(DB,['marks','scores','c'+cls,fbKey(sub),t.id]);return`<td>${v!==undefined?`${v}/${total} <span style="color:var(--muted);font-size:10px;">(${(v/total*100).toFixed(0)}%)</span>`:'—'}</td>`;}).join('')}
+      <td style="font-weight:700;color:${g.c}">${avgPct!==null?avgPct.toFixed(1)+'%':'—'}</td>
       <td><span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span></td></tr>`;
   });
 }
-
 function renderNotes(cls){
   const note=getN(DB,['marks','notes','c'+cls])||'';
   const card=document.getElementById('notesCard');
   if(note.trim()){card.style.display='block';document.getElementById('notesTxt').textContent=note;}
   else card.style.display='none';
 }
-
 function renderPlanner(cls){
-  const tabs=document.getElementById('msTabs'), views=document.getElementById('msViews');
-  tabs.innerHTML=''; views.innerHTML='';
+  const tabs=document.getElementById('msTabs'),views=document.getElementById('msViews');
+  tabs.innerHTML='';views.innerHTML='';
   const subs=SUBS[cls];
   const hasAny=MONTHS.some(m=>subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;}));
-  if(!hasAny){views.innerHTML='<div class="no-data"><h3>📅 Syllabus plan not added yet</h3><p>The teacher hasn\'t added the monthly plan yet.</p></div>';return;}
+  if(!hasAny){views.innerHTML='<div class="no-data"><h3>📅 No syllabus plan yet</h3><p>The teacher hasn\'t added the monthly plan yet.</p></div>';return;}
   MONTHS.forEach((m,i)=>{
     const hasD=subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;});
     const btn=document.createElement('button');
-    btn.className='ms-btn'+(i===0?' active':'');
-    if(!hasD) btn.style.opacity='.4';
-    btn.textContent=m.label; btn.id='msb-'+m.key;
-    btn.onclick=(mk=>()=>{
-      document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===mk));
-    })(m.key);
+    btn.className='ms-btn'+(i===0?' active':'');if(!hasD)btn.style.opacity='.4';
+    btn.textContent=m.label;btn.id='msb-'+m.key;
+    btn.onclick=(mk=>()=>{document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===mk));})(m.key);
     tabs.appendChild(btn);
   });
   MONTHS.forEach((m,i)=>{
-    const view=document.createElement('div'); view.className='ms-view'+(i===0?' active':''); view.dataset.mk=m.key;
+    const view=document.createElement('div');view.className='ms-view'+(i===0?' active':'');view.dataset.mk=m.key;
     let tot=0,dn=0;
     subs.forEach(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
     const p=tot?Math.round(dn/tot*100):0;
+    const tc=m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)';
     view.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;gap:5px;">
-      <span style="font-size:12px;font-weight:600;">${m.label} ${m.yr} · <span style="color:${TC[m.term]}">${TLbl[m.term]}</span></span>
-      <span style="font-size:12px;font-weight:700;color:${TC[m.term]}">${p}% covered</span>
+      <span style="font-size:12px;font-weight:600;">${m.label} ${m.yr} · <span style="color:${tc}">${TLbl[m.term]}</span></span>
+      <span style="font-size:12px;font-weight:700;color:${tc}">${p}% covered</span>
     </div>
     <div class="subj-scroll"><div class="subj-cols-wrap" style="grid-template-columns:repeat(${subs.length},1fr);display:grid;"></div></div>`;
     views.appendChild(view);
@@ -236,11 +265,9 @@ function renderPlanner(cls){
     subs.forEach(sub=>{
       const topics=getN(DB,['planner',m.key,'c'+cls,fbKey(sub)])||[];
       const sd=topics.filter(t=>t.done).length;
-      const col=document.createElement('div'); col.className='subj-col-r';
+      const col=document.createElement('div');col.className='subj-col-r';
       col.innerHTML=`<div class="subj-col-hd">${esc(sub)}<span style="font-size:10px;font-weight:400;color:var(--muted)">${sd}/${topics.length}</span></div>
-        <div class="subj-col-bd">${topics.length===0?'<div class="empty-msg">Not added</div>':
-        topics.map(t=>`<div class="titem"><div class="ticon ${t.done?'done':'pend'}"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><div class="titem-text${t.done?' dn':''}">${esc(t.text)}</div>${t.date?`<div class="tdate-sm">📅 ${esc(t.date)}</div>`:''}</div></div>`).join('')}</div>`;
+        <div class="subj-col-bd">${topics.length===0?'<div class="empty-msg">Not added</div>':topics.map(t=>`<div class="titem"><div class="ticon ${t.done?'done':'pend'}"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="titem-text${t.done?' dn':''}">${esc(t.text)}</div></div></div>`).join('')}</div>`;
       wrap.appendChild(col);
     });
   });
@@ -248,18 +275,95 @@ function renderPlanner(cls){
   if(fi>=0){document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));document.getElementById('msb-'+MONTHS[fi].key)?.classList.add('active');document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===MONTHS[fi].key));}
 }
 
-// ── BOARDS ────────────────────────────────────────────────────
+// ── TERM RESULTS ──────────────────────────────────────────────
+let curResTermId='t1';
+function loadResults(cls,termId){
+  curResCls=parseInt(cls)||null;curResTermId=termId;
+  const tabsEl=document.getElementById('resTabs');
+  const cont=document.getElementById('resContent');
+  if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';tabsEl.style.display='none';return;}
+  tabsEl.style.display='flex';
+  tabsEl.innerHTML=TERMS.map(t=>`<button class="ttab${t.id===termId?' active':''}" onclick="loadResults('${cls}','${t.id}')">${t.label}</button>`).join('');
+  const students=getN(DB,['students','c'+cls])||[];
+  const total=getTM();
+  if(!students.length){cont.innerHTML='<div class="no-data"><h3>No students listed</h3><p>Student list not yet added by teacher.</p></div>';return;}
+  const subs=SUBS[cls];
+  const term=TERMS.find(t=>t.id===termId);
+  // Build result rows with ranking
+  const rows=students.map((stu,si)=>{
+    const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
+    let totalObt=0;
+    subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totalObt+=parseFloat(v);});
+    const maxObt=total*subs.length;
+    const pctVal=maxObt?((totalObt/maxObt)*100):0;
+    return{...stu,si,totalObt,pctVal,res};
+  }).sort((a,b)=>b.pctVal-a.pctVal);
+  const medals=['🥇','🥈','🥉'];
+  cont.innerHTML=`<div class="card"><div class="card-head">
+    <div class="card-title">Class ${cls} · ${term?.label||termId} Results</div>
+    <div style="font-size:11px;color:var(--muted)">Total per subject: ${total} · ${students.length} students</div>
+  </div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Rank</th><th>Student Name</th><th>Father</th>
+      ${subs.map(s=>`<th style="white-space:nowrap">${s}</th>`).join('')}
+      <th>Total Obt</th><th>%</th><th>Grade</th>
+    </tr></thead>
+    <tbody>${rows.map((stu,ri)=>{
+      const g=grade(stu.pctVal);
+      const pass=stu.pctVal>=33;
+      return`<tr>
+        <td style="font-size:${ri<3?'15':'12'}px">${medals[ri]||ri+1}</td>
+        <td style="font-weight:600">${esc(stu.name)}</td>
+        <td style="color:var(--muted)">${esc(stu.father||'')}</td>
+        ${subs.map(s=>{const v=stu.res[fbKey(s)];return`<td>${v!==undefined?v:'—'}</td>`;}).join('')}
+        <td style="font-weight:600">${stu.totalObt||'—'}</td>
+        <td style="font-weight:700;color:${g.c}">${stu.pctVal?stu.pctVal.toFixed(1)+'%':'—'}</td>
+        <td><span class="${pass?'pass-pill':'fail-pill'}">${pass?'Pass':'Fail'}</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div></div>`;
+}
+
+// ── DAILY DIARY ───────────────────────────────────────────────
+function loadDiary(cls){
+  cls=parseInt(cls)||null;
+  const cont=document.getElementById('diaryContent');
+  if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';return;}
+  const today=todayKey();
+  const dateKey=today;
+  renderDiaryForDate(cls,dateKey);
+}
+function renderDiaryForDate(cls,dateKey){
+  const cont=document.getElementById('diaryContent');
+  const subs=SUBS[cls];
+  cont.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+    <label style="font-size:11px;color:var(--muted);">📅 Select Date:</label>
+    <input type="date" value="${dateKey}" id="pDiaryDate" style="padding:5px 9px;border-radius:7px;border:1px solid var(--border);background:#fff;font-family:inherit;font-size:12px;" onchange="renderDiaryForDate(${cls},this.value)">
+    <span style="font-size:12px;color:var(--muted);">${fmtDay(dateKey)}</span>
+  </div>
+  <div class="diary-day-grid">
+    ${subs.map(sub=>{
+      const hws=getN(DB,['diary','c'+cls,dateKey,fbKey(sub)])||[];
+      return`<div class="diary-subj-card">
+        <div class="diary-subj-hd">${esc(sub)} <span style="font-size:10px;font-weight:400;color:var(--muted)">${hws.length} task${hws.length!==1?'s':''}</span></div>
+        <div class="diary-hw-list">${hws.length?hws.map(h=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span></div>`).join(''):'<span style="font-size:11px;color:var(--muted);font-style:italic;">No homework</span>'}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── BOARD RESULTS ─────────────────────────────────────────────
 function selBrd(btn,cls){curBrd=cls;document.querySelectorAll('#brdTabs .ttab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBrdContent(cls);}
 function renderBrdContent(cls){
-  const students=getN(DB,['boards','c'+cls])||[], el=document.getElementById('brdContent');
+  const students=getN(DB,['boards','c'+cls])||[];const el=document.getElementById('brdContent');
   const medals=['🥇','🥈','🥉'];
-  if(!students.length){el.innerHTML='<div class="no-data"><h3>No results entered yet</h3><p>Board results will appear here once added by the administrator.</p></div>';return;}
+  if(!students.length){el.innerHTML='<div class="no-data"><h3>No results entered yet</h3><p>Board results will appear here once added.</p></div>';return;}
   const sorted=[...students].sort((a,b)=>(b.obtained/b.total)-(a.obtained/a.total));
   el.innerHTML=`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results</div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student Name</th><th>Father's Name</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th></tr></thead>
     <tbody>${sorted.map((s,i)=>{const p=pct(s.obtained,s.total);const g=grade(parseFloat(p));return`<tr>
-      <td style="font-size:${i<3?'16':'13'}px">${medals[i]||i+1}</td>
-      <td style="font-weight:600">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father)}</td>
+      <td style="font-size:${i<3?'15':'12'}px">${medals[i]||i+1}</td>
+      <td style="font-weight:600">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td>
       <td>${s.year||'—'}</td><td>${s.total}</td><td style="font-weight:600">${s.obtained}</td>
       <td style="font-weight:700;color:${g.c}">${p}%</td>
       <td><span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span></td>
@@ -271,13 +375,13 @@ function selWk(sec){curWkSec=sec;document.querySelectorAll('.wt-seg-btn').forEac
 function computeToppers(sec,classes){
   const map={};
   (getN(DB,['weekly',sec])||[]).forEach(test=>{
-    if(!classes.includes(test.class)) return;
+    if(!classes.includes(test.class))return;
     (test.students||[]).forEach(s=>{
       const p=test.total?parseFloat(((s.obtained/test.total)*100).toFixed(2)):0;
-      if(p<60) return;
+      if(p<60)return;
       const sid=s.name+'||'+s.father+'||'+test.class;
-      if(!map[sid]) map[sid]={name:s.name,father:s.father,class:test.class,total:0,count:0};
-      map[sid].total+=p; map[sid].count++;
+      if(!map[sid])map[sid]={name:s.name,father:s.father,class:test.class,total:0,count:0};
+      map[sid].total+=p;map[sid].count++;
     });
   });
   return Object.values(map).map(s=>({...s,avg:s.count?s.total/s.count:0})).filter(s=>s.count>0).sort((a,b)=>b.avg-a.avg);
@@ -289,35 +393,34 @@ function renderWeekly(sec){
   const medals=['🥇','🥈','🥉'];
   const top=computeToppers(sec,classes);
   const podColors=[['#f59e0b','#fffbeb'],['#9ca3af','#f9fafb'],['#d97706','#fefce8']];
-  let tHtml=`<div class="card" style="margin-bottom:16px;border:2px solid ${sec==='matric'?'#f59e0b':'#6366f1'};">
+  let tHtml=`<div class="card" style="margin-bottom:14px;border:2px solid ${sec==='matric'?'#f59e0b':'#6366f1'};">
     <div class="card-head" style="background:${sec==='matric'?'#fffbeb':'#f5f3ff'};">
-      <div class="card-title" style="color:${sec==='matric'?'#92400e':'#4338ca'}">🏆 ${sec==='matric'?'Matric':'FSc'} Weekly Test Toppers</div>
-      <div style="font-size:11px;color:var(--muted)">Avg % — only passed tests (≥60%) count</div>
+      <div class="card-title" style="color:${sec==='matric'?'#92400e':'#4338ca'}">🏆 ${sec==='matric'?'Matric':'FSc'} Weekly Toppers</div>
+      <div style="font-size:10px;color:var(--muted)">Avg % across passed tests (≥60%)</div>
     </div>
-    <div style="padding:12px 15px;">`;
-  if(!top.length) tHtml+=`<div style="text-align:center;padding:14px;color:var(--muted);font-size:13px;">No qualifying results yet</div>`;
+    <div style="padding:11px 14px;">`;
+  if(!top.length)tHtml+=`<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">No qualifying results yet</div>`;
   else{
-    tHtml+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;margin-bottom:10px;">`;
+    tHtml+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:7px;margin-bottom:10px;">`;
     top.slice(0,3).forEach((s,i)=>{
       const [pc,pbg]=podColors[i];
-      tHtml+=`<div style="border:1.5px solid ${pc};border-radius:9px;padding:11px;background:${pbg};text-align:center;">
-        <div style="font-size:22px;margin-bottom:2px">${medals[i]}</div>
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:${pc};font-weight:700;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'} Position</div>
-        <div style="font-size:14px;font-weight:700;">${esc(s.name)}</div>
+      tHtml+=`<div style="border:1.5px solid ${pc};border-radius:9px;padding:10px;background:${pbg};text-align:center;">
+        <div style="font-size:20px;margin-bottom:2px">${medals[i]}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:${pc};font-weight:700;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'}</div>
+        <div style="font-size:13px;font-weight:700;">${esc(s.name)}</div>
         <div style="font-size:10px;color:var(--muted)">S/O ${esc(s.father)} · Class ${s.class}</div>
-        <div style="font-size:20px;font-weight:900;color:${pc};margin-top:4px">${s.avg.toFixed(1)}%</div>
-        <div style="font-size:10px;color:var(--muted)">${s.count} test${s.count>1?'s':''} passed</div>
+        <div style="font-size:18px;font-weight:900;color:${pc};margin-top:4px">${s.avg.toFixed(1)}%</div>
       </div>`;
     });
     tHtml+=`</div>`;
     if(top.length>3){
-      tHtml+=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th><th>Class</th><th>Passed</th><th>Avg %</th></tr></thead><tbody>`;
-      top.slice(3).forEach((s,i)=>{tHtml+=`<tr><td style="font-weight:700">${i+4}</td><td>${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father)}</td><td>Class ${s.class}</td><td>${s.count}</td><td style="font-weight:700;color:#16a34a">${s.avg.toFixed(1)}%</td></tr>`;});
+      tHtml+=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th><th>Class</th><th>Tests</th><th>Avg %</th></tr></thead><tbody>`;
+      top.slice(3).forEach((s,i)=>{tHtml+=`<tr><td>${i+4}</td><td>${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father)}</td><td>Class ${s.class}</td><td>${s.count}</td><td style="font-weight:700;color:#16a34a">${s.avg.toFixed(1)}%</td></tr>`;});
       tHtml+=`</tbody></table></div>`;
     }
   }
   tHtml+=`</div></div>`;
-  if(!tests.length){el.innerHTML=tHtml+'<div class="no-data"><h3>No tests yet</h3><p>Weekly test results will appear here once added.</p></div>';return;}
+  if(!tests.length){el.innerHTML=tHtml+'<div class="no-data"><h3>No tests yet</h3></div>';return;}
   let html=tHtml;
   const grouped={};
   tests.forEach(t=>{const gk=t.date+'||'+t.class;if(!grouped[gk])grouped[gk]={date:t.date,class:t.class,tests:[]};grouped[gk].tests.push(t);});
@@ -326,12 +429,12 @@ function renderWeekly(sec){
     grp.tests.forEach(test=>{
       const sorted=[...(test.students||[])].sort((a,b)=>(b.obtained/test.total)-(a.obtained/test.total));
       let pos=0;
-      html+=`<div class="card" style="margin-bottom:10px;"><div class="card-head"><div class="card-title">📝 ${esc(test.subject||'Test')}</div><div style="font-size:11px;color:var(--muted)">Total: ${test.total} · Pass: 60%</div></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Pos</th><th>Student Name</th><th>Father's Name</th><th>Obtained / ${test.total}</th><th>Percentage</th><th>Status</th></tr></thead>
-        <tbody>${sorted.map(s=>{const p=test.total?((s.obtained/test.total)*100).toFixed(1):0;const passed=parseFloat(p)>=60;if(passed)pos++;const rank=passed?(medals[pos-1]||(pos+'')):' — ';return`<tr>
-          <td style="font-size:${pos<=3&&passed?'16':'13'}px">${rank}</td>
-          <td style="font-weight:600">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father)}</td>
-          <td style="font-weight:600">${s.obtained} / ${test.total}</td>
+      html+=`<div class="card" style="margin-bottom:10px;"><div class="card-head"><div class="card-title">📝 ${esc(test.subject||'Test')}</div><div style="font-size:10px;color:var(--muted)">Total: ${test.total} · Pass: 60%</div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Pos</th><th>Student Name</th><th>Father</th><th>Obtained/${test.total}</th><th>%</th><th>Status</th></tr></thead>
+        <tbody>${sorted.map(s=>{const p=test.total?((s.obtained/test.total)*100).toFixed(1):0;const passed=parseFloat(p)>=60;if(passed)pos++;const rank=passed?(medals[pos-1]||(pos+'')):'—';return`<tr>
+          <td style="font-size:${pos<=3&&passed?'15':'12'}px">${rank}</td>
+          <td style="font-weight:600">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td>
+          <td style="font-weight:600">${s.obtained}/${test.total}</td>
           <td style="font-weight:700;color:${passed?'var(--pass)':'var(--fail)'}">${p}%</td>
           <td><span class="${passed?'pass-pill':'fail-pill'}">${passed?'PASS':'FAIL'}</span></td>
         </tr>`;}).join('')}</tbody></table></div></div>`;
@@ -342,22 +445,22 @@ function renderWeekly(sec){
 
 // ── TOPPERS TAB ───────────────────────────────────────────────
 function renderToppers(){
-  const mTop=computeToppers('matric',['9','10']), fTop=computeToppers('fsc',['11','12']);
+  const mTop=computeToppers('matric',['9','10']),fTop=computeToppers('fsc',['11','12']);
   const medals=['🥇','🥈','🥉'];
   function topCard(title,data,cls){
     const top=data[0];
-    if(!top) return`<div class="topper-card ${cls}"><div style="font-size:26px;margin-bottom:5px">🏆</div><div class="tcard-lbl">${title} Overall Topper</div><div style="font-size:14px;color:var(--muted)">No qualifying data yet</div></div>`;
-    return`<div class="topper-card ${cls}"><div style="font-size:26px;margin-bottom:4px">🏆</div><div class="tcard-lbl">${title} Overall Topper</div><div class="tcard-name">${esc(top.name)}</div><div class="tcard-det">S/O ${esc(top.father)} · Class ${top.class}</div><div class="tcard-pct">${top.avg.toFixed(1)}%</div><div style="font-size:10px;color:var(--muted)">${top.count} tests passed</div></div>`;
+    if(!top)return`<div class="topper-card ${cls}"><div style="font-size:24px;margin-bottom:4px">🏆</div><div class="tcard-lbl">${title} Overall Topper</div><div style="font-size:13px;color:var(--muted)">No qualifying data yet</div></div>`;
+    return`<div class="topper-card ${cls}"><div style="font-size:24px;margin-bottom:3px">🏆</div><div class="tcard-lbl">${title} Overall Topper</div><div class="tcard-name">${esc(top.name)}</div><div class="tcard-det">S/O ${esc(top.father)} · Class ${top.class}</div><div class="tcard-pct">${top.avg.toFixed(1)}%</div><div style="font-size:10px;color:var(--muted)">${top.count} tests passed</div></div>`;
   }
   document.getElementById('topperCards').innerHTML=topCard('Matric',mTop,'matric')+topCard('FSc',fTop,'fsc');
   function posList(title,data,color){
-    if(!data.length) return`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div style="padding:18px;text-align:center;color:var(--muted);font-size:12px;">No qualifying results</div></div>`;
-    return`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div style="padding:10px 12px;">${data.slice(0,10).map((s,i)=>`<div class="pos-row"><div class="pos-num">${medals[i]||i+1}</div><div><div class="pos-name">${esc(s.name)}</div><div class="pos-det">S/O ${esc(s.father)} · Class ${s.class} · ${s.count} tests</div></div><div class="pos-pct" style="color:${color}">${s.avg.toFixed(1)}%</div></div>`).join('')}</div></div>`;
+    if(!data.length)return`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">No qualifying results</div></div>`;
+    return`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div style="padding:9px 11px;">${data.slice(0,10).map((s,i)=>`<div class="pos-row"><div class="pos-num">${medals[i]||i+1}</div><div><div class="pos-name">${esc(s.name)}</div><div class="pos-det">S/O ${esc(s.father)} · Class ${s.class} · ${s.count} tests</div></div><div class="pos-pct" style="color:${color}">${s.avg.toFixed(1)}%</div></div>`).join('')}</div></div>`;
   }
   document.getElementById('positionLists').innerHTML=posList('🎖 Matric Position Holders',mTop,'#b45309')+posList('🎖 FSc Position Holders',fTop,'#4338ca');
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+// ── INIT ─────────────────────────────────────────────────────
 initFirebase();
 </script>
 </body>
