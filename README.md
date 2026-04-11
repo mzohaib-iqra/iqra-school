@@ -63,7 +63,7 @@ const TEACHER_ACCOUNTS = [
   },
   {
     username: "teacher1",
-    password: "iqra000",
+    password: "choose_a_password",
     name:     "Teacher Name",
     classes:  [1,2,3,4,5],    // which classes this teacher can edit
     role:     "teacher"
