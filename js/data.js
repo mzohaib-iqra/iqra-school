@@ -1,6 +1,33 @@
-// ═══════════════════════════════════════════════════════════════
-//  SHARED DATA — SUBJECTS, MONTHS, TERMS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  DEFAULT SCHOOL SETTINGS  (editable by admin in-app)
+// ═══════════════════════════════════════════════════════
+const DEFAULT_SETTINGS = {
+  sessionYear: "2025-26",
+  terms: [
+    { id:'t1', label:'Term 1', exam:'2025-09-04', syllabus:'2025-07-18' },
+    { id:'t2', label:'Term 2', exam:'2025-12-11', syllabus:'2025-11-14' },
+    { id:'t3', label:'Term 3', exam:'2026-03-15', syllabus:'2026-02-06' }
+  ],
+  months: [
+    { key:'apr25', label:'April',     yr:2025, term:'t1' },
+    { key:'may25', label:'May',       yr:2025, term:'t1' },
+    { key:'jun25', label:'June',      yr:2025, term:'t1' },
+    { key:'jul25', label:'July',      yr:2025, term:'t1' },
+    { key:'aug25', label:'August',    yr:2025, term:'t1' },
+    { key:'sep25', label:'September', yr:2025, term:'t1' },
+    { key:'oct25', label:'October',   yr:2025, term:'t2' },
+    { key:'nov25', label:'November',  yr:2025, term:'t2' },
+    { key:'dec25', label:'December',  yr:2025, term:'t2' },
+    { key:'jan26', label:'January',   yr:2026, term:'t3' },
+    { key:'feb26', label:'February',  yr:2026, term:'t3' },
+    { key:'mar26', label:'March',     yr:2026, term:'t3' }
+  ]
+};
+
+// Live settings (loaded from Firebase, falls back to DEFAULT_SETTINGS)
+let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+let TERMS  = SETTINGS.terms;
+let MONTHS = SETTINGS.months;
 
 const SUBS = {
   1:  ['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'],
@@ -12,40 +39,19 @@ const SUBS = {
   7:  ['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'],
   8:  ['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'],
   9:  ['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'],
-  10: ['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'],
+  10: ['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology']
 };
-
-const TERMS = [
-  { id:'t1', label:'Term 1', exam:'2025-09-04', syllabus:'2025-07-18' },
-  { id:'t2', label:'Term 2', exam:'2025-12-11', syllabus:'2025-11-14' },
-  { id:'t3', label:'Term 3', exam:'2026-03-15', syllabus:'2026-02-06' },
-];
-
-const MONTHS = [
-  { key:'apr25', label:'April',     yr:2025, term:'t1' },
-  { key:'may25', label:'May',       yr:2025, term:'t1' },
-  { key:'jun25', label:'June',      yr:2025, term:'t1' },
-  { key:'jul25', label:'July',      yr:2025, term:'t1' },
-  { key:'aug25', label:'August',    yr:2025, term:'t1' },
-  { key:'sep25', label:'September', yr:2025, term:'t1' },
-  { key:'oct25', label:'October',   yr:2025, term:'t2' },
-  { key:'nov25', label:'November',  yr:2025, term:'t2' },
-  { key:'dec25', label:'December',  yr:2025, term:'t2' },
-  { key:'jan26', label:'January',   yr:2026, term:'t3' },
-  { key:'feb26', label:'February',  yr:2026, term:'t3' },
-  { key:'mar26', label:'March',     yr:2026, term:'t3' },
-];
 
 const TC   = { t1:'#f97316', t2:'#3b82f6', t3:'#22c55e' };
 const TLbl = { t1:'Term 1',  t2:'Term 2',  t3:'Term 3'  };
 
-// ── Helpers ──────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function pct(o,t){ return t ? ((o/t)*100).toFixed(1) : '0.0'; }
+function pct(o,t){ return (t&&t>0) ? ((o/t)*100).toFixed(1) : '0.0'; }
 
 function grade(p){
   if(p===null||p===undefined||isNaN(p)) return {l:'—',c:'#8a7f72'};
-  p = parseFloat(p);
+  p=parseFloat(p);
   if(p>=90) return {l:'A+',c:'#16a34a'};
   if(p>=75) return {l:'A', c:'#65a30d'};
   if(p>=60) return {l:'B', c:'#d97706'};
@@ -53,10 +59,9 @@ function grade(p){
   if(p>=33) return {l:'D', c:'#dc2626'};
   return {l:'F',c:'#9f1239'};
 }
-
 function gradeMsg(p){
   if(p===null||p===undefined) return '';
-  p = parseFloat(p);
+  p=parseFloat(p);
   if(p>=90) return 'Excellent 🌟';
   if(p>=75) return 'Very Good 👍';
   if(p>=60) return 'Good ✔';
@@ -64,23 +69,18 @@ function gradeMsg(p){
   if(p>=33) return 'Needs Improvement';
   return 'Needs Attention ⚠';
 }
-
-function getN(obj, keys){
-  let c = obj;
-  for(const k of keys){ if(!c || c[k]===undefined) return undefined; c = c[k]; }
+function getN(obj,keys){
+  let c=obj;
+  for(const k of keys){ if(!c||c[k]===undefined) return undefined; c=c[k]; }
   return c;
 }
-
-function setN(obj, keys, value){
-  let c = obj;
-  for(let i=0; i<keys.length-1; i++){
-    if(!c[keys[i]] || typeof c[keys[i]] !== 'object') c[keys[i]] = {};
-    c = c[keys[i]];
-  }
-  c[keys[keys.length-1]] = value;
+function setN(obj,keys,value){
+  let c=obj;
+  for(let i=0;i<keys.length-1;i++){ if(!c[keys[i]]||typeof c[keys[i]]!=='object') c[keys[i]]={};  c=c[keys[i]]; }
+  c[keys[keys.length-1]]=value;
 }
-
-function fbKey(s){ return String(s).replace(/[.#$\/\[\]]/g,'_').replace(/\s+/g,'_'); }
-
+function fbKey(s){ return String(s).replace(/[.#$\/\[\]\s]/g,'_'); }
 function daysTo(ds){ const n=new Date(); n.setHours(0,0,0,0); return Math.ceil((new Date(ds)-n)/86400000); }
 function fmtDate(ds){ return new Date(ds).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function fmtDay(k){ return new Date(k+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}); }
