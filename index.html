@@ -39,7 +39,8 @@
       <button class="ntab"           onclick="switchSec('planner')">📅 Planner</button>
       <button class="ntab"           onclick="switchSec('diary')">📔 Diary</button>
       <button class="ntab"           onclick="switchSec('timetable')">🕐 Periods</button>
-      <button class="ntab"           onclick="switchSec('report')">📋 Weekly Report</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('report')">📋 Weekly Report</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('planner-report')">📊 Planner Report</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
@@ -85,6 +86,12 @@
 <!-- PERIODS / TIMETABLE -->
 <div class="section" id="sec-timetable">
   <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Add teacher name and period number for each subject. This links to the Daily Diary and appears in Parent Portal.</p>
+  <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:11px;color:var(--muted);">📂 <strong>Bulk Import Timetable from CSV/Excel:</strong></span>
+    <span style="font-size:10px;color:var(--muted);">Format: Class, Subject, Teacher Name, Period Number</span>
+    <label class="btn-sm btn-add" style="cursor:pointer;">Upload CSV<input type="file" accept=".csv,.txt" style="display:none" onchange="importTimetableCSV(this)"></label>
+    <button class="btn-sm" style="background:rgba(59,130,246,.15);color:#3b82f6;" onclick="downloadTimetableTemplate()">📥 Download Template</button>
+  </div>
   <div class="ctabs" id="ttTabs"></div>
   <div id="ttPanels"></div>
 </div>
@@ -101,6 +108,18 @@
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
   </div>
   <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate Report.</div></div>
+</div>
+
+<!-- PLANNER REPORT -->
+<div class="section" id="sec-planner-report">
+  <div class="report-controls">
+    <label style="font-size:11px;color:var(--muted)">📅 Select Month:</label>
+    <select class="report-date-inp" id="prMonth" style="width:130px;"></select>
+    <select class="report-date-inp" id="prClass" style="width:130px;"><option value="">All Classes</option></select>
+    <button class="report-gen-btn" onclick="generatePlannerReport()">📊 Generate Report</button>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div id="plannerReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Generate Report.</div></div>
 </div>
 
 <!-- BOARDS -->
@@ -200,7 +219,7 @@ function showToast(msg,type='ok'){const el=document.getElementById('toast');el.t
 // ══════════════════════════════════════════════
 //  SECTION SWITCH
 // ══════════════════════════════════════════════
-const SECS=['marks','students','planner','diary','timetable','report','boards','weekly','settings'];
+const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings'];
 function switchSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
   document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
@@ -882,6 +901,7 @@ function saveSettings(){
 //  RENDER ALL
 // ══════════════════════════════════════════════
 function renderAll(){
+  populatePlannerReportSelects();
   renderCD();
   renderMarksTabs();renderMarksPanels();
   renderStudentsTabs();renderStudentsPanels();
@@ -889,6 +909,131 @@ function renderAll(){
   renderDiaryTabs();renderDiaryPanels();
   renderTimetableTabs();renderTimetablePanels();
 }
+
+// ══════════════════════════════════════════════
+//  PLANNER REPORT
+// ══════════════════════════════════════════════
+function populatePlannerReportSelects(){
+  const mSel=document.getElementById('prMonth');
+  const cSel=document.getElementById('prClass');
+  if(mSel){mSel.innerHTML=MONTHS.map((m,i)=>`<option value="${m.key}">${m.label} ${m.yr}</option>`).join('');}
+  if(cSel){cSel.innerHTML='<option value="">All Classes</option>'+getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');}
+}
+
+function generatePlannerReport(){
+  const mk=document.getElementById('prMonth')?.value;
+  const filterCls=document.getElementById('prClass')?.value;
+  if(!mk){showToast('Select a month','info');return;}
+  const m=MONTHS.find(x=>x.key===mk);
+  const classIds=filterCls?[+filterCls]:getClassIds();
+  const cont=document.getElementById('plannerReportContent');
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📊 Planner Report · ${esc(m.label)} ${m.yr}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${TLbl[m.term]} · Generated ${new Date().toLocaleDateString('en-IN')}</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>`;
+
+  // Summary row
+  let summaryRows=[];
+  classIds.forEach(cls=>{
+    const subs=getSubs(cls);let tot=0,dn=0;
+    subs.forEach(s=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
+    summaryRows.push({cls,name:CLASSES[cls]?.name||'Class '+cls,tot,dn,pct:tot?Math.round(dn/tot*100):0});
+  });
+
+  // Overall summary card
+  const totalTopics=summaryRows.reduce((a,r)=>a+r.tot,0);
+  const doneTopics=summaryRows.reduce((a,r)=>a+r.dn,0);
+  const overallPct=totalTopics?Math.round(doneTopics/totalTopics*100):0;
+  const statCls=overallPct>=70?'stat-good':overallPct>=40?'stat-warn':'stat-bad';
+  html+=`<div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div><div style="font-size:11px;color:var(--muted)">Overall Progress</div><div style="font-size:28px;font-weight:900;font-family:Playfair Display,serif">${overallPct}%</div></div>
+    <div style="flex:1;min-width:120px;"><div style="height:10px;background:var(--border);border-radius:100px;overflow:hidden;"><div style="width:${overallPct}%;height:100%;background:${overallPct>=70?'#22c55e':overallPct>=40?'#fbbf24':'#ef4444'};border-radius:100px;"></div></div></div>
+    <span class="report-stat ${statCls}">${doneTopics}/${totalTopics} topics done</span>
+  </div>`;
+
+  // Class-by-class breakdown
+  classIds.forEach(cls=>{
+    const subs=getSubs(cls);
+    const row=summaryRows.find(r=>r.cls===cls);
+    const statC=row.pct>=70?'stat-good':row.pct>=40?'stat-warn':'stat-bad';
+    html+=`<div class="report-card">
+      <div class="report-card-hd">${row.name} <span class="report-stat ${statC}">${row.pct}% · ${row.dn}/${row.tot} topics</span></div>
+      <div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Subject</th><th>Topics Planned</th><th>Completed</th><th>Pending</th><th>Progress</th></tr></thead><tbody>`;
+    subs.forEach(sub=>{
+      const topics=getN(DB,['planner',mk,'c'+cls,fbKey(sub)])||[];
+      const done=topics.filter(t=>t.done).length;
+      const pend=topics.length-done;
+      const sp=topics.length?Math.round(done/topics.length*100):0;
+      html+=`<tr>
+        <td style="font-weight:600">${esc(sub)}</td>
+        <td>${topics.length?topics.map(t=>`<span style="display:inline-block;margin:1px 2px;padding:1px 7px;border-radius:100px;font-size:10px;background:var(--surf2);border:1px solid var(--border)">${esc(t.text)}</span>`).join(''):'<span style="color:var(--muted);font-size:11px;font-style:italic">Not added</span>'}</td>
+        <td style="font-weight:700;color:#22c55e">${done}</td>
+        <td style="color:${pend?'#ef4444':'#22c55e'}">${pend}</td>
+        <td style="min-width:100px;"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--border);border-radius:100px;overflow:hidden;"><div style="width:${sp}%;height:100%;background:${sp>=70?'#22c55e':sp>=40?'#fbbf24':'#ef4444'};border-radius:100px;"></div></div><span style="font-size:10px;font-weight:700;min-width:28px">${sp}%</span></div></td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div></div>`;
+  });
+  cont.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
+//  TIMETABLE CSV IMPORT
+// ══════════════════════════════════════════════
+function downloadTimetableTemplate(){
+  const rows=['Class,Subject,Teacher Name,Period Number'];
+  getClassIds().forEach(cls=>{
+    getSubs(cls).forEach(sub=>{
+      rows.push(`${CLASSES[cls]?.name||'Class '+cls},${sub},,`);
+    });
+  });
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='timetable-template.csv';a.click();
+}
+
+function importTimetableCSV(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+    let imported=0,errors=[];
+    lines.forEach((line,li)=>{
+      if(li===0&&(line.toLowerCase().includes('class')||line.toLowerCase().includes('subject')))return;
+      const cols=line.split(/[,;\t]+/).map(c=>c.trim().replace(/^"|"$/g,''));
+      if(cols.length<3)return;
+      const [clsRaw,subRaw,teacher,periodRaw]=cols;
+      if(!teacher)return;
+      // Find matching class
+      const cls=getClassIds().find(c=>{
+        const cn=CLASSES[c]?.name||'Class '+c;
+        return cn.toLowerCase()===clsRaw.toLowerCase()||String(c)===clsRaw.trim();
+      });
+      if(!cls){errors.push(`Row ${li+1}: class "${clsRaw}" not found`);return;}
+      // Find matching subject (case-insensitive partial)
+      const sub=getSubs(cls).find(s=>s.toLowerCase()===subRaw.toLowerCase()||s.toLowerCase().includes(subRaw.toLowerCase())||subRaw.toLowerCase().includes(s.toLowerCase()));
+      if(!sub){errors.push(`Row ${li+1}: subject "${subRaw}" not found in ${CLASSES[cls]?.name}`);return;}
+      const sk=fbKey(sub);
+      const periods=getN(DB,['timetable','c'+cls,sk])||[];
+      const period=parseInt(periodRaw)||periods.length+1;
+      // Avoid duplicate teacher+period
+      if(!periods.find(p=>p.teacher===teacher&&p.period===period)){
+        periods.push({teacher,period,subject:sub});
+        setN(DB,['timetable','c'+cls,sk],periods);
+        markDirty(`timetable/c${cls}/${sk}`,periods);
+        imported++;
+      }
+    });
+    renderTimetablePanels();
+    if(errors.length)console.warn('Timetable import warnings:',errors);
+    showToast(`Imported ${imported} period${imported!==1?'s':''}`+(errors.length?` (${errors.length} skipped)`:''),'ok');
+  };
+  reader.readAsText(file);inp.value='';
+}
+
 </script>
 </body>
 </html>
