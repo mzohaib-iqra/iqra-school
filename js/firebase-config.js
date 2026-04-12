@@ -3,7 +3,7 @@
 //  Get from: console.firebase.google.com
 //  Project Settings → Your Apps → Web App → Config
 // ═══════════════════════════════════════════════════════
-const FIREBASE_CONFIG = {
+const firebaseConfig = {
   apiKey: "AIzaSyBiDDwQY5VPHLEXp2h4wO79potOs9L9A54",
   authDomain: "iqra-parents.firebaseapp.com",
   databaseURL: "https://iqra-parents-default-rtdb.firebaseio.com",
