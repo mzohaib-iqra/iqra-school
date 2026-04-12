@@ -59,7 +59,18 @@ const DEFAULT_SETTINGS = {
     founderDesc: 'IQRA is an educational institute founded by Principal Abdul Qayyum Khan (Late) in 1999. His vision of excellence in education lives on in every student.'
   }
 };
+function getMarksForSubject(classId, subjectName) {
+    const classData = classes[classId];
+    if (!classData) return 100; // Safety fallback
 
+    // Use specific board marks if they exist
+    if (classData.subjectTotals && classData.subjectTotals[subjectName]) {
+        return classData.subjectTotals[subjectName];
+    }
+    
+    // Otherwise use the general totalMarks
+    return classData.totalMarks || 100;
+}
 // Live settings (loaded from Firebase)
 let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 let TERMS     = SETTINGS.terms;
