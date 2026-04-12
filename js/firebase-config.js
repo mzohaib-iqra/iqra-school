@@ -12,7 +12,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "1038703318060",
   appId: "1:1038703318060:web:1d93561f010de9de006d89"
 };
-
+firebase.initializeApp(FIREBASE_CONFIG);
 // Teacher accounts — role:"admin" gets full access
 const TEACHER_ACCOUNTS = [
   { username:"admin",    password:"iqra@admin",   name:"Muhammad Zohaib (Principal)", classes:[1,2,3,4,5,6,7,8,9,10], role:"admin" },
