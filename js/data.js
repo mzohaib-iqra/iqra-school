@@ -31,20 +31,29 @@ const DEFAULT_SETTINGS = {
     5:  { name:'Class 5',  subjects:['English','Urdu','Maths','Islamiat','Science','Social Studies','Grammar'], totalMarks:100 },
     6:  { name:'Class 6',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
     7:  { name:'Class 7',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
-    8:  { 
+  8:  { 
         name:'Class 8',  
         subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
-        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+        subjectTotals: { 
+            'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, // Option 1
+            'Islamiat':50, 'Pak Study':50, 'MQH':50                                         // Option 2
+        } 
     },
     9:  { 
         name:'Class 9',  
         subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
-        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+        subjectTotals: { 
+            'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 
+            'Islamiat':50, 'Pak Study':50, 'MQH':50 
+        } 
     },
     10: { 
         name:'Class 10', 
         subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
-        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+        subjectTotals: { 
+            'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 
+            'Islamiat':50, 'Pak Study':50, 'MQH':50 
+        } 
     }
   },
   school: {
@@ -77,12 +86,13 @@ function getSubs(cls){ return CLASSES[cls]?.subjects || []; }
 function getClassTM(cls, subject = null) {
     const classData = CLASSES[cls];
     if (!classData) return 100;
-    
-    // Check if a specific subject total exists (for Class 8, 9, 10)
+
+    // If it's Class 8, 9, or 10 and we have a subject name
     if (subject && classData.subjectTotals && classData.subjectTotals[subject]) {
-        return classData.subjectTotals[subject];
+        return classData.subjectTotals[subject]; // Returns 75 or 50 automatically
     }
     
+    // Default fallback for other classes or general display
     return parseFloat(classData.totalMarks || SETTINGS.totalMarks || 100);
 }
 
