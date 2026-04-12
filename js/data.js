@@ -31,9 +31,20 @@ const DEFAULT_SETTINGS = {
     5:  { name:'Class 5',  subjects:['English','Urdu','Maths','Islamiat','Science','Social Studies','Grammar'], totalMarks:100 },
     6:  { name:'Class 6',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
     7:  { name:'Class 7',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
-    8:  { name:'Class 8',  subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 },
-    9:  { name:'Class 9',  subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 },
-    10: { name:'Class 10', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 }
+8:  { 
+        name:'Class 8',  
+        subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
+        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+    },
+    9:  { 
+        name:'Class 9',  
+        subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
+        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+    },
+    10: { 
+        name:'Class 10', 
+        subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
+        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 }
   },
   school: {
     name:        'IQRA PUBLIC SCHOOL AND COLLEGE',
