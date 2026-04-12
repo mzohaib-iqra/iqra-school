@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS = {
     { key:'feb26', label:'February',  yr:2026, term:'t3' },
     { key:'mar26', label:'March',     yr:2026, term:'t3' }
   ],
-  classes: {
+ classes: {
     1:  { name:'Class 1',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
     2:  { name:'Class 2',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
     3:  { name:'Class 3',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
@@ -31,9 +31,21 @@ const DEFAULT_SETTINGS = {
     5:  { name:'Class 5',  subjects:['English','Urdu','Maths','Islamiat','Science','Social Studies','Grammar'], totalMarks:100 },
     6:  { name:'Class 6',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
     7:  { name:'Class 7',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
-    8:  { name:'Class 8',  subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 },
-    9:  { name:'Class 9',  subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 },
-    10: { name:'Class 10', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 }
+    8:  { 
+        name:'Class 8',  
+        subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
+        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+    },
+    9:  { 
+        name:'Class 9',  
+        subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
+        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+    },
+    10: { 
+        name:'Class 10', 
+        subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], 
+        subjectTotals: { 'English':75, 'Urdu':75, 'Maths':75, 'Physics':75, 'Chemistry':75, 'Biology':75, 'Islamiat':50, 'Pak Study':50, 'MQH':50 } 
+    }
   },
   school: {
     name:        'IQRA PUBLIC SCHOOL AND COLLEGE',
@@ -58,7 +70,18 @@ let SCHOOL    = SETTINGS.school;
 
 function getClassIds(){ return Object.keys(CLASSES).map(Number).sort((a,b)=>a-b); }
 function getSubs(cls){ return CLASSES[cls]?.subjects || []; }
-function getClassTM(cls){ return parseFloat(CLASSES[cls]?.totalMarks || SETTINGS.totalMarks || 100); }
+function getMarksForSubject(classId, subjectName) {
+    const classData = CLASSES[classId];
+    if (!classData) return 100;
+
+    // Use specific board marks (75/50) if they exist
+    if (classData.subjectTotals && classData.subjectTotals[subjectName]) {
+        return classData.subjectTotals[subjectName];
+    }
+    
+    // Otherwise use class totalMarks or global fallback
+    return classData.totalMarks || SETTINGS.totalMarks || 100;
+}
 
 const TC   = { t1:'#f97316', t2:'#3b82f6', t3:'#22c55e' };
 const TLbl = { t1:'Term 1',  t2:'Term 2',  t3:'Term 3'  };
