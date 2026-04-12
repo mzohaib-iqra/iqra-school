@@ -59,17 +59,19 @@ const DEFAULT_SETTINGS = {
     founderDesc: 'IQRA is an educational institute founded by Principal Abdul Qayyum Khan (Late) in 1999. His vision of excellence in education lives on in every student.'
   }
 };
+// Add this right after your SETTINGS/CLASSES definitions
 function getMarksForSubject(classId, subjectName) {
-    const classData = classes[classId];
-    if (!classData) return 100; // Safety fallback
+    // We must use CLASSES (uppercase) to match line 61 of your code
+    const classData = CLASSES[classId]; 
+    if (!classData) return 100; 
 
     // Use specific board marks if they exist
     if (classData.subjectTotals && classData.subjectTotals[subjectName]) {
         return classData.subjectTotals[subjectName];
     }
     
-    // Otherwise use the general totalMarks
-    return classData.totalMarks || 100;
+    // Fallback to the class-wide totalMarks or the global setting
+    return classData.totalMarks || SETTINGS.totalMarks || 100;
 }
 // Live settings (loaded from Firebase)
 let SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
