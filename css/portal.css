@@ -37,7 +37,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 }
 
 .school-strip{position:relative;z-index:1;background:rgba(0,0,0,.15);border-top:1px solid rgba(255,255,255,.1);padding:8px 22px;display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:rgba(255,255,255,.7);}
-.school-strip a{color:rgba(255,255,255,.9);text-decoration:none;display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:100px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);transition:background .15s;}
+.sep-dot{color:rgba(255,255,255,.3);font-size:14px;}
+.school-strip a{color:rgba(255,255,255,.9);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);transition:background .15s;font-weight:500;}
 .school-strip a:hover{background:rgba(255,255,255,.25);}
 .school-strip .tel{color:rgba(255,255,255,.75);}
 .sync-live{position:relative;z-index:1;display:flex;align-items:center;gap:7px;padding:6px 22px;background:rgba(16,185,129,.08);border-bottom:1px solid rgba(16,185,129,.15);font-size:11px;color:#10b981;}
@@ -180,10 +181,3 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .no-data{text-align:center;padding:30px 16px;color:var(--muted);}
 .no-data h3{font-size:15px;color:var(--text);margin-bottom:5px;}
 .footer{text-align:center;margin-top:36px;font-size:11px;color:var(--muted);padding:0 14px;}
-
-
-
-
-#socialsStrip a:hover {
-    background: rgba(255,255,255,0.2);
-}

@@ -234,3 +234,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
   .report-card{border:1px solid #ccc;}
   .report-card-hd{background:#f5f5f5;}
 }
+/* TIMETABLE IMPORT */
+.tt-import-bar{background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tt-import-bar span{font-size:11px;color:var(--muted);}
