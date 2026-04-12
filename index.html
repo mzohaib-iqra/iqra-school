@@ -12,7 +12,6 @@
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <img src="logo.png" class="login-logo">
@@ -25,14 +24,13 @@
   </div>
 </div>
 
-<!-- HEADER -->
 <div class="header">
   <div class="hinner">
     <div class="hrow">
       <img src="logo.png" class="hlogo">
       <div>
         <div class="hname">IQRA PUBLIC SCHOOL &amp; COLLEGE – DARA PEZU &nbsp;·&nbsp; Admin Panel</div>
-        <div class="hsub" id="hSub">Principal: Muhammad Zohaib · 0347-1575196</div>
+        <div class="hsub" id="hSub">0347-1575196 / 0370-1575196</div>
       </div>
     </div>
     <div class="nav-tabs">
@@ -41,8 +39,9 @@
       <button class="ntab"           onclick="switchSec('planner')">📅 Planner</button>
       <button class="ntab"           onclick="switchSec('diary')">📔 Diary</button>
       <button class="ntab"           onclick="switchSec('timetable')">🕐 Periods</button>
+      <button class="ntab"           onclick="switchSec('report')">📋 Weekly Report</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
-      <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
       <a class="ntab parent-link" href="parent-portal.html" target="_blank">👨‍👩‍👧 Parent Portal ↗</a>
     </div>
@@ -57,47 +56,54 @@
   <button class="save-btn" id="saveBtn" onclick="doSave()" disabled>💾 Save Changes</button>
 </div>
 
-<!-- ═══ MARKS ═══════════════════════════════════════════════════ -->
+<!-- MARKS -->
 <div class="section active" id="sec-marks">
   <div class="cdgrid" id="countdowns"></div>
-  <div class="session-banner">
-    <span class="sy-badge" id="syBadge">Session 2025-26</span>
-    <label>Total Marks per Subject:</label>
-    <input class="tm-inp" id="gTotalMarks" type="number" min="1" value="100" onchange="onTMChange()">
-    <span style="font-size:11px;color:var(--muted)">% auto-calculated from Obtained ÷ Total</span>
-  </div>
   <div class="ctabs" id="marksTabs"></div>
   <div id="marksPanels"></div>
 </div>
 
-<!-- ═══ STUDENTS ════════════════════════════════════════════════ -->
+<!-- STUDENTS -->
 <div class="section" id="sec-students">
-  <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
-    💡 You can <strong style="color:var(--gold)">import students from Excel/CSV</strong> using the Import button in each class.
-  </div>
+  <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">💡 Import students from CSV: columns should be Name, Father Name, Roll No</p>
   <div class="ctabs" id="studentsTabs"></div>
   <div id="studentsPanels"></div>
 </div>
 
-<!-- ═══ PLANNER ═════════════════════════════════════════════════ -->
+<!-- PLANNER -->
 <div class="section" id="sec-planner">
   <div class="mnav" id="mnav"></div>
   <div id="mholder"></div>
 </div>
 
-<!-- ═══ DIARY ═══════════════════════════════════════════════════ -->
+<!-- DIARY -->
 <div class="section" id="sec-diary">
   <div class="ctabs" id="diaryTabs"></div>
   <div id="diaryPanels"></div>
 </div>
 
-<!-- ═══ TIMETABLE / PERIODS ════════════════════════════════════ -->
+<!-- PERIODS / TIMETABLE -->
 <div class="section" id="sec-timetable">
+  <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Add teacher name and period number for each subject. This links to the Daily Diary and appears in Parent Portal.</p>
   <div class="ctabs" id="ttTabs"></div>
   <div id="ttPanels"></div>
 </div>
 
-<!-- ═══ BOARDS ══════════════════════════════════════════════════ -->
+<!-- WEEKLY REPORT -->
+<div class="section" id="sec-report">
+  <div class="report-controls">
+    <label style="font-size:11px;color:var(--muted)">📅 Any date in the week:</label>
+    <input class="report-date-inp" type="date" id="reportDate" value="">
+    <select class="report-date-inp" id="reportClass" style="width:120px;">
+      <option value="">All Classes</option>
+    </select>
+    <button class="report-gen-btn" onclick="generateReport()">📋 Generate Report</button>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate Report.</div></div>
+</div>
+
+<!-- BOARDS -->
 <div class="section" id="sec-boards">
   <div class="ctabs" id="brdTabs">
     <button class="ctab active" onclick="selBrd(this,'9')">Class 9</button>
@@ -108,7 +114,7 @@
   <div id="brdPanel"></div>
 </div>
 
-<!-- ═══ WEEKLY ══════════════════════════════════════════════════ -->
+<!-- WEEKLY TESTS -->
 <div class="section" id="sec-weekly">
   <div class="wt-seg">
     <button class="wt-seg-btn active" id="wks-matric" onclick="selWk('matric')">Matric (9 &amp; 10)</button>
@@ -117,23 +123,22 @@
   <div id="wkPanel"></div>
 </div>
 
-<!-- ═══ SETTINGS (admin only) ══════════════════════════════════ -->
+<!-- SETTINGS -->
 <div class="section" id="sec-settings">
   <div id="settingsContent"></div>
 </div>
-
-</div><!-- /container -->
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  STATE
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 let db, DB={}, fbReady=false, currentTeacher=null, pendingSaves={};
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  AUTH
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function doLogin(){
   const u=document.getElementById('lu').value.trim(), p=document.getElementById('lp').value;
   const t=TEACHER_ACCOUNTS.find(a=>a.username===u&&a.password===p);
@@ -152,15 +157,15 @@ document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')
 (()=>{const s=sessionStorage.getItem('iqra_t');if(s){try{currentTeacher=JSON.parse(s);afterLogin();}catch(e){sessionStorage.removeItem('iqra_t');}}})();
 function canEdit(cls){return currentTeacher&&currentTeacher.classes.includes(+cls);}
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  FIREBASE
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function initFirebase(){
-  if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){setStat('off','⚠ Edit js/firebase-config.js first');DB={};applySettings();renderAll();return;}
+  if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){setStat('off','⚠ Edit js/firebase-config.js');DB={};applySettings();renderAll();return;}
   try{
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     db=firebase.database();
-    db.ref('.info/connected').on('value',s=>{setStat(s.val()?'live':'off',s.val()?'🟢 Live – syncing instantly':'🔴 Offline');});
+    db.ref('.info/connected').on('value',s=>{setStat(s.val()?'live':'off',s.val()?'🟢 Live':'🔴 Offline');});
     db.ref('iqra').on('value',s=>{DB=s.val()||{};fbReady=true;applySettings();renderAll();});
   }catch(e){setStat('off','❌ '+e.message);applySettings();renderAll();}
 }
@@ -168,63 +173,66 @@ function setStat(st,msg){document.getElementById('sdot').className='sdot '+st;do
 function applySettings(){
   if(DB.settings){
     SETTINGS=Object.assign({},DEFAULT_SETTINGS,DB.settings);
-    if(DB.settings.terms) TERMS=DB.settings.terms;
+    if(DB.settings.terms)  TERMS=DB.settings.terms;
     if(DB.settings.months) MONTHS=DB.settings.months;
-    if(DB.settings.classes) CLASSES=DB.settings.classes;
+    if(DB.settings.classes)CLASSES=DB.settings.classes;
     if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
   }
 }
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  SAVE
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function markDirty(path,value){pendingSaves[path]=value;document.getElementById('saveBtn').disabled=false;}
 function doSave(){
   const btn=document.getElementById('saveBtn');
   if(!Object.keys(pendingSaves).length)return;
-  btn.disabled=true;btn.textContent='💾 Saving…';setStat('saving','💾 Saving…');
+  btn.disabled=true;btn.textContent='💾 Saving…';setStat('saving','Saving…');
   if(db&&fbReady){
     const u={};Object.entries(pendingSaves).forEach(([p,v])=>u['iqra/'+p]=(v===undefined?null:v));
-    db.ref().update(u).then(()=>{pendingSaves={};setStat('live','🟢 Live');showToast('☁️ Saved!','ok');btn.textContent='💾 Save Changes';})
+    db.ref().update(u)
+      .then(()=>{pendingSaves={};setStat('live','🟢 Live');showToast('☁️ Saved!','ok');btn.textContent='💾 Save Changes';})
       .catch(e=>{setStat('off','❌ '+e.message);showToast('Save failed','err');btn.textContent='💾 Save Changes';btn.disabled=false;});
   } else {pendingSaves={};btn.textContent='💾 Save Changes';showToast('Saved locally','info');}
 }
 function showToast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',2400);}
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  SECTION SWITCH
-// ════════════════════════════════════════════════════════════════
-const SEC_NAMES=['marks','students','planner','diary','timetable','boards','weekly','settings'];
+// ══════════════════════════════════════════════
+const SECS=['marks','students','planner','diary','timetable','report','boards','weekly','settings'];
 function switchSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
-  document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SEC_NAMES[i]===id));
+  document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
   if(id==='boards')renderBrdPanel('9');
   if(id==='weekly')renderWkPanel('matric');
   if(id==='settings')renderSettings();
+  if(id==='report'){
+    document.getElementById('reportDate').value=todayKey();
+    populateReportClassSel();
+  }
 }
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  COUNTDOWNS
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function renderCD(){
   document.getElementById('countdowns').innerHTML=TERMS.map(t=>{
     const ed=daysTo(t.exam),sd=daysTo(t.syllabus);
     return`<div class="cdcard cdt${t.id.slice(1)}"><div class="cdlbl">${t.label}·Exam</div>
       <div class="cddays">${ed<0?'✓':ed}<em>${ed<0?'Done':'days'}</em></div>
       <div class="cddate">${fmtDate(t.exam)}</div>
-      <div class="cdmini"><div class="cdrow"><span class="l">Syllabus by</span><span>${fmtDate(t.syllabus)}</span></div>
-      <div class="cdrow"><span class="l">Syllabus in</span><span>${sd<0?'✓':sd+' days'}</span></div>
-      <div class="cdrow"><span class="l">Prep window</span><span>${sd>0&&ed>0?(ed-sd)+' days':'—'}</span></div></div></div>`;
+      <div class="cdmini">
+        <div class="cdrow"><span class="l">Syllabus by</span><span>${fmtDate(t.syllabus)}</span></div>
+        <div class="cdrow"><span class="l">Prep window</span><span>${ed>0&&sd>0?(ed-sd)+' days':'—'}</span></div>
+      </div></div>`;
   }).join('');
 }
 
-// ════════════════════════════════════════════════════════════════
-//  MARKS
-// ════════════════════════════════════════════════════════════════
-function getTM(){return parseFloat(getN(DB,['settings','totalMarks'])||100);}
-function onTMChange(){const v=parseFloat(document.getElementById('gTotalMarks').value)||100;setN(DB,['settings','totalMarks'],v);markDirty('settings/totalMarks',v);}
-
-function buildClassTabs(containerId,panelClass,panelContainerId,onSelect){
+// ══════════════════════════════════════════════
+//  MARKS — per-class total marks
+// ══════════════════════════════════════════════
+function buildClassTabs(containerId,panelClass,onSel){
   const el=document.getElementById(containerId);el.innerHTML='';
   const ids=getClassIds();
   ids.forEach((c,i)=>{
@@ -233,24 +241,29 @@ function buildClassTabs(containerId,panelClass,panelContainerId,onSelect){
     b.className='ctab'+(i===0?' active':'')+(locked?' locked':'');
     b.textContent=(CLASSES[c]?.name||'Class '+c)+(locked?' 🔒':'');
     b.onclick=(()=>{
-      document.querySelectorAll('#'+containerId+' .ctab').forEach((x,j)=>x.classList.toggle('active',j===ids.indexOf(c)));
+      document.querySelectorAll('#'+containerId+' .ctab').forEach((x,j)=>x.classList.toggle('active',j===i));
       document.querySelectorAll('.'+panelClass).forEach(p=>p.classList.toggle('active',+p.dataset.c===c));
-      if(onSelect) onSelect(c);
+      if(onSel)onSel(c);
     });
     el.appendChild(b);
   });
 }
 
-function renderMarksTabs(){buildClassTabs('marksTabs','mpanel-m','marksPanels',null);}
+function renderMarksTabs(){buildClassTabs('marksTabs','mpanel-m',null);}
 function renderMarksPanels(){
   const cont=document.getElementById('marksPanels');cont.innerHTML='';
-  const ids=getClassIds();
-  ids.forEach((cls,i)=>{
-    const subs=getSubs(cls),editable=canEdit(cls);
+  getClassIds().forEach((cls,i)=>{
+    const subs=getSubs(cls),editable=canEdit(cls),tm=getClassTM(cls);
     const cols=`2fr ${TERMS.map(()=>'1fr').join(' ')} 1fr`;
     const panel=document.createElement('div');
     panel.className='cpanel mpanel-m'+(i===0?' active':'');panel.dataset.c=cls;
     panel.innerHTML=`
+      <div class="class-marks-banner">
+        <span class="sy-badge">${CLASSES[cls]?.name||'Class '+cls}</span>
+        <label>Total Marks per Subject:</label>
+        <input class="tm-inp" id="ctm-${cls}" type="number" min="1" value="${tm}" ${editable?`onchange="onClassTMChange(${cls},this.value)"`:'disabled'}>
+        <span style="font-size:11px;color:var(--muted)">% = Obtained ÷ this total</span>
+      </div>
       <div class="marks-wrap">
         <div class="marks-thead" style="grid-template-columns:${cols}">
           <div>Subject</div>${TERMS.map(t=>`<div><span class="tl tl${t.id.slice(1)}">${t.label}</span></div>`).join('')}<div>Grade</div>
@@ -276,8 +289,16 @@ function renderMarksPanels(){
     updM(cls);
   });
 }
+function onClassTMChange(cls,val){
+  const v=parseFloat(val)||100;
+  if(!CLASSES[cls])CLASSES[cls]={};
+  CLASSES[cls].totalMarks=v;
+  setN(DB,['settings','classes',cls,'totalMarks'],v);
+  markDirty('settings/classes/'+cls+'/totalMarks',v);
+  updM(cls);
+}
 function onM(inp){
-  const {c,s,t}=inp.dataset,v=inp.value.trim();
+  const{c,s,t}=inp.dataset,v=inp.value.trim();
   const sd=getN(DB,['marks','scores','c'+c,s])||{};
   if(v==='')delete sd[t];else sd[t]=parseFloat(v);
   setN(DB,['marks','scores','c'+c,s],sd);
@@ -285,7 +306,7 @@ function onM(inp){
   updM(+c);
 }
 function updM(cls){
-  const subs=getSubs(cls),total=getTM();
+  const subs=getSubs(cls),total=getClassTM(cls);
   subs.forEach(sub=>{
     const sk=fbKey(sub),sd=getN(DB,['marks','scores','c'+cls,sk])||{};
     const sc=TERMS.map(t=>sd[t.id]).filter(v=>v!==undefined&&!isNaN(v));
@@ -297,14 +318,13 @@ function updM(cls){
   });
 }
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  STUDENTS
-// ════════════════════════════════════════════════════════════════
-function renderStudentsTabs(){buildClassTabs('studentsTabs','spanel','studentsPanels',null);}
+// ══════════════════════════════════════════════
+function renderStudentsTabs(){buildClassTabs('studentsTabs','spanel',null);}
 function renderStudentsPanels(){
   const cont=document.getElementById('studentsPanels');cont.innerHTML='';
-  const ids=getClassIds();
-  ids.forEach((cls,i)=>{
+  getClassIds().forEach((cls,i)=>{
     const editable=canEdit(cls);
     const panel=document.createElement('div');
     panel.className='cpanel spanel'+(i===0?' active':'');panel.dataset.c=cls;
@@ -327,68 +347,57 @@ function selSInner(cls,tab,btn){
   document.getElementById(`si-${cls}-${tab}`).classList.add('active');
 }
 function getStudents(cls){return getN(DB,['students','c'+cls])||[];}
-function saveStudents(cls){const s=getStudents(cls);markDirty('students/c'+cls,s.length?s:null);}
-
+function saveStudents(cls){markDirty('students/c'+cls,getStudents(cls).length?getStudents(cls):null);}
 function renderStudentList(cls){
   const editable=canEdit(cls),students=getStudents(cls);
-  const el=document.getElementById(`si-${cls}-list`);
-  el.innerHTML=`<div class="card">
-    <div class="card-head">
-      <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${students.length} Students</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${editable?`<label class="btn-sm btn-add" style="cursor:pointer;padding:4px 10px;">📂 Import CSV/Excel<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importStudents(${cls},this)"></label>
-        <button class="btn-sm btn-add" onclick="addStudent(${cls})">+ Add Student</button>`:''}
-      </div>
+  const el=document.getElementById(`si-${cls}-list`);if(!el)return;
+  el.innerHTML=`<div class="card"><div class="card-head">
+    <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${students.length} Students</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      ${editable?`<label class="btn-sm btn-add" style="cursor:pointer;">📂 Import CSV<input type="file" accept=".csv,.txt" style="display:none" onchange="importStudents(${cls},this)"></label>
+      <button class="btn-sm btn-add" onclick="addStudent(${cls})">+ Add</button>`:''}
     </div>
-    <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>#</th><th>Student Name</th><th>Father Name</th><th>Roll No</th>${editable?'<th></th>':''}</tr></thead>
-      <tbody>${students.map((s,i)=>`<tr>
-        <td style="color:var(--muted)">${i+1}</td>
-        <td><input class="ainp2" value="${esc(s.name)}" ${editable?`onchange="updStudent(${cls},${i},'name',this.value)"`:'disabled'} style="width:100%;min-width:115px;"></td>
-        <td><input class="ainp2" value="${esc(s.father||'')}" ${editable?`onchange="updStudent(${cls},${i},'father',this.value)"`:'disabled'} style="width:100%;min-width:110px;"></td>
-        <td><input class="ainp2" value="${esc(s.roll||'')}" ${editable?`onchange="updStudent(${cls},${i},'roll',this.value)"`:'disabled'} style="width:60px;"></td>
-        ${editable?`<td><button class="btn-sm btn-del" onclick="delStudent(${cls},${i})">✕</button></td>`:''}
-      </tr>`).join('')}</tbody>
-    </table></div></div>`;
+  </div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student Name</th><th>Father Name</th><th>Roll No</th>${editable?'<th></th>':''}</tr></thead>
+  <tbody>${students.map((s,i)=>`<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td><input class="ainp2" value="${esc(s.name)}" ${editable?`onchange="updStudent(${cls},${i},'name',this.value)"`:'disabled'} style="width:100%;min-width:115px;"></td>
+    <td><input class="ainp2" value="${esc(s.father||'')}" ${editable?`onchange="updStudent(${cls},${i},'father',this.value)"`:'disabled'} style="width:100%;min-width:110px;"></td>
+    <td><input class="ainp2" value="${esc(s.roll||'')}" ${editable?`onchange="updStudent(${cls},${i},'roll',this.value)"`:'disabled'} style="width:60px;"></td>
+    ${editable?`<td><button class="btn-sm btn-del" onclick="delStudent(${cls},${i})">✕</button></td>`:''}
+  </tr>`).join('')}</tbody></table></div></div>`;
 }
-
 function importStudents(cls,inp){
   const file=inp.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    const text=e.target.result;
-    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
-    const students=getStudents(cls);
-    let added=0;
+    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+    const students=getStudents(cls);let added=0;
     lines.forEach((line,i)=>{
-      if(i===0&&(line.toLowerCase().includes('name')||line.toLowerCase().includes('student')))return; // skip header
+      if(i===0&&line.toLowerCase().includes('name'))return;
       const cols=line.split(/[,\t;]+/).map(c=>c.trim().replace(/^"|"$/g,''));
       if(!cols[0])return;
-      students.push({name:cols[0]||'',father:cols[1]||'',roll:cols[2]||(students.length+1)+''}); added++;
+      students.push({name:cols[0],father:cols[1]||'',roll:cols[2]||(students.length+1)+''});added++;
     });
-    setN(DB,['students','c'+cls],students);saveStudents(cls);renderStudentList(cls);
-    TERMS.forEach(t=>renderTermResult(cls,t.id));
-    showToast(`Imported ${added} students`,'ok');
+    setN(DB,['students','c'+cls],students);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));
+    showToast('Imported '+added+' students','ok');
   };
   reader.readAsText(file);inp.value='';
 }
-
 function addStudent(cls){
-  const students=getStudents(cls);
-  students.push({name:'New Student',father:'',roll:''+(students.length+1)});
-  setN(DB,['students','c'+cls],students);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));
+  const s=getStudents(cls);s.push({name:'New Student',father:'',roll:''+(s.length+1)});
+  setN(DB,['students','c'+cls],s);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));
 }
 function updStudent(cls,i,f,v){const s=getStudents(cls);if(s[i])s[i][f]=v;setN(DB,['students','c'+cls],s);saveStudents(cls);}
 function delStudent(cls,i){const s=getStudents(cls);s.splice(i,1);setN(DB,['students','c'+cls],s);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));}
-
 function renderTermResult(cls,termId){
-  const editable=canEdit(cls),students=getStudents(cls),total=getTM(),subs=getSubs(cls);
+  const editable=canEdit(cls),students=getStudents(cls),total=getClassTM(cls),subs=getSubs(cls);
   const el=document.getElementById(`si-${cls}-${termId}`);const term=TERMS.find(t=>t.id===termId);
   if(!el)return;
-  if(!students.length){el.innerHTML='<div style="padding:20px;color:var(--muted);text-align:center;font-size:12px;">No students. Add them in Student List.</div>';return;}
-  el.innerHTML=`<div style="margin-bottom:10px;padding:9px 13px;background:var(--surf2);border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span class="tl tl${termId.slice(1)}" style="padding:4px 12px;border-radius:100px;">${term?.label||termId}</span>
-    <span style="font-size:11px;color:var(--muted)">Total marks per subject: <strong style="color:var(--gold)">${total}</strong></span>
+  if(!students.length){el.innerHTML='<div style="padding:18px;color:var(--muted);text-align:center;font-size:12px;">No students. Add in Student List tab.</div>';return;}
+  el.innerHTML=`<div style="margin-bottom:8px;padding:8px 12px;background:var(--surf2);border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span class="tl tl${termId.slice(1)}" style="padding:3px 10px;border-radius:100px;">${term?.label||termId}</span>
+    <span style="font-size:11px;color:var(--muted)">Total per subject: <strong style="color:var(--gold)">${total}</strong></span>
   </div>
   <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th>
     ${subs.map(s=>`<th style="white-space:nowrap;font-size:9px">${s}</th>`).join('')}<th>Total</th><th>%</th><th>Grade</th>
@@ -408,7 +417,7 @@ function renderTermResult(cls,termId){
   });
 }
 function updResult(cls,tId,si,sk,val){
-  const total=getTM(),subs=getSubs(cls);
+  const total=getClassTM(cls),subs=getSubs(cls);
   const res=getN(DB,['results','c'+cls,tId,'s'+si])||{};
   if(val===''||isNaN(parseFloat(val)))delete res[sk];else res[sk]=parseFloat(val);
   setN(DB,['results','c'+cls,tId,'s'+si],res);
@@ -423,9 +432,9 @@ function updResult(cls,tId,si,sk,val){
   if(gEl){gEl.textContent=g.l;gEl.style.cssText=`background:${g.c}22;color:${g.c}`;}
 }
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  PLANNER
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function renderMNav(){
   const el=document.getElementById('mnav');el.innerHTML='';
   MONTHS.forEach((m,i)=>{
@@ -441,7 +450,7 @@ function renderPlannerPanels(){
   MONTHS.forEach((m,mi)=>{
     const tc=m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)';
     const panel=document.createElement('div');panel.className='mpanel'+(mi===0?' active':'');panel.dataset.mk=m.key;
-    panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:5px;">
+    panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:5px;">
       <span style="font-family:Playfair Display,serif;font-size:17px;font-weight:700;">${m.label} ${m.yr}</span>
       <span class="tl tl${m.term.slice(1)}" style="padding:3px 10px;border-radius:100px;">${TLbl[m.term]}</span>
     </div><div class="planner-cls-list" id="pcl-${m.key}"></div>`;
@@ -451,7 +460,7 @@ function renderPlannerPanels(){
       const editable=canEdit(cls);
       const item=document.createElement('div');item.className='planner-cls-item';item.id=`pci-${m.key}-${cls}`;
       item.innerHTML=`<div class="planner-cls-head" onclick="togglePCls('${m.key}',${cls})">
-        <div class="planner-cls-head-left">${CLASSES[cls]?.name||'Class '+cls}
+        <div class="planner-cls-left">${CLASSES[cls]?.name||'Class '+cls}
           <div class="pbar-wrap"><div class="pbar-fill" id="pbf-${m.key}-${cls}" style="background:${tc}"></div></div>
         </div>
         <div style="display:flex;align-items:center;gap:7px;"><span class="planner-cls-pct" id="ppct-${m.key}-${cls}">0%</span><span class="planner-arrow">▼</span></div>
@@ -491,18 +500,50 @@ function savePlan(mk,cls,sk){
   markDirty(`planner/${mk}/c${cls}/${sk}`,topics.length?topics:null);
   renderSubjCols(mk,cls,tc,canEdit(cls));
 }
-function addT(mk,cls,sk){
-  const inp=document.getElementById(`ti-${mk}-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;
-  const t=getN(DB,['planner',mk,'c'+cls,sk])||[];t.push({text:txt,done:false});
-  setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);inp.value='';inp.focus();
-}
+function addT(mk,cls,sk){const inp=document.getElementById(`ti-${mk}-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;const t=getN(DB,['planner',mk,'c'+cls,sk])||[];t.push({text:txt,done:false});setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);inp.value='';inp.focus();}
 function togT(mk,cls,sk,i){const t=getN(DB,['planner',mk,'c'+cls,sk])||[];if(t[i])t[i].done=!t[i].done;setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);}
 function delT(mk,cls,sk,i){const t=getN(DB,['planner',mk,'c'+cls,sk])||[];t.splice(i,1);setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);}
 
-// ════════════════════════════════════════════════════════════════
-//  TIMETABLE / PERIODS
-// ════════════════════════════════════════════════════════════════
-function renderTimetableTabs(){buildClassTabs('ttTabs','ttpanel','ttPanels',null);}
+// ══════════════════════════════════════════════
+//  DIARY
+// ══════════════════════════════════════════════
+function renderDiaryTabs(){buildClassTabs('diaryTabs','dpanel',null);}
+function renderDiaryPanels(){
+  const cont=document.getElementById('diaryPanels');cont.innerHTML='';
+  getClassIds().forEach((cls,i)=>{
+    const panel=document.createElement('div');panel.className='cpanel dpanel'+(i===0?' active':'');panel.dataset.c=cls;
+    panel.innerHTML=`<div class="diary-controls">
+        <label style="font-size:11px;color:var(--muted)">📅 Date:</label>
+        <input class="diary-date-inp" id="dd-${cls}" type="date" value="${todayKey()}" onchange="renderDiaryDay(${cls})">
+        <span style="font-size:11px;color:var(--muted)" id="ddlbl-${cls}"></span>
+      </div><div class="diary-grid" id="dg-${cls}"></div>`;
+    cont.appendChild(panel);renderDiaryDay(cls);
+  });
+}
+function renderDiaryDay(cls){
+  const editable=canEdit(cls),dk=document.getElementById('dd-'+cls)?.value||todayKey();
+  const lbl=document.getElementById('ddlbl-'+cls);if(lbl)lbl.textContent=fmtDay(dk);
+  const grid=document.getElementById('dg-'+cls);if(!grid)return;
+  // Get periods for teachers info
+  grid.innerHTML='';
+  getSubs(cls).forEach(sub=>{
+    const sk=fbKey(sub),hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+    const periods=getN(DB,['timetable','c'+cls,sk])||[];
+    const teacherInfo=periods.length?periods.map(p=>`P${p.period}: ${p.teacher}`).join(', '):'';
+    const card=document.createElement('div');card.className='diary-subj-card';
+    card.innerHTML=`<div class="diary-subj-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:400">${teacherInfo}</span></div>
+      <div class="diary-hw-list">${hws.map((h,i)=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}',${i})">×</span>`:''}</div>`).join('')}${!hws.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
+      ${editable?`<div class="diary-add-row"><input class="diary-inp" id="di-${cls}-${sk}" placeholder="Add homework…" onkeydown="if(event.key==='Enter')addHw(${cls},'${sk}','${dk}')"><button class="diary-add-btn" onclick="addHw(${cls},'${sk}','${dk}')">+</button></div>`:''}`;
+    grid.appendChild(card);
+  });
+}
+function addHw(cls,sk,dk){const inp=document.getElementById(`di-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.push(txt);setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws);inp.value='';renderDiaryDay(cls);}
+function delHw(cls,sk,dk,i){const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.splice(i,1);setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws.length?hws:null);renderDiaryDay(cls);}
+
+// ══════════════════════════════════════════════
+//  PERIODS / TIMETABLE
+// ══════════════════════════════════════════════
+function renderTimetableTabs(){buildClassTabs('ttTabs','ttpanel',null);}
 function renderTimetablePanels(){
   const cont=document.getElementById('ttPanels');cont.innerHTML='';
   getClassIds().forEach((cls,i)=>{
@@ -518,12 +559,11 @@ function renderPeriodGrid(cls,editable){
   subs.forEach(sub=>{
     const sk=fbKey(sub),periods=getN(DB,['timetable','c'+cls,sk])||[];
     const card=document.createElement('div');card.className='period-card';
-    card.innerHTML=`<div class="period-card-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:400">${periods.length} period${periods.length!==1?'s':''}</span></div>
+    card.innerHTML=`<div class="period-card-hd">${esc(sub)}<span style="font-size:10px;font-weight:400;color:var(--muted)">${periods.length}</span></div>
       <div class="period-list">${periods.map((p,i)=>`<div class="period-item">
-        <span class="period-badge">P${p.period||i+1}</span>
-        <span style="flex:1">${esc(p.teacher)}</span>
+        <span class="period-badge">P${p.period||i+1}</span><span style="flex:1">${esc(p.teacher)}</span>
         ${editable?`<span style="cursor:pointer;color:var(--muted);font-size:12px" onclick="delPeriod(${cls},'${sk}',${i})">×</span>`:''}
-      </div>`).join('')}${!periods.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No periods set</span>':''}</div>
+      </div>`).join('')}${!periods.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">None</span>':''}</div>
       ${editable?`<div class="period-add-row">
         <input class="period-inp" id="pt-${cls}-${sk}" placeholder="Teacher name">
         <input class="period-inp" id="pp-${cls}-${sk}" type="number" min="1" max="10" placeholder="Period #">
@@ -538,72 +578,135 @@ function addPeriod(cls,sub,sk){
   if(!teacher)return;
   const periods=getN(DB,['timetable','c'+cls,sk])||[];
   periods.push({teacher,period:period||periods.length+1,subject:sub});
-  setN(DB,['timetable','c'+cls,sk],periods);
-  markDirty(`timetable/c${cls}/${sk}`,periods);
+  setN(DB,['timetable','c'+cls,sk],periods);markDirty(`timetable/c${cls}/${sk}`,periods);
   renderPeriodGrid(cls,canEdit(cls));
 }
 function delPeriod(cls,sk,i){
   const periods=getN(DB,['timetable','c'+cls,sk])||[];periods.splice(i,1);
-  setN(DB,['timetable','c'+cls,sk],periods);
-  markDirty(`timetable/c${cls}/${sk}`,periods.length?periods:null);
+  setN(DB,['timetable','c'+cls,sk],periods);markDirty(`timetable/c${cls}/${sk}`,periods.length?periods:null);
   renderPeriodGrid(cls,canEdit(cls));
 }
 
-// ════════════════════════════════════════════════════════════════
-//  DAILY DIARY
-// ════════════════════════════════════════════════════════════════
-function renderDiaryTabs(){buildClassTabs('diaryTabs','dpanel','diaryPanels',null);}
-function renderDiaryPanels(){
-  const cont=document.getElementById('diaryPanels');cont.innerHTML='';
-  getClassIds().forEach((cls,i)=>{
-    const editable=canEdit(cls);
-    const panel=document.createElement('div');panel.className='cpanel dpanel'+(i===0?' active':'');panel.dataset.c=cls;
-    panel.innerHTML=`<div class="diary-controls">
-        <label style="font-size:11px;color:var(--muted)">📅 Date:</label>
-        <input class="diary-date-inp" id="dd-${cls}" type="date" value="${todayKey()}" onchange="renderDiaryDay(${cls})">
-        <span style="font-size:11px;color:var(--muted)" id="ddlbl-${cls}"></span>
-      </div>
-      <div class="diary-grid" id="dg-${cls}"></div>`;
-    cont.appendChild(panel);renderDiaryDay(cls);
-  });
-}
-function renderDiaryDay(cls){
-  const editable=canEdit(cls),dk=document.getElementById('dd-'+cls)?.value||todayKey();
-  const lbl=document.getElementById('ddlbl-'+cls);if(lbl)lbl.textContent=fmtDay(dk);
-  const grid=document.getElementById('dg-'+cls);if(!grid)return;
-  grid.innerHTML='';
-  getSubs(cls).forEach(sub=>{
-    const sk=fbKey(sub),hws=getN(DB,['diary','c'+cls,dk,sk])||[];
-    const card=document.createElement('div');card.className='diary-subj-card';
-    card.innerHTML=`<div class="diary-subj-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:400">${hws.length}</span></div>
-      <div class="diary-hw-list">${hws.map((h,i)=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}',${i})">×</span>`:''}</div>`).join('')}${!hws.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
-      ${editable?`<div class="diary-add-row"><input class="diary-inp" id="di-${cls}-${sk}" placeholder="Add homework…" onkeydown="if(event.key==='Enter')addHw(${cls},'${sk}','${dk}')"><button class="diary-add-btn" onclick="addHw(${cls},'${sk}','${dk}')">+</button></div>`:''}`;
-    grid.appendChild(card);
-  });
-}
-function addHw(cls,sk,dk){
-  const inp=document.getElementById(`di-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;
-  const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.push(txt);
-  setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws);
-  inp.value='';renderDiaryDay(cls);
-}
-function delHw(cls,sk,dk,i){
-  const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.splice(i,1);
-  setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws.length?hws:null);
-  renderDiaryDay(cls);
+// ══════════════════════════════════════════════
+//  WEEKLY REPORT
+// ══════════════════════════════════════════════
+function populateReportClassSel(){
+  const sel=document.getElementById('reportClass');
+  if(!sel)return;
+  sel.innerHTML='<option value="">All Classes</option>'+getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');
 }
 
-// ════════════════════════════════════════════════════════════════
+function generateReport(){
+  const dateVal=document.getElementById('reportDate').value||todayKey();
+  const filterCls=document.getElementById('reportClass').value;
+  const {start,end}=getWeekRange(dateVal);
+  const dates=getWeekDates(start);
+  const classIds=filterCls?[+filterCls]:getClassIds();
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const cont=document.getElementById('reportContent');
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📋 Weekly Activity Report</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtDate(start)} – ${fmtDate(end)} &nbsp;·&nbsp; Generated ${fmtDate(todayKey())}</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+  </div>`;
+
+  classIds.forEach(cls=>{
+    const subs=getSubs(cls);
+    const className=CLASSES[cls]?.name||'Class '+cls;
+    let classTotal=0,classDone=0;
+
+    // Build per-day per-subject matrix
+    const matrix=dates.map((dk,di)=>{
+      const dayData={date:dk,day:dayNames[di],subs:{}};
+      let dayHasAny=false;
+      subs.forEach(sub=>{
+        const sk=fbKey(sub);
+        const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+        dayData.subs[sub]=hws;
+        if(hws.length){classDone++;dayHasAny=true;}
+        classTotal++;
+      });
+      dayData.hasAny=dayHasAny;
+      return dayData;
+    });
+
+    const coverage=classTotal?Math.round(classDone/classTotal*100):0;
+    const statClass=coverage>=70?'stat-good':coverage>=40?'stat-warn':'stat-bad';
+    const statLabel=coverage>=70?'Good':coverage>=40?'Partial':'Low';
+
+    html+=`<div class="report-card">
+      <div class="report-card-hd">${className} <span class="report-stat ${statClass}">${coverage}% coverage · ${statLabel}</span></div>
+      ${matrix.map(day=>{
+        const totalHws=subs.reduce((a,s)=>a+day.subs[s].length,0);
+        return`<div class="day-row">
+          <div class="day-label"><strong>${day.day}</strong><br><span style="font-size:10px">${day.date.slice(5)}</span></div>
+          <div class="day-content">
+            ${day.hasAny?subs.filter(s=>day.subs[s].length>0).map(s=>`
+              <div style="margin-bottom:4px;">
+                <span style="font-size:10px;color:var(--muted);font-weight:600">${s}:</span>
+                ${day.subs[s].map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}
+              </div>`).join('')
+              :`<span class="no-hw-tag">No diary entries</span>`}
+          </div>
+          <div style="font-size:10px;color:var(--muted);min-width:36px;text-align:right">${totalHws>0?totalHws+' hw':'—'}</div>
+        </div>`;
+      }).join('')}
+      <div style="padding:8px 13px;background:var(--surf2);border-top:1px solid var(--border);font-size:11px;display:flex;gap:16px;flex-wrap:wrap;">
+        <span>📝 Total HW added: <strong>${matrix.reduce((a,d)=>a+subs.reduce((b,s)=>b+d.subs[s].length,0),0)}</strong></span>
+        <span>📅 Days with entries: <strong>${matrix.filter(d=>d.hasAny).length}/7</strong></span>
+        <span>📚 Subjects covered: <strong>${[...new Set(matrix.flatMap(d=>subs.filter(s=>d.subs[s].length>0)))].length}/${subs.length}</strong></span>
+      </div>
+    </div>`;
+  });
+
+  // Summary table across all classes
+  if(classIds.length>1){
+    html+=`<div class="report-card"><div class="report-card-hd">📊 Summary – All Classes</div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Class</th>${dayNames.map(d=>`<th>${d}</th>`).join('')}<th>Total HW</th><th>Coverage</th></tr></thead><tbody>
+      ${classIds.map(cls=>{
+        const subs=getSubs(cls);
+        const dayTotals=dates.map(dk=>subs.reduce((a,s)=>(getN(DB,['diary','c'+cls,dk,fbKey(s)])||[]).length+a,0));
+        const tot=dayTotals.reduce((a,b)=>a+b,0);
+        const cov=dates.reduce((a,dk)=>a+(subs.some(s=>(getN(DB,['diary','c'+cls,dk,fbKey(s)])||[]).length>0)?1:0),0);
+        return`<tr><td style="font-weight:600">${CLASSES[cls]?.name||'Class '+cls}</td>
+          ${dayTotals.map(n=>`<td style="text-align:center;color:${n>0?'var(--t3)':'var(--muted)'}">${n||'—'}</td>`).join('')}
+          <td style="font-weight:700">${tot}</td>
+          <td><span class="report-stat ${cov>=5?'stat-good':cov>=3?'stat-warn':'stat-bad'}">${cov}/7 days</span></td></tr>`;
+      }).join('')}
+      </tbody></table></div></div>`;
+  }
+  cont.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
 //  BOARDS
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function selBrd(btn,cls){document.querySelectorAll('#brdTabs .ctab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBrdPanel(cls);}
 function renderBrdPanel(cls){
   const s=getN(DB,['boards','c'+cls])||[];
-  document.getElementById('brdPanel').innerHTML=`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results</div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student Name</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
+  const medals=['🥇','🥈','🥉'];
+  const sorted=[...s].sort((a,b)=>(b.obtained/b.total)-(a.obtained/a.total));
+  const top3=sorted.slice(0,3);
+  let podHtml='';
+  if(top3.length){
+    podHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:10px;">
+      ${top3.map((r,i)=>{const p=r.total?((r.obtained/r.total)*100).toFixed(1):'0';const cols=[['#fbbf24','rgba(251,191,36,.08)'],['#9ca3af','rgba(156,163,175,.08)'],['#d97706','rgba(217,119,6,.08)']];const[col,bg]=cols[i];return`<div style="border:1.5px solid ${col};border-radius:9px;padding:11px;background:${bg};text-align:center;">
+        <div style="font-size:22px;margin-bottom:2px">${medals[i]}</div>
+        <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:700;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'} Position</div>
+        <div style="font-size:13px;font-weight:700;">${esc(r.name)}</div>
+        <div style="font-size:10px;color:var(--muted)">S/O ${esc(r.father||'')}</div>
+        <div style="font-size:20px;font-weight:900;color:${col};margin-top:3px">${p}%</div>
+      </div>`}).join('')}
+    </div>`;
+  }
+  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
     <tbody>${s.map((r,i)=>`<tr><td><input class="ainp2" value="${esc(r.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td><td><input class="ainp2" value="${esc(r.father||'')}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:120px;"></td><td><input class="ainp2" type="number" value="${r.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td><td><input class="ainp2" type="number" value="${r.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td><td><input class="ainp2" type="number" value="${r.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:65px;"></td><td style="font-weight:700;color:#22c55e">${r.total?((r.obtained/r.total)*100).toFixed(1)+'%':'—'}</td><td><button class="btn-sm btn-del" onclick="delBrd('${cls}',${i})">✕</button></td></tr>`).join('')}
     </tbody></table></div>
-    <div style="padding:9px 13px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;">
+    <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;">
       <input class="ainp2" id="bn-${cls}" placeholder="Student Name" style="flex:2;min-width:110px;"><input class="ainp2" id="bf-${cls}" placeholder="Father" style="flex:2;min-width:110px;"><input class="ainp2" id="by-${cls}" type="number" placeholder="Year" style="width:65px;" value="${new Date().getFullYear()}"><input class="ainp2" id="bt-${cls}" type="number" placeholder="Total" style="width:60px;"><input class="ainp2" id="bo-${cls}" type="number" placeholder="Obtained" style="width:70px;"><button class="addbtn2" onclick="addBrd('${cls}')">+ Add</button>
     </div></div>`;
 }
@@ -612,9 +715,9 @@ function addBrd(cls){const name=document.getElementById('bn-'+cls).value.trim();
 function updBrd(cls,i,f,v){const s=getN(DB,['boards','c'+cls])||[];if(s[i])s[i][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;setN(DB,['boards','c'+cls],s);markDirty('boards/c'+cls,s.length?s:null);}
 function delBrd(cls,i){const s=getN(DB,['boards','c'+cls])||[];s.splice(i,1);setN(DB,['boards','c'+cls],s);saveBrd(cls);}
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  WEEKLY TESTS
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function selWk(sec){document.getElementById('wks-matric').classList.toggle('active',sec==='matric');document.getElementById('wks-fsc').classList.toggle('active',sec==='fsc');renderWkPanel(sec);}
 function renderWkPanel(sec){
   const tests=getN(DB,['weekly',sec])||[],classes=sec==='matric'?['9','10']:['11','12'];
@@ -626,7 +729,7 @@ function renderWkPanel(sec){
       <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Total Marks</label><input class="ainp2" id="wk-total" type="number" value="50" style="width:76px;"></div>
       <button class="addbtn2" style="align-self:flex-end;" onclick="addWkTest('${sec}')">+ Create</button>
     </div></div>`;
-  if(!tests.length)html+='<div style="text-align:center;padding:22px;color:var(--muted);font-size:12px;">No tests yet.</div>';
+  if(!tests.length)html+='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">No tests yet.</div>';
   else tests.forEach((test,ti)=>{
     html+=`<div class="card"><div class="card-head"><div class="card-title">📝 ${esc(test.subject)} · Class ${esc(test.class)} · ${esc(test.date)} · /${test.total}</div><button class="btn-sm btn-del" onclick="delWkTest('${sec}',${ti})">✕ Delete</button></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Obtained/${test.total}</th><th>%</th><th>Status</th><th></th></tr></thead><tbody>
@@ -645,16 +748,16 @@ function addWkS(sec,ti){const name=document.getElementById(`ws-n-${sec}-${ti}`).
 function updWkS(sec,ti,si,f,v){const t=getN(DB,['weekly',sec])||[];if(t[ti]&&t[ti].students&&t[ti].students[si])t[ti].students[si][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;setN(DB,['weekly',sec],t);saveWk(sec);}
 function delWkS(sec,ti,si){const t=getN(DB,['weekly',sec])||[];if(t[ti]&&t[ti].students)t[ti].students.splice(si,1);setN(DB,['weekly',sec],t);saveWk(sec);renderWkPanel(sec);}
 
-// ════════════════════════════════════════════════════════════════
-//  SETTINGS (admin only)
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════
 function renderSettings(){
   const sy=getN(DB,['settings','sessionYear'])||DEFAULT_SETTINGS.sessionYear;
   const school=Object.assign({},DEFAULT_SETTINGS.school,getN(DB,['settings','school'])||{});
+  const socials=school.socials||DEFAULT_SETTINGS.school.socials;
   const founderPic=getN(DB,['settings','founderPic'])||'';
   document.getElementById('settingsContent').innerHTML=`
   <div class="settings-grid">
-    <!-- School Info -->
     <div class="settings-card">
       <div class="settings-card-hd">🏫 School Info</div>
       <div class="settings-card-body">
@@ -662,22 +765,29 @@ function renderSettings(){
         <div class="settings-row"><label>City / Tagline</label><input class="s-inp" id="ss-city" value="${esc(school.city)}"></div>
         <div class="settings-row"><label>Phone 1</label><input class="s-inp" id="ss-ph1" value="${esc(school.phone1)}"></div>
         <div class="settings-row"><label>Phone 2</label><input class="s-inp" id="ss-ph2" value="${esc(school.phone2)}"></div>
-        <div class="settings-row"><label>Facebook</label><input class="s-inp" id="ss-fb" placeholder="facebook.com/..." value="${esc(school.facebook||'')}"></div>
-        <div class="settings-row"><label>TikTok</label><input class="s-inp" id="ss-tk" value="${esc(school.tiktok||'tiktok.com/ipscpezu')}"></div>
         <div class="settings-row"><label>Session Year</label><input class="s-inp" id="ss-sy" value="${esc(sy)}" style="width:100px;"></div>
       </div>
     </div>
-    <!-- Founder -->
     <div class="settings-card">
-      <div class="settings-card-hd">👤 Founder Details</div>
+      <div class="settings-card-hd">🔗 Social Media Links <button class="btn-sm btn-add" style="font-size:10px;margin-left:auto;" onclick="addSocialRow()">+ Add</button></div>
+      <div class="settings-card-body" id="socialsContainer">
+        ${socials.map((s,i)=>`<div class="social-row" id="sr-${i}">
+          <input class="social-icon-inp" id="si-icon-${i}" value="${esc(s.icon||'🔗')}" title="Icon/emoji">
+          <input class="social-label-inp" id="si-label-${i}" value="${esc(s.label)}" placeholder="Label">
+          <input class="social-url-inp" id="si-url-${i}" value="${esc(s.url)}" placeholder="URL (without https://)">
+          <button class="btn-sm btn-del" onclick="delSocialRow(${i})">✕</button>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-card-hd">👤 Founder / Principal</div>
       <div class="settings-card-body">
-        ${founderPic?`<img src="${founderPic}" class="founder-pic-preview" id="fpPreview">`:'<div id="fpPreview" style="width:70px;height:70px;border-radius:50%;background:var(--surf2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px;">👤</div>'}
-        <label class="btn-sm btn-add" style="cursor:pointer;width:fit-content;padding:5px 12px;">📷 Upload Photo<input type="file" accept="image/*" style="display:none" onchange="uploadFounderPic(this)"></label>
+        ${founderPic?`<img src="${founderPic}" class="founder-pic-preview" id="fpPrev">`:'<div id="fpPrev" style="width:66px;height:66px;border-radius:50%;background:var(--surf2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px;">👤</div>'}
+        <label class="btn-sm btn-add" style="cursor:pointer;width:fit-content;">📷 Upload Photo<input type="file" accept="image/*" style="display:none" onchange="uploadFounderPic(this)"></label>
         <div class="settings-row"><label>Founder Name</label><input class="s-inp" id="ss-fn" value="${esc(school.founderName)}"></div>
         <div class="settings-row"><label>Description</label><textarea class="s-inp" id="ss-fd" rows="3" style="resize:vertical">${esc(school.founderDesc)}</textarea></div>
       </div>
     </div>
-    <!-- Terms -->
     ${TERMS.map(t=>`<div class="settings-card">
       <div class="settings-card-hd">📋 ${t.label}</div>
       <div class="settings-card-body">
@@ -686,19 +796,14 @@ function renderSettings(){
         <div class="settings-row"><label>Syllabus By</label><input class="s-inp" id="se-syl-${t.id}" type="date" value="${t.syllabus}"></div>
       </div>
     </div>`).join('')}
-    <!-- Classes config -->
     <div class="settings-card" style="grid-column:1/-1">
-      <div class="settings-card-hd">📚 Classes &amp; Subjects</div>
-      <div class="settings-card-body">
-        <div id="classesConfig"></div>
-        <button class="btn-sm btn-add" style="margin-top:8px;" onclick="addNewClass()">+ Add New Class</button>
-      </div>
+      <div class="settings-card-hd">📚 Classes &amp; Subjects <button class="btn-sm btn-add" style="margin-left:auto;" onclick="addNewClass()">+ Add Class</button></div>
+      <div class="settings-card-body"><div id="classesConfig"></div></div>
     </div>
-    <!-- Months -->
     <div class="settings-card">
       <div class="settings-card-hd">📆 Academic Months</div>
       <div class="settings-card-body" style="max-height:240px;overflow-y:auto;">
-        ${MONTHS.map((m,i)=>`<div class="settings-row"><label>${m.label} ${m.yr}</label><select class="s-inp" id="smt-${m.key}" style="flex:0;width:90px;">${TERMS.map(t=>`<option value="${t.id}"${m.term===t.id?' selected':''}>${t.label}</option>`).join('')}</select></div>`).join('')}
+        ${MONTHS.map(m=>`<div class="settings-row"><label>${m.label} ${m.yr}</label><select class="s-inp" id="smt-${m.key}" style="flex:0;width:90px;">${TERMS.map(t=>`<option value="${t.id}"${m.term===t.id?' selected':''}>${t.label}</option>`).join('')}</select></div>`).join('')}
       </div>
     </div>
   </div>
@@ -706,89 +811,77 @@ function renderSettings(){
   renderClassesConfig();
 }
 
+let _socialCount=0;
+function addSocialRow(){
+  const cont=document.getElementById('socialsContainer');if(!cont)return;
+  _socialCount++;
+  const id=Date.now();
+  const div=document.createElement('div');div.className='social-row';div.id='sr-x'+id;
+  div.innerHTML=`<input class="social-icon-inp" id="si-icon-x${id}" value="🔗"><input class="social-label-inp" id="si-label-x${id}" placeholder="Label"><input class="social-url-inp" id="si-url-x${id}" placeholder="URL"><button class="btn-sm btn-del" onclick="this.parentNode.remove()">✕</button>`;
+  cont.appendChild(div);
+}
+function delSocialRow(i){document.getElementById('sr-'+i)?.remove();}
+
+function collectSocials(){
+  const cont=document.getElementById('socialsContainer');if(!cont)return[];
+  return Array.from(cont.querySelectorAll('.social-row')).map(row=>{
+    const icon=row.querySelector('[id^="si-icon"]')?.value.trim()||'🔗';
+    const label=row.querySelector('[id^="si-label"]')?.value.trim()||'';
+    const url=row.querySelector('[id^="si-url"]')?.value.trim()||'';
+    return{icon,label,url};
+  }).filter(s=>s.label&&s.url);
+}
+
 function renderClassesConfig(){
-  const el=document.getElementById('classesConfig');if(!el)return;
-  el.innerHTML='';
+  const el=document.getElementById('classesConfig');if(!el)return;el.innerHTML='';
   getClassIds().forEach(cls=>{
     const cc=CLASSES[cls];const subs=cc?.subjects||[];
-    const div=document.createElement('div');div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;';
-    div.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-      <input class="s-inp" value="${esc(cc?.name||'Class '+cls)}" id="cn-${cls}" style="width:130px;" placeholder="Class name">
-      <span style="font-size:11px;color:var(--muted)">Subjects (comma-separated):</span>
-      <input class="s-inp" value="${subs.map(s=>esc(s)).join(', ')}" id="cs-${cls}" style="flex:1;min-width:200px;">
-      <button class="btn-sm btn-del" onclick="deleteClass(${cls})">✕ Delete Class</button>
-    </div>`;
+    const div=document.createElement('div');div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:7px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;';
+    div.innerHTML=`<input class="s-inp" value="${esc(cc?.name||'Class '+cls)}" id="cn-${cls}" style="width:120px;"><span style="font-size:11px;color:var(--muted)">Total Marks:</span><input class="tm-inp" id="ctm-s-${cls}" value="${cc?.totalMarks||100}" type="number" min="1"><span style="font-size:11px;color:var(--muted)">Subjects:</span><input class="s-inp" value="${subs.map(s=>esc(s)).join(', ')}" id="cs-${cls}" style="flex:1;min-width:180px;"><button class="btn-sm btn-del" onclick="deleteClass(${cls})">✕ Remove</button>`;
     el.appendChild(div);
   });
 }
-
 function addNewClass(){
   const ids=getClassIds();const newId=ids.length?Math.max(...ids)+1:1;
-  CLASSES[newId]={name:'Class '+newId,subjects:['English','Maths','Urdu']};
-  renderClassesConfig();showToast('Class '+newId+' added – adjust subjects then Save','info');
+  CLASSES[newId]={name:'Class '+newId,subjects:['English','Maths','Urdu'],totalMarks:100};
+  renderClassesConfig();showToast('Class '+newId+' added – set subjects then Save','info');
 }
 function deleteClass(cls){
-  if(!confirm('Delete '+( CLASSES[cls]?.name||'Class '+cls)+'? This removes it from all sections.'))return;
-  delete CLASSES[cls];renderClassesConfig();showToast('Class removed – click Save Settings','info');
+  if(!confirm('Remove '+(CLASSES[cls]?.name||'Class '+cls)+'?'))return;
+  delete CLASSES[cls];renderClassesConfig();showToast('Removed – click Save Settings','info');
 }
-
 function uploadFounderPic(inp){
   const file=inp.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
     const dataUrl=e.target.result;
-    const prev=document.getElementById('fpPreview');
-    if(prev){if(prev.tagName==='IMG'){prev.src=dataUrl;}else{prev.outerHTML=`<img src="${dataUrl}" class="founder-pic-preview" id="fpPreview">`;}}
+    const prev=document.getElementById('fpPrev');
+    if(prev){if(prev.tagName==='IMG')prev.src=dataUrl;else prev.outerHTML=`<img src="${dataUrl}" class="founder-pic-preview" id="fpPrev">`;}
     setN(DB,['settings','founderPic'],dataUrl);markDirty('settings/founderPic',dataUrl);
     showToast('Photo ready – click Save All Settings','info');
   };
   reader.readAsDataURL(file);
 }
-
 function saveSettings(){
   const sy=document.getElementById('ss-sy').value.trim();
-  const newTerms=TERMS.map(t=>({
-    id:t.id,
-    label:document.getElementById(`se-lbl-${t.id}`)?.value.trim()||t.label,
-    exam:document.getElementById(`se-exam-${t.id}`)?.value||t.exam,
-    syllabus:document.getElementById(`se-syl-${t.id}`)?.value||t.syllabus
-  }));
+  const newTerms=TERMS.map(t=>({id:t.id,label:document.getElementById(`se-lbl-${t.id}`)?.value.trim()||t.label,exam:document.getElementById(`se-exam-${t.id}`)?.value||t.exam,syllabus:document.getElementById(`se-syl-${t.id}`)?.value||t.syllabus}));
   const newMonths=MONTHS.map(m=>({...m,term:document.getElementById('smt-'+m.key)?.value||m.term}));
-  // Update classes from inputs
   getClassIds().forEach(cls=>{
-    const nameEl=document.getElementById('cn-'+cls);
-    const subEl=document.getElementById('cs-'+cls);
-    if(nameEl&&subEl){
-      CLASSES[cls]={name:nameEl.value.trim()||'Class '+cls,subjects:subEl.value.split(',').map(s=>s.trim()).filter(Boolean)};
-    }
+    const nameEl=document.getElementById('cn-'+cls);const subEl=document.getElementById('cs-'+cls);const tmEl=document.getElementById('ctm-s-'+cls);
+    if(nameEl&&subEl)CLASSES[cls]={name:nameEl.value.trim()||'Class '+cls,subjects:subEl.value.split(',').map(s=>s.trim()).filter(Boolean),totalMarks:parseFloat(tmEl?.value)||100};
   });
-  const school={
-    name:document.getElementById('ss-name').value.trim(),
-    city:document.getElementById('ss-city').value.trim(),
-    phone1:document.getElementById('ss-ph1').value.trim(),
-    phone2:document.getElementById('ss-ph2').value.trim(),
-    facebook:document.getElementById('ss-fb').value.trim(),
-    tiktok:document.getElementById('ss-tk').value.trim(),
-    founderName:document.getElementById('ss-fn').value.trim(),
-    founderDesc:document.getElementById('ss-fd').value.trim()
-  };
-  const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,totalMarks:getTM()};
+  const school={name:document.getElementById('ss-name').value.trim(),city:document.getElementById('ss-city').value.trim(),phone1:document.getElementById('ss-ph1').value.trim(),phone2:document.getElementById('ss-ph2').value.trim(),founderName:document.getElementById('ss-fn').value.trim(),founderDesc:document.getElementById('ss-fd').value.trim(),socials:collectSocials()};
+  const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,totalMarks:100};
   setN(DB,['settings'],newSettings);markDirty('settings',newSettings);
   SETTINGS=newSettings;TERMS=newTerms;MONTHS=newMonths;SCHOOL=school;
-  document.getElementById('syBadge').textContent='Session '+sy;
-  document.getElementById('hSub').textContent=`Principal: ${TEACHER_ACCOUNTS.find(t=>t.role==='admin')?.name||'Admin'} · ${school.phone1}`;
-  renderCD();
-  showToast('Settings saved – click 💾 Save Changes to sync','info');
+  document.getElementById('hSub').textContent=`${school.phone1} / ${school.phone2}`;
+  renderCD();showToast('Settings saved – click 💾 Save Changes to sync','info');
 }
 
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 //  RENDER ALL
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 function renderAll(){
-  const sy=getN(DB,['settings','sessionYear'])||DEFAULT_SETTINGS.sessionYear;
-  document.getElementById('syBadge').textContent='Session '+sy;
-  const tm=getN(DB,['settings','totalMarks'])||100;
-  document.getElementById('gTotalMarks').value=tm;
   renderCD();
   renderMarksTabs();renderMarksPanels();
   renderStudentsTabs();renderStudentsPanels();
