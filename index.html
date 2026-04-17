@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IQRA School – Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <img src="logo.png" class="login-logo">
+    <div class="login-title">IQRA Admin Panel</div>
+    <div class="login-sub">Sign in with your teacher account</div>
+    <input class="login-field" id="lu" type="text" placeholder="Username" autocomplete="username">
+    <input class="login-field" id="lp" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-err" id="lerr">Invalid username or password</div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="hinner">
+    <div class="hrow">
+      <img src="logo.png" class="hlogo">
+      <div>
+        <div class="hname">IQRA PUBLIC SCHOOL &amp; COLLEGE – DARA PEZU &nbsp;·&nbsp; Admin Panel</div>
+        <div class="hsub" id="hSub">0347-1575196 / 0370-1575196</div>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <button class="ntab active"    onclick="switchSec('marks')">📊 Marks</button>
+      <button class="ntab"           onclick="switchSec('students')">👥 Students</button>
+      <button class="ntab"           onclick="switchSec('planner')">📅 Planner</button>
+      <button class="ntab"           onclick="switchSec('diary')">📔 Diary</button>
+      <button class="ntab"           onclick="switchSec('timetable')">🕐 Periods</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('report')">📋 Weekly Report</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('planner-report')">📊 Planner Report</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
+      <a class="ntab parent-link" href="parent-portal.html" target="_blank">👨‍👩‍👧 Parent Portal ↗</a>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+<div class="sync-bar">
+  <div class="sdot off" id="sdot"></div>
+  <span id="sstat">Connecting…</span>
+  <div class="teacher-chip" id="tchip" style="display:none">👤 <span id="tname"></span><span style="margin-left:6px;color:var(--muted);cursor:pointer" onclick="doLogout()">Sign out</span></div>
+  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled>💾 Save Changes</button>
+</div>
+
+<!-- MARKS -->
+<div class="section active" id="sec-marks">
+  <div class="cdgrid" id="countdowns"></div>
+  <div class="ctabs" id="marksTabs"></div>
+  <div id="marksPanels"></div>
+</div>
+
+<!-- STUDENTS -->
+<div class="section" id="sec-students">
+  <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">💡 Import students from CSV: columns should be Name, Father Name, Roll No</p>
+  <div class="ctabs" id="studentsTabs"></div>
+  <div id="studentsPanels"></div>
+</div>
+
+<!-- PLANNER -->
+<div class="section" id="sec-planner">
+  <div class="mnav" id="mnav"></div>
+  <div id="mholder"></div>
+</div>
+
+<!-- DIARY -->
+<div class="section" id="sec-diary">
+  <div class="ctabs" id="diaryTabs"></div>
+  <div id="diaryPanels"></div>
+</div>
+
+<!-- PERIODS / TIMETABLE -->
+<div class="section" id="sec-timetable">
+  <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Add teacher name and period number for each subject. This links to the Daily Diary and appears in Parent Portal.</p>
+  <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:11px;color:var(--muted);">📂 <strong>Bulk Import Timetable from CSV/Excel:</strong></span>
+    <span style="font-size:10px;color:var(--muted);">Format: Class, Subject, Teacher Name, Period Number</span>
+    <label class="btn-sm btn-add" style="cursor:pointer;">Upload CSV<input type="file" accept=".csv,.txt" style="display:none" onchange="importTimetableCSV(this)"></label>
+    <button class="btn-sm" style="background:rgba(59,130,246,.15);color:#3b82f6;" onclick="downloadTimetableTemplate()">📥 Download Template</button>
+  </div>
+  <div class="ctabs" id="ttTabs"></div>
+  <div id="ttPanels"></div>
+</div>
+
+<!-- WEEKLY REPORT -->
+<div class="section" id="sec-report">
+  <div class="report-controls">
+    <label style="font-size:11px;color:var(--muted)">📅 Any date in the week:</label>
+    <input class="report-date-inp" type="date" id="reportDate" value="">
+    <select class="report-date-inp" id="reportClass" style="width:120px;">
+      <option value="">All Classes</option>
+    </select>
+    <button class="report-gen-btn" onclick="generateReport()">📋 Generate Report</button>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate Report.</div></div>
+</div>
+
+<!-- PLANNER REPORT -->
+<div class="section" id="sec-planner-report">
+  <div class="report-controls">
+    <label style="font-size:11px;color:var(--muted)">📅 Select Month:</label>
+    <select class="report-date-inp" id="prMonth" style="width:130px;"></select>
+    <select class="report-date-inp" id="prClass" style="width:130px;"><option value="">All Classes</option></select>
+    <button class="report-gen-btn" onclick="generatePlannerReport()">📊 Generate Report</button>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div id="plannerReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Generate Report.</div></div>
+</div>
+
+<!-- BOARDS -->
+<div class="section" id="sec-boards">
+  <div class="ctabs" id="brdTabs">
+    <button class="ctab active" onclick="selBrd(this,'9')">Class 9</button>
+    <button class="ctab" onclick="selBrd(this,'10')">Class 10</button>
+    <button class="ctab" onclick="selBrd(this,'11')">Class 11</button>
+    <button class="ctab" onclick="selBrd(this,'12')">Class 12</button>
+  </div>
+  <div id="brdPanel"></div>
+</div>
+
+<!-- WEEKLY TESTS -->
+<div class="section" id="sec-weekly">
+  <div class="wt-seg">
+    <button class="wt-seg-btn active" id="wks-matric" onclick="selWk('matric')">Matric (9 &amp; 10)</button>
+    <button class="wt-seg-btn" id="wks-fsc" onclick="selWk('fsc')">FSc (11 &amp; 12)</button>
+  </div>
+  <div id="wkPanel"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="section" id="sec-settings">
+  <div id="settingsContent"></div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let db, DB={}, fbReady=false, currentTeacher=null, pendingSaves={};
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+function doLogin(){
+  const u=document.getElementById('lu').value.trim(), p=document.getElementById('lp').value;
+  const t=TEACHER_ACCOUNTS.find(a=>a.username===u&&a.password===p);
+  if(!t){document.getElementById('lerr').style.display='block';return;}
+  currentTeacher=t; sessionStorage.setItem('iqra_t',JSON.stringify(t)); afterLogin();
+}
+function afterLogin(){
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('tchip').style.display='flex';
+  document.getElementById('tname').textContent=currentTeacher.name;
+  if(currentTeacher.role==='admin') document.querySelectorAll('.admin-only').forEach(e=>e.style.display='');
+  initFirebase();
+}
+function doLogout(){sessionStorage.removeItem('iqra_t');location.reload();}
+document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+(()=>{const s=sessionStorage.getItem('iqra_t');if(s){try{currentTeacher=JSON.parse(s);afterLogin();}catch(e){sessionStorage.removeItem('iqra_t');}}})();
+function canEdit(cls){return currentTeacher&&currentTeacher.classes.includes(+cls);}
+
+// ══════════════════════════════════════════════
+//  FIREBASE
+// ══════════════════════════════════════════════
+function initFirebase(){
+  if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){setStat('off','⚠ Edit js/firebase-config.js');DB={};applySettings();renderAll();return;}
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.database();
+    db.ref('.info/connected').on('value',s=>{setStat(s.val()?'live':'off',s.val()?'🟢 Live':'🔴 Offline');});
+    db.ref('iqra').on('value',s=>{DB=s.val()||{};fbReady=true;applySettings();renderAll();});
+  }catch(e){setStat('off','❌ '+e.message);applySettings();renderAll();}
+}
+function setStat(st,msg){document.getElementById('sdot').className='sdot '+st;document.getElementById('sstat').textContent=msg;}
+function applySettings(){
+  if(DB.settings){
+    SETTINGS=Object.assign({},DEFAULT_SETTINGS,DB.settings);
+    if(DB.settings.terms)  TERMS=DB.settings.terms;
+    if(DB.settings.months) MONTHS=DB.settings.months;
+    if(DB.settings.classes)CLASSES=DB.settings.classes;
+    if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  SAVE
+// ══════════════════════════════════════════════
+function markDirty(path,value){pendingSaves[path]=value;document.getElementById('saveBtn').disabled=false;}
+function doSave(){
+  const btn=document.getElementById('saveBtn');
+  if(!Object.keys(pendingSaves).length)return;
+  btn.disabled=true;btn.textContent='💾 Saving…';setStat('saving','Saving…');
+  if(db&&fbReady){
+    const u={};Object.entries(pendingSaves).forEach(([p,v])=>u['iqra/'+p]=(v===undefined?null:v));
+    db.ref().update(u)
+      .then(()=>{pendingSaves={};setStat('live','🟢 Live');showToast('☁️ Saved!','ok');btn.textContent='💾 Save Changes';})
+      .catch(e=>{setStat('off','❌ '+e.message);showToast('Save failed','err');btn.textContent='💾 Save Changes';btn.disabled=false;});
+  } else {pendingSaves={};btn.textContent='💾 Save Changes';showToast('Saved locally','info');}
+}
+function showToast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',2400);}
+
+// ══════════════════════════════════════════════
+//  SECTION SWITCH
+// ══════════════════════════════════════════════
+const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings'];
+function switchSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
+  document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
+  if(id==='boards')renderBrdPanel('9');
+  if(id==='weekly')renderWkPanel('matric');
+  if(id==='settings')renderSettings();
+  if(id==='report'){
+    document.getElementById('reportDate').value=todayKey();
+    populateReportClassSel();
+  }
+}
+
+// ══════════════════════════════════════════════
+//  COUNTDOWNS
+// ══════════════════════════════════════════════
+function renderCD(){
+  document.getElementById('countdowns').innerHTML=TERMS.map(t=>{
+    const ed=daysTo(t.exam),sd=daysTo(t.syllabus);
+    return`<div class="cdcard cdt${t.id.slice(1)}"><div class="cdlbl">${t.label}·Exam</div>
+      <div class="cddays">${ed<0?'✓':ed}<em>${ed<0?'Done':'days'}</em></div>
+      <div class="cddate">${fmtDate(t.exam)}</div>
+      <div class="cdmini">
+        <div class="cdrow"><span class="l">Syllabus by</span><span>${fmtDate(t.syllabus)}</span></div>
+        <div class="cdrow"><span class="l">Prep window</span><span>${ed>0&&sd>0?(ed-sd)+' days':'—'}</span></div>
+      </div></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  MARKS — per-class total marks
+// ══════════════════════════════════════════════
+function buildClassTabs(containerId,panelClass,onSel){
+  const el=document.getElementById(containerId);el.innerHTML='';
+  const ids=getClassIds();
+  let lastSection='';
+  ids.forEach((c,i)=>{
+    const locked=!canEdit(c);
+    const cls=CLASSES[c];
+    const section=cls?.section||'boys';
+    // Insert section divider
+    if(section!==lastSection){
+      const div=document.createElement('div');
+      div.className='section-divider '+section;
+      div.style.cssText='flex-basis:100%;margin:4px 0 2px;';
+      div.innerHTML=`<span>${section==='girls'?'👧 Girls Section':'👦 Boys Section'}</span>`;
+      el.appendChild(div);
+      lastSection=section;
+    }
+    const b=document.createElement('button');
+    b.className='ctab'+(i===0?' active':'')+(locked?' locked':'');
+    b.style.borderColor=section==='girls'?'rgba(236,72,153,.35)':'';
+    b.textContent=(cls?.name||'Class '+c)+(locked?' 🔒':'');
+    b.onclick=(()=>{
+      el.querySelectorAll('.ctab').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelectorAll('.'+panelClass).forEach(p=>p.classList.toggle('active',+p.dataset.c===c));
+      if(onSel)onSel(c);
+    });
+    el.appendChild(b);
+  });
+}
+
+function renderMarksTabs(){buildClassTabs('marksTabs','mpanel-m',null);}
+function renderMarksPanels(){
+  const cont=document.getElementById('marksPanels');cont.innerHTML='';
+  getClassIds().forEach((cls,i)=>{
+    const subs=getSubs(cls),editable=canEdit(cls),tm=getClassTM(cls);
+    const cols=`2fr ${TERMS.map(()=>'1fr').join(' ')} 1fr`;
+    const panel=document.createElement('div');
+    panel.className='cpanel mpanel-m'+(i===0?' active':'');panel.dataset.c=cls;
+    const hasPerSub = hasPerSubjectMarks(cls);
+    panel.innerHTML=`
+      <div class="class-marks-banner">
+        <span class="sy-badge">${CLASSES[cls]?.name||'Class '+cls}</span>
+        ${hasPerSub ? `<span style="font-size:11px;color:var(--t3)">✅ Per-subject marks active</span>` :
+          `<label>Total Marks per Subject:</label>
+           <input class="tm-inp" id="ctm-${cls}" type="number" min="1" value="${tm}" ${editable?`onchange="onClassTMChange(${cls},this.value)"`:'disabled'}>`}
+        ${hasPerSub && editable ? `<button class="btn-sm btn-add" onclick="openSubjectMarksModal(${cls})">⚙️ Edit Subject Marks</button>` : ''}
+        ${!hasPerSub && editable ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:#3b82f6;" onclick="enablePerSubjectMarks(${cls})">+ Per-Subject Marks</button>` : ''}
+        <span style="font-size:11px;color:var(--muted)">% = Obtained ÷ subject's total</span>
+      </div>
+      <div class="marks-wrap">
+        <div class="marks-thead" style="grid-template-columns:${cols}">
+          <div>Subject</div>${TERMS.map(t=>`<div><span class="tl tl${t.id.slice(1)}">${t.label}</span></div>`).join('')}<div>Grade</div>
+        </div><div id="mrows-${cls}"></div>
+      </div>
+      <div class="nbox"><label>📝 Teacher Notes – ${CLASSES[cls]?.name||'Class '+cls}</label>
+        <textarea id="nt-${cls}" ${editable?'':'disabled'} placeholder="Remarks…">${getN(DB,['marks','notes','c'+cls])||''}</textarea></div>`;
+    cont.appendChild(panel);
+    const rowEl=document.getElementById('mrows-'+cls);
+    subs.forEach(sub=>{
+      const sk=fbKey(sub),sd=getN(DB,['marks','scores','c'+cls,sk])||{};
+      const row=document.createElement('div');row.className='marks-row';row.style.gridTemplateColumns=cols;
+      row.innerHTML=`<div class="sname">${sub}</div>
+        ${TERMS.map(t=>`<div><input class="minp" type="number" min="0" value="${sd[t.id]!==undefined?sd[t.id]:''}" placeholder="Obt" data-c="${cls}" data-s="${sk}" data-t="${t.id}" ${editable?'onchange="onM(this)"':'disabled'}></div>`).join('')}
+        <div id="g-${cls}-${sk}"></div>`;
+      rowEl.appendChild(row);
+    });
+    if(editable){
+      document.getElementById('nt-'+cls).addEventListener('change',function(){
+        setN(DB,['marks','notes','c'+cls],this.value);markDirty('marks/notes/c'+cls,this.value||null);
+      });
+    }
+    updM(cls);
+  });
+}
+function onClassTMChange(cls,val){
+  const v=parseFloat(val)||100;
+  if(!CLASSES[cls])CLASSES[cls]={};
+  CLASSES[cls].totalMarks=v;
+  setN(DB,['settings','classes',cls,'totalMarks'],v);
+  markDirty('settings/classes/'+cls+'/totalMarks',v);
+  updM(cls);
+}
+function onM(inp){
+  const{c,s,t}=inp.dataset,v=inp.value.trim();
+  const sd=getN(DB,['marks','scores','c'+c,s])||{};
+  if(v==='')delete sd[t];else sd[t]=parseFloat(v);
+  setN(DB,['marks','scores','c'+c,s],sd);
+  markDirty('marks/scores/c'+c+'/'+s,Object.keys(sd).length?sd:null);
+  updM(+c);
+}
+function updM(cls){
+  const subs=getSubs(cls);
+  subs.forEach(sub=>{
+    const sk=fbKey(sub),sd=getN(DB,['marks','scores','c'+cls,sk])||{};
+    const subTotal=getSubjectTM(cls,sub);
+    const sc=TERMS.map(t=>sd[t.id]).filter(v=>v!==undefined&&!isNaN(v));
+    const avg=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null;
+    const p=avg!==null?(avg/subTotal*100):null;
+    const g=grade(p);
+    const el=document.getElementById(`g-${cls}-${sk}`);
+    if(el)el.innerHTML=`<span class="gbadge" style="background:${g.c}22;color:${g.c}" title="Out of ${subTotal}">${g.l}</span>`;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STUDENTS
+// ══════════════════════════════════════════════
+function renderStudentsTabs(){buildClassTabs('studentsTabs','spanel',null);}
+function renderStudentsPanels(){
+  const cont=document.getElementById('studentsPanels');cont.innerHTML='';
+  getClassIds().forEach((cls,i)=>{
+    const editable=canEdit(cls);
+    const panel=document.createElement('div');
+    panel.className='cpanel spanel'+(i===0?' active':'');panel.dataset.c=cls;
+    panel.innerHTML=`
+      <div class="inner-tabs">
+        <button class="itab active" onclick="selSInner(${cls},'list',this)">👥 Student List</button>
+        ${TERMS.map(t=>`<button class="itab" onclick="selSInner(${cls},'${t.id}',this)">${t.label} Results</button>`).join('')}
+      </div>
+      <div class="inner-panel active" id="si-${cls}-list"></div>
+      ${TERMS.map(t=>`<div class="inner-panel" id="si-${cls}-${t.id}"></div>`).join('')}`;
+    cont.appendChild(panel);
+    renderStudentList(cls);
+    TERMS.forEach(t=>renderTermResult(cls,t.id));
+  });
+}
+function selSInner(cls,tab,btn){
+  const p=document.querySelector(`.spanel[data-c="${cls}"]`);
+  p.querySelectorAll('.itab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  p.querySelectorAll('.inner-panel').forEach(x=>x.classList.remove('active'));
+  document.getElementById(`si-${cls}-${tab}`).classList.add('active');
+}
+function getStudents(cls){return getN(DB,['students','c'+cls])||[];}
+function saveStudents(cls){markDirty('students/c'+cls,getStudents(cls).length?getStudents(cls):null);}
+function renderStudentList(cls){
+  const editable=canEdit(cls),students=getStudents(cls);
+  const el=document.getElementById(`si-${cls}-list`);if(!el)return;
+  el.innerHTML=`<div class="card"><div class="card-head">
+    <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${students.length} Students</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      ${editable?`<label class="btn-sm btn-add" style="cursor:pointer;">📂 Import CSV<input type="file" accept=".csv,.txt" style="display:none" onchange="importStudents(${cls},this)"></label>
+      <button class="btn-sm btn-add" onclick="addStudent(${cls})">+ Add</button>`:''}
+    </div>
+  </div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student Name</th><th>Father Name</th><th>Roll No</th>${editable?'<th></th>':''}</tr></thead>
+  <tbody>${students.map((s,i)=>`<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td><input class="ainp2" value="${esc(s.name)}" ${editable?`onchange="updStudent(${cls},${i},'name',this.value)"`:'disabled'} style="width:100%;min-width:115px;"></td>
+    <td><input class="ainp2" value="${esc(s.father||'')}" ${editable?`onchange="updStudent(${cls},${i},'father',this.value)"`:'disabled'} style="width:100%;min-width:110px;"></td>
+    <td><input class="ainp2" value="${esc(s.roll||'')}" ${editable?`onchange="updStudent(${cls},${i},'roll',this.value)"`:'disabled'} style="width:60px;"></td>
+    ${editable?`<td><button class="btn-sm btn-del" onclick="delStudent(${cls},${i})">✕</button></td>`:''}
+  </tr>`).join('')}</tbody></table></div></div>`;
+}
+function importStudents(cls,inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+    const students=getStudents(cls);let added=0;
+    lines.forEach((line,i)=>{
+      if(i===0&&line.toLowerCase().includes('name'))return;
+      const cols=line.split(/[,\t;]+/).map(c=>c.trim().replace(/^"|"$/g,''));
+      if(!cols[0])return;
+      students.push({name:cols[0],father:cols[1]||'',roll:cols[2]||(students.length+1)+''});added++;
+    });
+    setN(DB,['students','c'+cls],students);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));
+    showToast('Imported '+added+' students','ok');
+  };
+  reader.readAsText(file);inp.value='';
+}
+function addStudent(cls){
+  const s=getStudents(cls);s.push({name:'New Student',father:'',roll:''+(s.length+1)});
+  setN(DB,['students','c'+cls],s);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));
+}
+function updStudent(cls,i,f,v){const s=getStudents(cls);if(s[i])s[i][f]=v;setN(DB,['students','c'+cls],s);saveStudents(cls);}
+function delStudent(cls,i){const s=getStudents(cls);s.splice(i,1);setN(DB,['students','c'+cls],s);saveStudents(cls);renderStudentList(cls);TERMS.forEach(t=>renderTermResult(cls,t.id));}
+function renderTermResult(cls,termId){
+  const editable=canEdit(cls),students=getStudents(cls),total=getClassTM(cls),subs=getSubs(cls);
+  const el=document.getElementById(`si-${cls}-${termId}`);const term=TERMS.find(t=>t.id===termId);
+  const getSTM=(sub)=>getSubjectTM(cls,sub);
+  if(!el)return;
+  if(!students.length){el.innerHTML='<div style="padding:18px;color:var(--muted);text-align:center;font-size:12px;">No students. Add in Student List tab.</div>';return;}
+  el.innerHTML=`<div style="margin-bottom:8px;padding:8px 12px;background:var(--surf2);border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span class="tl tl${termId.slice(1)}" style="padding:3px 10px;border-radius:100px;">${term?.label||termId}</span>
+    <span style="font-size:11px;color:var(--muted)">Total marks: <strong style="color:var(--gold)">${hasPerSubjectMarks(cls)?'Per-subject':total}</strong></span>
+    <button class="print-btn" style="margin-left:auto" onclick="window.print()">🖨️ Print Results</button>
+  </div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th>
+    ${subs.map(s=>`<th style="white-space:nowrap;font-size:9px">${s}</th>`).join('')}<th>Total</th><th>%</th><th>Grade</th>
+  </tr></thead><tbody id="tr-${cls}-${termId}"></tbody></table></div>`;
+  const tbody=document.getElementById(`tr-${cls}-${termId}`);
+  students.forEach((stu,si)=>{
+    const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
+    let totObt=0,maxObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSTM(s);});
+    const pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:var(--muted)">${si+1}</td><td style="font-weight:600">${esc(stu.name)}</td><td style="color:var(--muted)">${esc(stu.father||'')}</td>
+      ${subs.map(sub=>`<td><input class="ainp2" type="number" min="0" max="${getSTM(sub)}" value="${res[fbKey(sub)]!==undefined?res[fbKey(sub)]:''}" placeholder="Obt" style="width:50px;" title="Out of ${getSTM(sub)}" ${editable?`onchange="updResult(${cls},'${termId}',${si},'${fbKey(sub)}',this.value)"`:'disabled'}></td>`).join('')}
+      <td id="trT-${cls}-${termId}-${si}" style="font-weight:600">${totObt||'—'}</td>
+      <td id="trP-${cls}-${termId}-${si}" style="font-weight:700;color:${g.c}">${pctV?pctV.toFixed(1)+'%':'—'}</td>
+      <td><span class="gbadge" id="trG-${cls}-${termId}-${si}" style="background:${g.c}22;color:${g.c}">${g.l}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+function updResult(cls,tId,si,sk,val){
+  const subs=getSubs(cls);
+  const res=getN(DB,['results','c'+cls,tId,'s'+si])||{};
+  if(val===''||isNaN(parseFloat(val)))delete res[sk];else res[sk]=parseFloat(val);
+  setN(DB,['results','c'+cls,tId,'s'+si],res);
+  markDirty(`results/c${cls}/${tId}/s${si}`,Object.keys(res).length?res:null);
+  let totObt=0,maxObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);});
+  const pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
+  const tEl=document.getElementById(`trT-${cls}-${tId}-${si}`);
+  const pEl=document.getElementById(`trP-${cls}-${tId}-${si}`);
+  const gEl=document.getElementById(`trG-${cls}-${tId}-${si}`);
+  if(tEl)tEl.textContent=totObt||'—';
+  if(pEl){pEl.textContent=pctV?pctV.toFixed(1)+'%':'—';pEl.style.color=g.c;}
+  if(gEl){gEl.textContent=g.l;gEl.style.cssText=`background:${g.c}22;color:${g.c}`;}
+}
+
+// ══════════════════════════════════════════════
+//  PLANNER
+// ══════════════════════════════════════════════
+function renderMNav(){
+  const el=document.getElementById('mnav');el.innerHTML='';
+  MONTHS.forEach((m,i)=>{
+    const btn=document.createElement('button');
+    btn.className=`mbtn mt${m.term.slice(1)}`+(i===0?' active':'');
+    btn.textContent=m.label;btn.id='mb-'+m.key;
+    btn.onclick=(mk=>()=>{document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.mpanel').forEach(p=>p.classList.toggle('active',p.dataset.mk===mk));})(m.key);
+    el.appendChild(btn);
+  });
+}
+function renderPlannerPanels(){
+  const holder=document.getElementById('mholder');holder.innerHTML='';
+  MONTHS.forEach((m,mi)=>{
+    const tc=m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)';
+    const panel=document.createElement('div');panel.className='mpanel'+(mi===0?' active':'');panel.dataset.mk=m.key;
+    panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:5px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-family:Playfair Display,serif;font-size:17px;font-weight:700;">${m.label} ${m.yr}</span>
+        <span class="tl tl${m.term.slice(1)}" style="padding:3px 10px;border-radius:100px;">${TLbl[m.term]}</span>
+      </div>
+      <button class="print-btn" onclick="printPlanner('${m.key}','${m.label} ${m.yr}')">🖨️ Print Month</button>
+    </div><div class="planner-cls-list" id="pcl-${m.key}"></div>`;
+    holder.appendChild(panel);
+    const list=document.getElementById('pcl-'+m.key);
+    getClassIds().forEach(cls=>{
+      const editable=canEdit(cls);
+      const item=document.createElement('div');item.className='planner-cls-item';item.id=`pci-${m.key}-${cls}`;
+      item.innerHTML=`<div class="planner-cls-head" onclick="togglePCls('${m.key}',${cls})">
+        <div class="planner-cls-left">${CLASSES[cls]?.name||'Class '+cls}
+          <div class="pbar-wrap"><div class="pbar-fill" id="pbf-${m.key}-${cls}" style="background:${tc}"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;"><span class="planner-cls-pct" id="ppct-${m.key}-${cls}">0%</span><span class="planner-arrow">▼</span></div>
+      </div>
+      <div class="planner-cls-body"><div class="subj-grid-wrap">
+        <div class="subj-grid" id="sg-${m.key}-${cls}" style="grid-template-columns:repeat(${getSubs(cls).length},1fr);"></div>
+      </div></div>`;
+      list.appendChild(item);renderSubjCols(m.key,cls,tc,editable);
+    });
+  });
+}
+function togglePCls(mk,cls){document.getElementById(`pci-${mk}-${cls}`).classList.toggle('open');}
+function renderSubjCols(mk,cls,tc,editable){
+  const grid=document.getElementById(`sg-${mk}-${cls}`);if(!grid)return;
+  const subs=getSubs(cls);let total=0,done=0;
+  subs.forEach(s=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(s)])||[];total+=t.length;done+=t.filter(x=>x.done).length;});
+  const p=total?Math.round(done/total*100):0;
+  const pf=document.getElementById(`pbf-${mk}-${cls}`),ppct=document.getElementById(`ppct-${mk}-${cls}`);
+  if(pf)pf.style.width=p+'%';if(ppct)ppct.textContent=p+'%';
+  grid.innerHTML='';
+  subs.forEach(sub=>{
+    const sk=fbKey(sub),topics=getN(DB,['planner',mk,'c'+cls,sk])||[],sd=topics.filter(t=>t.done).length;
+    const col=document.createElement('div');col.className='subj-col';
+    col.innerHTML=`<div class="subj-col-hd">${esc(sub)}<span class="sc">${sd}/${topics.length}</span></div>
+      <div class="subj-col-body">${topics.map((t,i)=>`<div class="topic-row">
+        <div class="tck${t.done?' on':''}" onclick="${editable?`togT('${mk}',${cls},'${sk}',${i})`:''}"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="flex:1;min-width:0;"><div class="ttxt${t.done?' dn':''}">${esc(t.text)}</div></div>
+        ${editable?`<span class="tdel" onclick="delT('${mk}',${cls},'${sk}',${i})">×</span>`:''}
+      </div>`).join('')}</div>
+      ${editable?`<div class="subj-add"><input class="topic-inp" id="ti-${mk}-${cls}-${sk}" placeholder="Add topic…" onkeydown="if(event.key==='Enter')addT('${mk}',${cls},'${sk}')"><button class="topic-add-btn" onclick="addT('${mk}',${cls},'${sk}')">+</button></div>`:''}`;
+    grid.appendChild(col);
+  });
+}
+function savePlan(mk,cls,sk){
+  const topics=getN(DB,['planner',mk,'c'+cls,sk])||[];
+  const m=MONTHS.find(x=>x.key===mk);const tc=m?(m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)'):'var(--t3)';
+  markDirty(`planner/${mk}/c${cls}/${sk}`,topics.length?topics:null);
+  renderSubjCols(mk,cls,tc,canEdit(cls));
+}
+function addT(mk,cls,sk){const inp=document.getElementById(`ti-${mk}-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;const t=getN(DB,['planner',mk,'c'+cls,sk])||[];t.push({text:txt,done:false});setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);inp.value='';inp.focus();}
+function togT(mk,cls,sk,i){const t=getN(DB,['planner',mk,'c'+cls,sk])||[];if(t[i])t[i].done=!t[i].done;setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);}
+function delT(mk,cls,sk,i){const t=getN(DB,['planner',mk,'c'+cls,sk])||[];t.splice(i,1);setN(DB,['planner',mk,'c'+cls,sk],t);savePlan(mk,cls,sk);}
+
+// ══════════════════════════════════════════════
+//  DIARY
+// ══════════════════════════════════════════════
+function renderDiaryTabs(){buildClassTabs('diaryTabs','dpanel',null);}
+function renderDiaryPanels(){
+  const cont=document.getElementById('diaryPanels');cont.innerHTML='';
+  getClassIds().forEach((cls,i)=>{
+    const panel=document.createElement('div');panel.className='cpanel dpanel'+(i===0?' active':'');panel.dataset.c=cls;
+    panel.innerHTML=`<div class="diary-controls">
+        <label style="font-size:11px;color:var(--muted)">📅 Date:</label>
+        <input class="diary-date-inp" id="dd-${cls}" type="date" value="${todayKey()}" onchange="renderDiaryDay(${cls})">
+        <span style="font-size:11px;color:var(--muted)" id="ddlbl-${cls}"></span>
+      </div><div class="diary-grid" id="dg-${cls}"></div>`;
+    cont.appendChild(panel);renderDiaryDay(cls);
+  });
+}
+function renderDiaryDay(cls){
+  const editable=canEdit(cls),dk=document.getElementById('dd-'+cls)?.value||todayKey();
+  const lbl=document.getElementById('ddlbl-'+cls);if(lbl)lbl.textContent=fmtDay(dk);
+  const grid=document.getElementById('dg-'+cls);if(!grid)return;
+  // Get periods for teachers info
+  grid.innerHTML='';
+  getSubs(cls).forEach(sub=>{
+    const sk=fbKey(sub),hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+    const periods=getN(DB,['timetable','c'+cls,sk])||[];
+    const teacherInfo=periods.length?periods.map(p=>`P${p.period}: ${p.teacher}`).join(', '):'';
+    const card=document.createElement('div');card.className='diary-subj-card';
+    card.innerHTML=`<div class="diary-subj-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:400">${teacherInfo}</span></div>
+      <div class="diary-hw-list">${hws.map((h,i)=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}',${i})">×</span>`:''}</div>`).join('')}${!hws.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
+      ${editable?`<div class="diary-add-row"><input class="diary-inp" id="di-${cls}-${sk}" placeholder="Add homework…" onkeydown="if(event.key==='Enter')addHw(${cls},'${sk}','${dk}')"><button class="diary-add-btn" onclick="addHw(${cls},'${sk}','${dk}')">+</button></div>`:''}`;
+    grid.appendChild(card);
+  });
+}
+function addHw(cls,sk,dk){const inp=document.getElementById(`di-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.push(txt);setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws);inp.value='';renderDiaryDay(cls);}
+function delHw(cls,sk,dk,i){const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.splice(i,1);setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws.length?hws:null);renderDiaryDay(cls);}
+
+// ══════════════════════════════════════════════
+//  PERIODS / TIMETABLE
+// ══════════════════════════════════════════════
+function renderTimetableTabs(){buildClassTabs('ttTabs','ttpanel',null);}
+function renderTimetablePanels(){
+  const cont=document.getElementById('ttPanels');cont.innerHTML='';
+  getClassIds().forEach((cls,i)=>{
+    const editable=canEdit(cls);
+    const panel=document.createElement('div');panel.className='cpanel ttpanel'+(i===0?' active':'');panel.dataset.c=cls;
+    panel.innerHTML=`<div class="period-grid" id="pg-${cls}"></div>`;
+    cont.appendChild(panel);renderPeriodGrid(cls,editable);
+  });
+}
+function renderPeriodGrid(cls,editable){
+  const grid=document.getElementById('pg-'+cls);if(!grid)return;
+  const subs=getSubs(cls);grid.innerHTML='';
+  subs.forEach(sub=>{
+    const sk=fbKey(sub),periods=getN(DB,['timetable','c'+cls,sk])||[];
+    const card=document.createElement('div');card.className='period-card';
+    card.innerHTML=`<div class="period-card-hd">${esc(sub)}<span style="font-size:10px;font-weight:400;color:var(--muted)">${periods.length}</span></div>
+      <div class="period-list">${periods.map((p,i)=>`<div class="period-item">
+        <span class="period-badge">P${p.period||i+1}</span><span style="flex:1">${esc(p.teacher)}</span>
+        ${editable?`<span style="cursor:pointer;color:var(--muted);font-size:12px" onclick="delPeriod(${cls},'${sk}',${i})">×</span>`:''}
+      </div>`).join('')}${!periods.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">None</span>':''}</div>
+      ${editable?`<div class="period-add-row">
+        <input class="period-inp" id="pt-${cls}-${sk}" placeholder="Teacher name">
+        <input class="period-inp" id="pp-${cls}-${sk}" type="number" min="1" max="10" placeholder="Period #">
+        <button class="topic-add-btn" onclick="addPeriod(${cls},'${sub}','${sk}')">+</button>
+      </div>`:''}`;
+    grid.appendChild(card);
+  });
+}
+function addPeriod(cls,sub,sk){
+  const teacher=document.getElementById(`pt-${cls}-${sk}`).value.trim();
+  const period=document.getElementById(`pp-${cls}-${sk}`).value.trim();
+  if(!teacher)return;
+  const periods=getN(DB,['timetable','c'+cls,sk])||[];
+  periods.push({teacher,period:period||periods.length+1,subject:sub});
+  setN(DB,['timetable','c'+cls,sk],periods);markDirty(`timetable/c${cls}/${sk}`,periods);
+  renderPeriodGrid(cls,canEdit(cls));
+}
+function delPeriod(cls,sk,i){
+  const periods=getN(DB,['timetable','c'+cls,sk])||[];periods.splice(i,1);
+  setN(DB,['timetable','c'+cls,sk],periods);markDirty(`timetable/c${cls}/${sk}`,periods.length?periods:null);
+  renderPeriodGrid(cls,canEdit(cls));
+}
+
+// ══════════════════════════════════════════════
+//  WEEKLY REPORT
+// ══════════════════════════════════════════════
+function populateReportClassSel(){
+  const sel=document.getElementById('reportClass');
+  if(!sel)return;
+  sel.innerHTML='<option value="">All Classes</option>'+getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');
+}
+
+function generateReport(){
+  const dateVal=document.getElementById('reportDate').value||todayKey();
+  const filterCls=document.getElementById('reportClass').value;
+  const {start,end}=getWeekRange(dateVal);
+  const dates=getWeekDates(start);
+  const classIds=filterCls?[+filterCls]:getClassIds();
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const cont=document.getElementById('reportContent');
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📋 Weekly Activity Report</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtDate(start)} – ${fmtDate(end)} &nbsp;·&nbsp; Generated ${fmtDate(todayKey())}</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+  </div>`;
+
+  classIds.forEach(cls=>{
+    const subs=getSubs(cls);
+    const className=CLASSES[cls]?.name||'Class '+cls;
+    let classTotal=0,classDone=0;
+
+    // Build per-day per-subject matrix
+    const matrix=dates.map((dk,di)=>{
+      const dayData={date:dk,day:dayNames[di],subs:{}};
+      let dayHasAny=false;
+      subs.forEach(sub=>{
+        const sk=fbKey(sub);
+        const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+        dayData.subs[sub]=hws;
+        if(hws.length){classDone++;dayHasAny=true;}
+        classTotal++;
+      });
+      dayData.hasAny=dayHasAny;
+      return dayData;
+    });
+
+    const coverage=classTotal?Math.round(classDone/classTotal*100):0;
+    const statClass=coverage>=70?'stat-good':coverage>=40?'stat-warn':'stat-bad';
+    const statLabel=coverage>=70?'Good':coverage>=40?'Partial':'Low';
+
+    html+=`<div class="report-card">
+      <div class="report-card-hd">${className} <span class="report-stat ${statClass}">${coverage}% coverage · ${statLabel}</span></div>
+      ${matrix.map(day=>{
+        const totalHws=subs.reduce((a,s)=>a+day.subs[s].length,0);
+        return`<div class="day-row">
+          <div class="day-label"><strong>${day.day}</strong><br><span style="font-size:10px">${day.date.slice(5)}</span></div>
+          <div class="day-content">
+            ${day.hasAny?subs.filter(s=>day.subs[s].length>0).map(s=>`
+              <div style="margin-bottom:4px;">
+                <span style="font-size:10px;color:var(--muted);font-weight:600">${s}:</span>
+                ${day.subs[s].map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}
+              </div>`).join('')
+              :`<span class="no-hw-tag">No diary entries</span>`}
+          </div>
+          <div style="font-size:10px;color:var(--muted);min-width:36px;text-align:right">${totalHws>0?totalHws+' hw':'—'}</div>
+        </div>`;
+      }).join('')}
+      <div style="padding:8px 13px;background:var(--surf2);border-top:1px solid var(--border);font-size:11px;display:flex;gap:16px;flex-wrap:wrap;">
+        <span>📝 Total HW added: <strong>${matrix.reduce((a,d)=>a+subs.reduce((b,s)=>b+d.subs[s].length,0),0)}</strong></span>
+        <span>📅 Days with entries: <strong>${matrix.filter(d=>d.hasAny).length}/7</strong></span>
+        <span>📚 Subjects covered: <strong>${[...new Set(matrix.flatMap(d=>subs.filter(s=>d.subs[s].length>0)))].length}/${subs.length}</strong></span>
+      </div>
+    </div>`;
+  });
+
+  // Summary table across all classes
+  if(classIds.length>1){
+    html+=`<div class="report-card"><div class="report-card-hd">📊 Summary – All Classes</div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Class</th>${dayNames.map(d=>`<th>${d}</th>`).join('')}<th>Total HW</th><th>Coverage</th></tr></thead><tbody>
+      ${classIds.map(cls=>{
+        const subs=getSubs(cls);
+        const dayTotals=dates.map(dk=>subs.reduce((a,s)=>(getN(DB,['diary','c'+cls,dk,fbKey(s)])||[]).length+a,0));
+        const tot=dayTotals.reduce((a,b)=>a+b,0);
+        const cov=dates.reduce((a,dk)=>a+(subs.some(s=>(getN(DB,['diary','c'+cls,dk,fbKey(s)])||[]).length>0)?1:0),0);
+        return`<tr><td style="font-weight:600">${CLASSES[cls]?.name||'Class '+cls}</td>
+          ${dayTotals.map(n=>`<td style="text-align:center;color:${n>0?'var(--t3)':'var(--muted)'}">${n||'—'}</td>`).join('')}
+          <td style="font-weight:700">${tot}</td>
+          <td><span class="report-stat ${cov>=5?'stat-good':cov>=3?'stat-warn':'stat-bad'}">${cov}/7 days</span></td></tr>`;
+      }).join('')}
+      </tbody></table></div></div>`;
+  }
+  cont.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
+//  BOARDS
+// ══════════════════════════════════════════════
+function selBrd(btn,cls){document.querySelectorAll('#brdTabs .ctab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBrdPanel(cls);}
+function renderBrdPanel(cls){
+  const s=getN(DB,['boards','c'+cls])||[];
+  const medals=['🥇','🥈','🥉'];
+  const sorted=[...s].sort((a,b)=>(b.obtained/b.total)-(a.obtained/a.total));
+  const top3=sorted.slice(0,3);
+  let podHtml='';
+  if(top3.length){
+    podHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:10px;">
+      ${top3.map((r,i)=>{const p=r.total?((r.obtained/r.total)*100).toFixed(1):'0';const cols=[['#fbbf24','rgba(251,191,36,.08)'],['#9ca3af','rgba(156,163,175,.08)'],['#d97706','rgba(217,119,6,.08)']];const[col,bg]=cols[i];return`<div style="border:1.5px solid ${col};border-radius:9px;padding:11px;background:${bg};text-align:center;">
+        <div style="font-size:22px;margin-bottom:2px">${medals[i]}</div>
+        <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:700;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'} Position</div>
+        <div style="font-size:13px;font-weight:700;">${esc(r.name)}</div>
+        <div style="font-size:10px;color:var(--muted)">S/O ${esc(r.father||'')}</div>
+        <div style="font-size:20px;font-weight:900;color:${col};margin-top:3px">${p}%</div>
+      </div>`}).join('')}
+    </div>`;
+  }
+  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div><button class="print-btn" onclick="window.print()">🖨️ Print</button></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
+    <tbody>${s.map((r,i)=>`<tr><td><input class="ainp2" value="${esc(r.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td><td><input class="ainp2" value="${esc(r.father||'')}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:120px;"></td><td><input class="ainp2" type="number" value="${r.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td><td><input class="ainp2" type="number" value="${r.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td><td><input class="ainp2" type="number" value="${r.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:65px;"></td><td style="font-weight:700;color:#22c55e">${r.total?((r.obtained/r.total)*100).toFixed(1)+'%':'—'}</td><td><button class="btn-sm btn-del" onclick="delBrd('${cls}',${i})">✕</button></td></tr>`).join('')}
+    </tbody></table></div>
+    <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;">
+      <input class="ainp2" id="bn-${cls}" placeholder="Student Name" style="flex:2;min-width:110px;"><input class="ainp2" id="bf-${cls}" placeholder="Father" style="flex:2;min-width:110px;"><input class="ainp2" id="by-${cls}" type="number" placeholder="Year" style="width:65px;" value="${new Date().getFullYear()}"><input class="ainp2" id="bt-${cls}" type="number" placeholder="Total" style="width:60px;"><input class="ainp2" id="bo-${cls}" type="number" placeholder="Obtained" style="width:70px;"><button class="addbtn2" onclick="addBrd('${cls}')">+ Add</button>
+    </div></div>`;
+}
+function saveBrd(cls){const s=getN(DB,['boards','c'+cls])||[];markDirty('boards/c'+cls,s.length?s:null);renderBrdPanel(cls);}
+function addBrd(cls){const name=document.getElementById('bn-'+cls).value.trim();if(!name)return;const s=getN(DB,['boards','c'+cls])||[];s.push({name,father:document.getElementById('bf-'+cls).value.trim(),year:parseInt(document.getElementById('by-'+cls).value)||new Date().getFullYear(),total:parseFloat(document.getElementById('bt-'+cls).value)||0,obtained:parseFloat(document.getElementById('bo-'+cls).value)||0});setN(DB,['boards','c'+cls],s);saveBrd(cls);}
+function updBrd(cls,i,f,v){const s=getN(DB,['boards','c'+cls])||[];if(s[i])s[i][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;setN(DB,['boards','c'+cls],s);markDirty('boards/c'+cls,s.length?s:null);}
+function delBrd(cls,i){const s=getN(DB,['boards','c'+cls])||[];s.splice(i,1);setN(DB,['boards','c'+cls],s);saveBrd(cls);}
+
+// ══════════════════════════════════════════════
+//  WEEKLY TESTS
+// ══════════════════════════════════════════════
+function selWk(sec){document.getElementById('wks-matric').classList.toggle('active',sec==='matric');document.getElementById('wks-fsc').classList.toggle('active',sec==='fsc');renderWkPanel(sec);}
+function renderWkPanel(sec){
+  const tests=getN(DB,['weekly',sec])||[],classes=sec==='matric'?['9','10']:['11','12'];
+  let html=`<div class="card" style="margin-bottom:10px;"><div class="card-head"><div class="card-title">➕ New Weekly Test</div></div>
+    <div style="padding:9px 13px;display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Class</label><select class="ainp2" id="wk-cls">${classes.map(c=>`<option value="${c}">Class ${c}</option>`).join('')}</select></div>
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Date</label><input class="ainp2" id="wk-date" type="date" value="${todayKey()}" style="width:128px;"></div>
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Subject</label><input class="ainp2" id="wk-subj" placeholder="Subject" style="width:108px;"></div>
+      <div style="display:flex;flex-direction:column;gap:2px;"><label style="font-size:10px;color:var(--muted)">Total Marks</label><input class="ainp2" id="wk-total" type="number" value="50" style="width:76px;"></div>
+      <button class="addbtn2" style="align-self:flex-end;" onclick="addWkTest('${sec}')">+ Create</button>
+    </div></div>`;
+  if(!tests.length)html+='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">No tests yet.</div>';
+  else tests.forEach((test,ti)=>{
+    html+=`<div class="card"><div class="card-head"><div class="card-title">📝 ${esc(test.subject)} · Class ${esc(test.class)} · ${esc(test.date)} · /${test.total}</div><button class="btn-sm btn-del" onclick="delWkTest('${sec}',${ti})">✕ Delete</button></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Obtained/${test.total}</th><th>%</th><th>Status</th><th></th></tr></thead><tbody>
+    ${(test.students||[]).map((s,si)=>{const p=test.total?((s.obtained/test.total)*100).toFixed(1):0;const pass=parseFloat(p)>=60;return`<tr><td><input class="ainp2" value="${esc(s.name)}" onchange="updWkS('${sec}',${ti},${si},'name',this.value)" style="min-width:100px;width:100%;"></td><td><input class="ainp2" value="${esc(s.father||'')}" onchange="updWkS('${sec}',${ti},${si},'father',this.value)" style="min-width:100px;width:100%;"></td><td style="white-space:nowrap;"><input class="ainp2" type="number" value="${s.obtained}" style="width:55px;" onchange="updWkS('${sec}',${ti},${si},'obtained',parseFloat(this.value));renderWkPanel('${sec}')">/${test.total}</td><td style="font-weight:700;color:${pass?'#22c55e':'#ef4444'}">${p}%</td><td><span class="${pass?'pass-pill':'fail-pill'}">${pass?'PASS':'FAIL'}</span></td><td><button class="btn-sm btn-del" onclick="delWkS('${sec}',${ti},${si})">✕</button></td></tr>`;}).join('')}
+    </tbody></table></div>
+    <div style="padding:7px 13px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;">
+      <input class="ainp2" id="ws-n-${sec}-${ti}" placeholder="Student Name" style="flex:2;min-width:100px;"><input class="ainp2" id="ws-f-${sec}-${ti}" placeholder="Father" style="flex:2;min-width:100px;"><input class="ainp2" id="ws-m-${sec}-${ti}" type="number" placeholder="Marks" style="width:65px;"><button class="addbtn2" onclick="addWkS('${sec}',${ti})">+ Student</button>
+    </div></div>`;
+  });
+  document.getElementById('wkPanel').innerHTML=html;
+}
+function saveWk(sec){markDirty('weekly/'+sec,getN(DB,['weekly',sec])||null);}
+function addWkTest(sec){const cls=document.getElementById('wk-cls').value,date=document.getElementById('wk-date').value,subj=document.getElementById('wk-subj').value.trim(),total=parseFloat(document.getElementById('wk-total').value)||50;if(!subj||!date)return;const t=getN(DB,['weekly',sec])||[];t.push({class:cls,date,subject:subj,total,students:[]});setN(DB,['weekly',sec],t);saveWk(sec);renderWkPanel(sec);}
+function delWkTest(sec,ti){const t=getN(DB,['weekly',sec])||[];t.splice(ti,1);setN(DB,['weekly',sec],t);saveWk(sec);renderWkPanel(sec);}
+function addWkS(sec,ti){const name=document.getElementById(`ws-n-${sec}-${ti}`).value.trim();if(!name)return;const father=document.getElementById(`ws-f-${sec}-${ti}`).value.trim(),obtained=parseFloat(document.getElementById(`ws-m-${sec}-${ti}`).value)||0,t=getN(DB,['weekly',sec])||[];if(!t[ti].students)t[ti].students=[];t[ti].students.push({name,father,obtained});setN(DB,['weekly',sec],t);saveWk(sec);renderWkPanel(sec);}
+function updWkS(sec,ti,si,f,v){const t=getN(DB,['weekly',sec])||[];if(t[ti]&&t[ti].students&&t[ti].students[si])t[ti].students[si][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;setN(DB,['weekly',sec],t);saveWk(sec);}
+function delWkS(sec,ti,si){const t=getN(DB,['weekly',sec])||[];if(t[ti]&&t[ti].students)t[ti].students.splice(si,1);setN(DB,['weekly',sec],t);saveWk(sec);renderWkPanel(sec);}
+
+// ══════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════
+function renderSettings(){
+  const sy=getN(DB,['settings','sessionYear'])||DEFAULT_SETTINGS.sessionYear;
+  const school=Object.assign({},DEFAULT_SETTINGS.school,getN(DB,['settings','school'])||{});
+  const socials=school.socials||DEFAULT_SETTINGS.school.socials;
+  const founderPic=getN(DB,['settings','founderPic'])||'';
+  document.getElementById('settingsContent').innerHTML=`
+  <div class="settings-grid">
+    <div class="settings-card">
+      <div class="settings-card-hd">🏫 School Info</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>School Name</label><input class="s-inp" id="ss-name" value="${esc(school.name)}"></div>
+        <div class="settings-row"><label>City / Tagline</label><input class="s-inp" id="ss-city" value="${esc(school.city)}"></div>
+        <div class="settings-row"><label>Phone 1</label><input class="s-inp" id="ss-ph1" value="${esc(school.phone1)}"></div>
+        <div class="settings-row"><label>Phone 2</label><input class="s-inp" id="ss-ph2" value="${esc(school.phone2)}"></div>
+        <div class="settings-row"><label>Session Year</label><input class="s-inp" id="ss-sy" value="${esc(sy)}" style="width:100px;"></div>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-card-hd">🔗 Social Media Links <button class="btn-sm btn-add" style="font-size:10px;margin-left:auto;" onclick="addSocialRow()">+ Add</button></div>
+      <div class="settings-card-body" id="socialsContainer">
+        ${socials.map((s,i)=>`<div class="social-row" id="sr-${i}">
+          <input class="social-icon-inp" id="si-icon-${i}" value="${esc(s.icon||'🔗')}" title="Icon/emoji">
+          <input class="social-label-inp" id="si-label-${i}" value="${esc(s.label)}" placeholder="Label">
+          <input class="social-url-inp" id="si-url-${i}" value="${esc(s.url)}" placeholder="URL (without https://)">
+          <button class="btn-sm btn-del" onclick="delSocialRow(${i})">✕</button>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-card-hd">👤 Founder / Principal</div>
+      <div class="settings-card-body">
+        ${founderPic?`<img src="${founderPic}" class="founder-pic-preview" id="fpPrev">`:'<div id="fpPrev" style="width:66px;height:66px;border-radius:50%;background:var(--surf2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px;">👤</div>'}
+        <label class="btn-sm btn-add" style="cursor:pointer;width:fit-content;">📷 Upload Photo<input type="file" accept="image/*" style="display:none" onchange="uploadFounderPic(this)"></label>
+        <div class="settings-row"><label>Founder Name</label><input class="s-inp" id="ss-fn" value="${esc(school.founderName)}"></div>
+        <div class="settings-row"><label>Description</label><textarea class="s-inp" id="ss-fd" rows="3" style="resize:vertical">${esc(school.founderDesc)}</textarea></div>
+      </div>
+    </div>
+    ${TERMS.map(t=>`<div class="settings-card">
+      <div class="settings-card-hd">📋 ${t.label}</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>Label</label><input class="s-inp" id="se-lbl-${t.id}" value="${esc(t.label)}"></div>
+        <div class="settings-row"><label>Exam Date</label><input class="s-inp" id="se-exam-${t.id}" type="date" value="${t.exam}"></div>
+        <div class="settings-row"><label>Syllabus By</label><input class="s-inp" id="se-syl-${t.id}" type="date" value="${t.syllabus}"></div>
+      </div>
+    </div>`).join('')}
+    <div class="settings-card" style="grid-column:1/-1">
+      <div class="settings-card-hd">📚 Classes &amp; Subjects <button class="btn-sm btn-add" style="margin-left:auto;" onclick="addNewClass()">+ Add Class</button></div>
+      <div class="settings-card-body"><div id="classesConfig"></div></div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-card-hd">📆 Academic Months</div>
+      <div class="settings-card-body" style="max-height:240px;overflow-y:auto;">
+        ${MONTHS.map(m=>`<div class="settings-row"><label>${m.label} ${m.yr}</label><select class="s-inp" id="smt-${m.key}" style="flex:0;width:90px;">${TERMS.map(t=>`<option value="${t.id}"${m.term===t.id?' selected':''}>${t.label}</option>`).join('')}</select></div>`).join('')}
+      </div>
+    </div>
+  </div>
+  <button class="s-save-btn" onclick="saveSettings()">💾 Save All Settings</button>`;
+  renderClassesConfig();
+}
+
+let _socialCount=0;
+function addSocialRow(){
+  const cont=document.getElementById('socialsContainer');if(!cont)return;
+  _socialCount++;
+  const id=Date.now();
+  const div=document.createElement('div');div.className='social-row';div.id='sr-x'+id;
+  div.innerHTML=`<input class="social-icon-inp" id="si-icon-x${id}" value="🔗"><input class="social-label-inp" id="si-label-x${id}" placeholder="Label"><input class="social-url-inp" id="si-url-x${id}" placeholder="URL"><button class="btn-sm btn-del" onclick="this.parentNode.remove()">✕</button>`;
+  cont.appendChild(div);
+}
+function delSocialRow(i){document.getElementById('sr-'+i)?.remove();}
+
+function collectSocials(){
+  const cont=document.getElementById('socialsContainer');if(!cont)return[];
+  return Array.from(cont.querySelectorAll('.social-row')).map(row=>{
+    const icon=row.querySelector('[id^="si-icon"]')?.value.trim()||'🔗';
+    const label=row.querySelector('[id^="si-label"]')?.value.trim()||'';
+    const url=row.querySelector('[id^="si-url"]')?.value.trim()||'';
+    return{icon,label,url};
+  }).filter(s=>s.label&&s.url);
+}
+
+function renderClassesConfig(){
+  const el=document.getElementById('classesConfig');if(!el)return;el.innerHTML='';
+  getClassIds().forEach(cls=>{
+    const cc=CLASSES[cls];const subs=cc?.subjects||[];
+    const div=document.createElement('div');div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:7px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;';
+    div.innerHTML=`<input class="s-inp" value="${esc(cc?.name||'Class '+cls)}" id="cn-${cls}" style="width:120px;"><span style="font-size:11px;color:var(--muted)">Total Marks:</span><input class="tm-inp" id="ctm-s-${cls}" value="${cc?.totalMarks||100}" type="number" min="1"><span style="font-size:11px;color:var(--muted)">Subjects:</span><input class="s-inp" value="${subs.map(s=>esc(s)).join(', ')}" id="cs-${cls}" style="flex:1;min-width:180px;"><button class="btn-sm btn-del" onclick="deleteClass(${cls})">✕ Remove</button>`;
+    el.appendChild(div);
+  });
+}
+function addNewClass(){
+  const ids=getClassIds();const newId=ids.length?Math.max(...ids)+1:1;
+  CLASSES[newId]={name:'Class '+newId,subjects:['English','Maths','Urdu'],totalMarks:100};
+  renderClassesConfig();showToast('Class '+newId+' added – set subjects then Save','info');
+}
+function deleteClass(cls){
+  if(!confirm('Remove '+(CLASSES[cls]?.name||'Class '+cls)+'?'))return;
+  delete CLASSES[cls];renderClassesConfig();showToast('Removed – click Save Settings','info');
+}
+function uploadFounderPic(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    const prev=document.getElementById('fpPrev');
+    if(prev){if(prev.tagName==='IMG')prev.src=dataUrl;else prev.outerHTML=`<img src="${dataUrl}" class="founder-pic-preview" id="fpPrev">`;}
+    setN(DB,['settings','founderPic'],dataUrl);markDirty('settings/founderPic',dataUrl);
+    showToast('Photo ready – click Save All Settings','info');
+  };
+  reader.readAsDataURL(file);
+}
+function saveSettings(){
+  const sy=document.getElementById('ss-sy').value.trim();
+  const newTerms=TERMS.map(t=>({id:t.id,label:document.getElementById(`se-lbl-${t.id}`)?.value.trim()||t.label,exam:document.getElementById(`se-exam-${t.id}`)?.value||t.exam,syllabus:document.getElementById(`se-syl-${t.id}`)?.value||t.syllabus}));
+  const newMonths=MONTHS.map(m=>({...m,term:document.getElementById('smt-'+m.key)?.value||m.term}));
+  getClassIds().forEach(cls=>{
+    const nameEl=document.getElementById('cn-'+cls);const subEl=document.getElementById('cs-'+cls);const tmEl=document.getElementById('ctm-s-'+cls);
+    if(nameEl&&subEl)CLASSES[cls]={name:nameEl.value.trim()||'Class '+cls,subjects:subEl.value.split(',').map(s=>s.trim()).filter(Boolean),totalMarks:parseFloat(tmEl?.value)||100};
+  });
+  const school={name:document.getElementById('ss-name').value.trim(),city:document.getElementById('ss-city').value.trim(),phone1:document.getElementById('ss-ph1').value.trim(),phone2:document.getElementById('ss-ph2').value.trim(),founderName:document.getElementById('ss-fn').value.trim(),founderDesc:document.getElementById('ss-fd').value.trim(),socials:collectSocials()};
+  const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,totalMarks:100};
+  setN(DB,['settings'],newSettings);markDirty('settings',newSettings);
+  SETTINGS=newSettings;TERMS=newTerms;MONTHS=newMonths;SCHOOL=school;
+  document.getElementById('hSub').textContent=`${school.phone1} / ${school.phone2}`;
+  renderCD();showToast('Settings saved – click 💾 Save Changes to sync','info');
+}
+
+// ══════════════════════════════════════════════
+//  RENDER ALL
+// ══════════════════════════════════════════════
+function renderAll(){
+  populatePlannerReportSelects();
+  renderCD();
+  renderMarksTabs();renderMarksPanels();
+  renderStudentsTabs();renderStudentsPanels();
+  renderMNav();renderPlannerPanels();
+  renderDiaryTabs();renderDiaryPanels();
+  renderTimetableTabs();renderTimetablePanels();
+}
+
+// ══════════════════════════════════════════════
+//  PER-SUBJECT MARKS MODAL
+// ══════════════════════════════════════════════
+function enablePerSubjectMarks(cls){
+  // Copy class total to all subjects as starting point
+  const subs=getSubs(cls), baseTM=getClassTM(cls);
+  if(!CLASSES[cls]) CLASSES[cls]={};
+  const sm={};subs.forEach(s=>sm[s]=baseTM);
+  CLASSES[cls].subjectMarks=sm;
+  setN(DB,['settings','classes',cls,'subjectMarks'],sm);
+  markDirty('settings/classes/'+cls+'/subjectMarks',sm);
+  renderMarksPanels();
+  showToast('Per-subject marks enabled for '+( CLASSES[cls]?.name||'Class '+cls),'ok');
+  setTimeout(()=>openSubjectMarksModal(cls),200);
+}
+
+function openSubjectMarksModal(cls){
+  const subs=getSubs(cls);
+  const existing=CLASSES[cls]?.subjectMarks||{};
+  const overlay=document.createElement('div');
+  overlay.id='smModal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(13,17,23,.85);z-index:500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML=`<div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:17px;font-weight:900;">${CLASSES[cls]?.name||'Class '+cls} · Subject Marks</div>
+      <button onclick="document.getElementById('smModal').remove()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surf2);color:var(--muted);cursor:pointer;font-size:13px;">✕</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px;">Set the total marks for each subject individually. Students' percentages will be calculated against these specific totals.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;" id="smRows">
+      ${subs.map(sub=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surf2);border-radius:8px;border:1px solid var(--border);">
+        <span style="flex:1;font-weight:600;font-size:13px;">${sub}</span>
+        <label style="font-size:11px;color:var(--muted);">Total Marks:</label>
+        <input class="tm-inp" id="sm-${cls}-${fbKey(sub)}" type="number" min="1" max="1000" value="${existing[sub]||getClassTM(cls)}" style="width:80px;">
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="document.getElementById('smModal').remove()" style="padding:7px 16px;border-radius:7px;border:1px solid var(--border);background:var(--surf2);color:var(--muted);cursor:pointer;font-size:12px;">Cancel</button>
+      <button onclick="saveSubjectMarks(${cls})" style="padding:7px 18px;border-radius:7px;border:none;background:var(--gold);color:#000;font-size:12px;font-weight:700;cursor:pointer;">💾 Save Subject Marks</button>
+    </div>
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(239,68,68,.08);border-radius:7px;border:1px solid rgba(239,68,68,.2);font-size:11px;color:#ef4444;">
+      ⚠ Removing per-subject marks: <button onclick="disablePerSubjectMarks(${cls})" style="padding:2px 8px;border-radius:5px;border:none;background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Reset to Single Total</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveSubjectMarks(cls){
+  const subs=getSubs(cls);const sm={};
+  subs.forEach(sub=>{
+    const inp=document.getElementById(`sm-${cls}-${fbKey(sub)}`);
+    sm[sub]=parseFloat(inp?.value)||getClassTM(cls);
+  });
+  if(!CLASSES[cls])CLASSES[cls]={};
+  CLASSES[cls].subjectMarks=sm;
+  setN(DB,['settings','classes',cls,'subjectMarks'],sm);
+  markDirty('settings/classes/'+cls+'/subjectMarks',sm);
+  document.getElementById('smModal')?.remove();
+  renderMarksPanels();
+  showToast('Subject marks saved','ok');
+}
+
+function disablePerSubjectMarks(cls){
+  if(!confirm('Remove per-subject marks and use one total for all subjects?'))return;
+  if(CLASSES[cls]) delete CLASSES[cls].subjectMarks;
+  setN(DB,['settings','classes',cls,'subjectMarks'],null);
+  markDirty('settings/classes/'+cls+'/subjectMarks',null);
+  document.getElementById('smModal')?.remove();
+  renderMarksPanels();
+  showToast('Switched to single total marks','info');
+}
+
+// ══════════════════════════════════════════════
+//  PLANNER REPORT
+// ══════════════════════════════════════════════
+function populatePlannerReportSelects(){
+  const mSel=document.getElementById('prMonth');
+  const cSel=document.getElementById('prClass');
+  if(mSel){mSel.innerHTML=MONTHS.map((m,i)=>`<option value="${m.key}">${m.label} ${m.yr}</option>`).join('');}
+  if(cSel){cSel.innerHTML='<option value="">All Classes</option>'+getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');}
+}
+
+function generatePlannerReport(){
+  const mk=document.getElementById('prMonth')?.value;
+  const filterCls=document.getElementById('prClass')?.value;
+  if(!mk){showToast('Select a month','info');return;}
+  const m=MONTHS.find(x=>x.key===mk);
+  const classIds=filterCls?[+filterCls]:getClassIds();
+  const cont=document.getElementById('plannerReportContent');
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📊 Planner Report · ${esc(m.label)} ${m.yr}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${TLbl[m.term]} · Generated ${new Date().toLocaleDateString('en-IN')}</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>`;
+
+  // Summary row
+  let summaryRows=[];
+  classIds.forEach(cls=>{
+    const subs=getSubs(cls);let tot=0,dn=0;
+    subs.forEach(s=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
+    summaryRows.push({cls,name:CLASSES[cls]?.name||'Class '+cls,tot,dn,pct:tot?Math.round(dn/tot*100):0});
+  });
+
+  // Overall summary card
+  const totalTopics=summaryRows.reduce((a,r)=>a+r.tot,0);
+  const doneTopics=summaryRows.reduce((a,r)=>a+r.dn,0);
+  const overallPct=totalTopics?Math.round(doneTopics/totalTopics*100):0;
+  const statCls=overallPct>=70?'stat-good':overallPct>=40?'stat-warn':'stat-bad';
+  html+=`<div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div><div style="font-size:11px;color:var(--muted)">Overall Progress</div><div style="font-size:28px;font-weight:900;font-family:Playfair Display,serif">${overallPct}%</div></div>
+    <div style="flex:1;min-width:120px;"><div style="height:10px;background:var(--border);border-radius:100px;overflow:hidden;"><div style="width:${overallPct}%;height:100%;background:${overallPct>=70?'#22c55e':overallPct>=40?'#fbbf24':'#ef4444'};border-radius:100px;"></div></div></div>
+    <span class="report-stat ${statCls}">${doneTopics}/${totalTopics} topics done</span>
+  </div>`;
+
+  // Class-by-class breakdown
+  classIds.forEach(cls=>{
+    const subs=getSubs(cls);
+    const row=summaryRows.find(r=>r.cls===cls);
+    const statC=row.pct>=70?'stat-good':row.pct>=40?'stat-warn':'stat-bad';
+    html+=`<div class="report-card">
+      <div class="report-card-hd">${row.name} <span class="report-stat ${statC}">${row.pct}% · ${row.dn}/${row.tot} topics</span></div>
+      <div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Subject</th><th>Topics Planned</th><th>Completed</th><th>Pending</th><th>Progress</th></tr></thead><tbody>`;
+    subs.forEach(sub=>{
+      const topics=getN(DB,['planner',mk,'c'+cls,fbKey(sub)])||[];
+      const done=topics.filter(t=>t.done).length;
+      const pend=topics.length-done;
+      const sp=topics.length?Math.round(done/topics.length*100):0;
+      html+=`<tr>
+        <td style="font-weight:600">${esc(sub)}</td>
+        <td>${topics.length?topics.map(t=>`<span style="display:inline-block;margin:1px 2px;padding:1px 7px;border-radius:100px;font-size:10px;background:var(--surf2);border:1px solid var(--border)">${esc(t.text)}</span>`).join(''):'<span style="color:var(--muted);font-size:11px;font-style:italic">Not added</span>'}</td>
+        <td style="font-weight:700;color:#22c55e">${done}</td>
+        <td style="color:${pend?'#ef4444':'#22c55e'}">${pend}</td>
+        <td style="min-width:100px;"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--border);border-radius:100px;overflow:hidden;"><div style="width:${sp}%;height:100%;background:${sp>=70?'#22c55e':sp>=40?'#fbbf24':'#ef4444'};border-radius:100px;"></div></div><span style="font-size:10px;font-weight:700;min-width:28px">${sp}%</span></div></td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div></div>`;
+  });
+  cont.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
+//  TIMETABLE CSV IMPORT
+// ══════════════════════════════════════════════
+function downloadTimetableTemplate(){
+  const rows=['Class,Subject,Teacher Name,Period Number'];
+  getClassIds().forEach(cls=>{
+    getSubs(cls).forEach(sub=>{
+      rows.push(`${CLASSES[cls]?.name||'Class '+cls},${sub},,`);
+    });
+  });
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='timetable-template.csv';a.click();
+}
+
+function importTimetableCSV(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+    let imported=0,errors=[];
+    lines.forEach((line,li)=>{
+      if(li===0&&(line.toLowerCase().includes('class')||line.toLowerCase().includes('subject')))return;
+      const cols=line.split(/[,;\t]+/).map(c=>c.trim().replace(/^"|"$/g,''));
+      if(cols.length<3)return;
+      const [clsRaw,subRaw,teacher,periodRaw]=cols;
+      if(!teacher)return;
+      // Find matching class
+      const cls=getClassIds().find(c=>{
+        const cn=CLASSES[c]?.name||'Class '+c;
+        return cn.toLowerCase()===clsRaw.toLowerCase()||String(c)===clsRaw.trim();
+      });
+      if(!cls){errors.push(`Row ${li+1}: class "${clsRaw}" not found`);return;}
+      // Find matching subject (case-insensitive partial)
+      const sub=getSubs(cls).find(s=>s.toLowerCase()===subRaw.toLowerCase()||s.toLowerCase().includes(subRaw.toLowerCase())||subRaw.toLowerCase().includes(s.toLowerCase()));
+      if(!sub){errors.push(`Row ${li+1}: subject "${subRaw}" not found in ${CLASSES[cls]?.name}`);return;}
+      const sk=fbKey(sub);
+      const periods=getN(DB,['timetable','c'+cls,sk])||[];
+      const period=parseInt(periodRaw)||periods.length+1;
+      // Avoid duplicate teacher+period
+      if(!periods.find(p=>p.teacher===teacher&&p.period===period)){
+        periods.push({teacher,period,subject:sub});
+        setN(DB,['timetable','c'+cls,sk],periods);
+        markDirty(`timetable/c${cls}/${sk}`,periods);
+        imported++;
+      }
+    });
+    renderTimetablePanels();
+    if(errors.length)console.warn('Timetable import warnings:',errors);
+    showToast(`Imported ${imported} period${imported!==1?'s':''}`+(errors.length?` (${errors.length} skipped)`:''),'ok');
+  };
+  reader.readAsText(file);inp.value='';
+}
+
+
+// ── PRINT PLANNER ────────────────────────────
+function printPlanner(mk, monthLabel){
+  // Open planner class items for printing
+  document.querySelectorAll(`#pcl-${mk} .planner-cls-item`).forEach(el=>el.classList.add('open'));
+  window.print();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IQRA School – Parent Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/portal.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <div class="school-banner">
+    <div class="school-logo-wrap">
+      <img src="logo.png" class="school-logo" id="schoolLogo" alt="IQRA Logo">
+    </div>
+    <div class="school-info">
+      <div class="school-name" id="schoolNameEl">IQRA PUBLIC SCHOOL AND COLLEGE</div>
+      <div class="school-city" id="schoolCityEl">DARA PEZU · Boys &amp; Girls</div>
+      <div class="school-since">✦ SINCE 1999 ✦</div>
+    </div>
+  </div>
+
+  <!-- Founder corner — visible on all screens -->
+  <div class="founder-corner" id="founderCorner">
+    <div id="founderPicWrap"><div class="founder-pic-placeholder">👤</div></div>
+    <div class="founder-info">
+      <div class="founder-name" id="founderNameEl">Principal Abdul Qayyum Khan (Late)</div>
+      <div class="founder-desc" id="founderDescEl">Founded this institution in 1999 with a vision of excellence in education.</div>
+    </div>
+  </div>
+
+  <div class="school-strip" id="schoolStrip">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="tel" id="ph1El">📞 0347-1575196</span>
+      <span class="sep-dot">·</span>
+      <span class="tel" id="ph2El">📞 0370-1575196</span>
+    </div>
+    <div id="socialsStrip" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></div>
+  </div>
+
+  <div class="sync-live">
+    <div class="live-dot" id="liveDot"></div>
+    <span id="syncMsg">Connecting to live data…</span>
+  </div>
+</div>
+
+<div class="nav-strip">
+  <div class="nav-inner">
+    <button class="ntab active" onclick="switchTab('progress')">📊 Progress</button>
+    <button class="ntab" onclick="switchTab('results')">📋 Results</button>
+    <button class="ntab" onclick="switchTab('diary')">📔 Diary</button>
+    <button class="ntab" onclick="switchTab('periods')">🕐 Periods</button>
+    <button class="ntab" onclick="switchTab('boards')">🏆 Boards</button>
+    <button class="ntab" onclick="switchTab('weekly')">📝 Weekly</button>
+    <button class="ntab" onclick="switchTab('toppers')">⭐ Toppers</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- PROGRESS -->
+<div class="tab-section active" id="tab-progress">
+  <div class="term-dates-strip" id="termDatesStrip"></div>
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Your Child's Class</span>
+    <select class="sel" id="classSelect" onchange="loadClass(this.value)">
+      <option value="">— Choose a class —</option>
+    </select>
+  </div>
+  <div id="noData" class="no-data"><h3>👆 Select a class above</h3><p>Choose your child's class to view progress.</p></div>
+  <div id="mainContent" style="display:none;">
+    <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Monthly Syllabus Coverage</div><div class="sec-hdr-line"></div></div>
+    <div class="planner-chart-wrap">
+      <div class="chart-title">📅 Syllabus Completion by Month</div>
+      <div class="chart-bars" id="plannerChart"></div>
+    </div>
+    <div class="ms-tabs" id="msTabs"></div>
+    <div id="msViews"></div>
+    <div class="card" id="notesCard" style="display:none;margin-top:12px;">
+      <div class="card-head"><div class="card-title">📝 Teacher's Remarks</div></div>
+      <div style="padding:12px 16px;font-size:13px;line-height:1.7;color:var(--text);" id="notesTxt"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TERM RESULTS -->
+<div class="tab-section" id="tab-results">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="resClassSel" onchange="loadResults(this.value,'t1')">
+      <option value="">— Choose a class —</option>
+    </select>
+  </div>
+  <div class="term-tabs" id="resTabs" style="display:none;"></div>
+  <div id="resContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+</div>
+
+<!-- DAILY DIARY -->
+<div class="tab-section" id="tab-diary">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="diaryClassSel" onchange="loadDiary(this.value)">
+      <option value="">— Choose a class —</option>
+    </select>
+  </div>
+  <div id="diaryContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+</div>
+
+<!-- PERIODS -->
+<div class="tab-section" id="tab-periods">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="periodsClassSel" onchange="loadPeriods(this.value)">
+      <option value="">— Choose a class —</option>
+    </select>
+  </div>
+  <div id="periodsContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+</div>
+
+<!-- BOARDS -->
+<div class="tab-section" id="tab-boards">
+  <div class="term-tabs" id="brdTabs">
+    <button class="ttab active" onclick="selBrd(this,'9')">Class 9</button>
+    <button class="ttab" onclick="selBrd(this,'10')">Class 10</button>
+    <button class="ttab" onclick="selBrd(this,'11')">Class 11</button>
+    <button class="ttab" onclick="selBrd(this,'12')">Class 12</button>
+  </div>
+  <div id="brdContent"></div>
+</div>
+
+<!-- WEEKLY -->
+<div class="tab-section" id="tab-weekly">
+  <div class="wt-seg">
+    <button class="wt-seg-btn active" onclick="selWk('matric')">Matric (9 &amp; 10)</button>
+    <button class="wt-seg-btn" onclick="selWk('fsc')">FSc (11 &amp; 12)</button>
+  </div>
+  <div id="weeklyContent"></div>
+</div>
+
+<!-- TOPPERS -->
+<div class="tab-section" id="tab-toppers">
+  <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Weekly Test Toppers</div><div class="sec-hdr-line"></div></div>
+  <div class="topper-grid" id="topperCards"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="positionLists"></div>
+</div>
+
+</div>
+<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Founded 1999 · Parent Portal</div>
+
+<script>
+let DB={}, curCls=null, curBrd='9', curWkSec='matric', curResCls=null, curResTermId='t1', curDiaryCls=null;
+
+// ── FIREBASE ─────────────────────────────────────
+function initFirebase(){
+  if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){
+    document.getElementById('syncMsg').textContent='⚠ Contact school – system not configured';
+    document.getElementById('liveDot').style.cssText='background:#ef4444;animation:none';
+    populateSelects();return;
+  }
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const fbdb=firebase.database();
+    fbdb.ref('.info/connected').on('value',s=>{
+      const live=s.val();
+      document.getElementById('syncMsg').textContent=live?'🟢 Live data — updates automatically':'🔴 Reconnecting…';
+      document.getElementById('liveDot').style.background=live?'#10b981':'#ef4444';
+    });
+    fbdb.ref('iqra').on('value',s=>{
+      DB=s.val()||{};
+      if(DB.settings){
+        if(DB.settings.terms) TERMS=DB.settings.terms;
+        if(DB.settings.months) MONTHS=DB.settings.months;
+        if(DB.settings.classes) CLASSES=DB.settings.classes;
+        if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
+      }
+      applyBranding();populateSelects();renderTermDates();
+      if(curCls) loadClass(curCls);
+      if(curResCls) loadResults(curResCls,curResTermId);
+      if(curDiaryCls) loadDiary(curDiaryCls);
+      if(document.getElementById('tab-boards').classList.contains('active')) renderBrdContent(curBrd);
+      if(document.getElementById('tab-weekly').classList.contains('active')) renderWeekly(curWkSec);
+      if(document.getElementById('tab-toppers').classList.contains('active')) renderToppers();
+    });
+  }catch(e){document.getElementById('syncMsg').textContent='❌ Error: '+e.message;}
+}
+
+function applyBranding(){
+  const s=SCHOOL;
+  document.getElementById('schoolNameEl').textContent=s.name||'IQRA PUBLIC SCHOOL AND COLLEGE';
+  document.getElementById('schoolCityEl').innerHTML=s.city||'DARA PEZU · Boys &amp; Girls';
+  document.getElementById('ph1El').textContent='📞 '+(s.phone1||'0347-1575196');
+  document.getElementById('ph2El').textContent='📞 '+(s.phone2||'0370-1575196');
+  // Socials
+  const socials=s.socials||DEFAULT_SETTINGS.school.socials;
+  const strip=document.getElementById('socialsStrip');
+  strip.innerHTML=socials.filter(x=>x.url).map(x=>`<a href="https://${x.url.replace(/^https?:\/\//,'')}" target="_blank" rel="noopener">${x.icon||'🔗'} ${esc(x.label)}</a>`).join('');
+  // Founder
+  document.getElementById('founderNameEl').textContent=s.founderName||'Principal Abdul Qayyum Khan (Late)';
+  document.getElementById('founderDescEl').textContent=s.founderDesc||'Founded this institution in 1999.';
+  const fp=getN(DB,['settings','founderPic']);
+  const fw=document.getElementById('founderPicWrap');
+  if(fp) fw.innerHTML=`<img src="${fp}" class="founder-pic">`;
+  // Footer
+  document.getElementById('footerEl').innerHTML=`${esc(s.name)} ${esc(s.city)} · Founded 1999 · Parent Portal<br>📞 ${esc(s.phone1||'')} / ${esc(s.phone2||'')}`;
+  document.title=(s.name||'IQRA')+' – Parent Portal';
+}
+
+function populateSelects(){
+  const ids=getClassIds();
+  const boys=ids.filter(c=>CLASSES[c]?.section!=='girls');
+  const girls=ids.filter(c=>CLASSES[c]?.section==='girls');
+  function makeOpts(list){ return list.map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join(''); }
+  let opts='<option value="">— Choose a class —</option>';
+  if(boys.length) opts+=`<optgroup label="👦 Boys Section">${makeOpts(boys)}</optgroup>`;
+  if(girls.length) opts+=`<optgroup label="👧 Girls Section">${makeOpts(girls)}</optgroup>`;
+  ['classSelect','resClassSel','diaryClassSel','periodsClassSel'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+function renderTermDates(){
+  const el=document.getElementById('termDatesStrip');if(!el)return;
+  // Only show exam date (not syllabus)
+  el.innerHTML=TERMS.map(t=>`<div class="term-date-pill ${t.id}">
+    <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px">${t.label}</span>
+    <span>📅 Exam: <strong>${fmtDate(t.exam)}</strong></span>
+  </div>`).join('');
+}
+
+function switchTab(id){
+  document.querySelectorAll('.tab-section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+id));
+  document.querySelectorAll('.ntab').forEach((t,i)=>t.classList.toggle('active',['progress','results','diary','periods','boards','weekly','toppers'][i]===id));
+  if(id==='boards') renderBrdContent(curBrd);
+  if(id==='weekly') renderWeekly(curWkSec);
+  if(id==='toppers') renderToppers();
+}
+
+function getClassTMFromDB(cls){ return parseFloat(getN(DB,['settings','classes',cls,'totalMarks'])||CLASSES[cls]?.totalMarks||100); }
+function getSubjectTMFromDB(cls,sub){
+  const sm=getN(DB,['settings','classes',cls,'subjectMarks'])||CLASSES[cls]?.subjectMarks;
+  if(sm&&sm[sub]!==undefined) return parseFloat(sm[sub]);
+  return getClassTMFromDB(cls);
+}
+
+// ── PROGRESS ─────────────────────────────────────
+function loadClass(cls){
+  cls=parseInt(cls);curCls=cls||null;
+  document.getElementById('noData').style.display=cls?'none':'block';
+  document.getElementById('mainContent').style.display=cls?'block':'none';
+  if(!cls)return;
+  renderPlannerChart(cls);renderPlanner(cls);renderNotes(cls);
+}
+function renderPlannerChart(cls){
+  const el=document.getElementById('plannerChart');if(!el)return;
+  const subs=getSubs(cls);
+  const rows=MONTHS.map(m=>{
+    let tot=0,dn=0;
+    subs.forEach(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
+    const p=tot?Math.round(dn/tot*100):0;
+    const tc=m.term==='t1'?'#f97316':m.term==='t2'?'#6366f1':'#10b981';
+    return{label:m.label,p,tc,tot};
+  }).filter(r=>r.tot>0);
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;">No syllabus data added yet.</div>';return;}
+  el.innerHTML=rows.map(r=>`<div class="chart-bar-row">
+    <div class="chart-bar-label">${esc(r.label)}</div>
+    <div class="chart-bar-track">
+      <div class="chart-bar-fill" style="width:${r.p}%;background:linear-gradient(90deg,${r.tc},${r.tc}bb)">${r.p>10?r.p+'%':''}</div>
+    </div>
+    <div class="chart-bar-pct" style="color:${r.tc}">${r.p}%</div>
+  </div>`).join('');
+}
+function renderPlanner(cls){
+  const tabs=document.getElementById('msTabs'),views=document.getElementById('msViews');
+  tabs.innerHTML='';views.innerHTML='';
+  const subs=getSubs(cls);
+  const hasAny=MONTHS.some(m=>subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;}));
+  if(!hasAny){views.innerHTML='<div class="no-data"><h3>📅 No syllabus plan yet</h3></div>';return;}
+  MONTHS.forEach((m,i)=>{
+    const hasD=subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;});
+    const btn=document.createElement('button');
+    btn.className='ms-btn'+(i===0?' active':'');if(!hasD)btn.style.opacity='.4';
+    btn.textContent=m.label;btn.id='msb-'+m.key;
+    btn.onclick=(mk=>()=>{document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===mk));})(m.key);
+    tabs.appendChild(btn);
+  });
+  MONTHS.forEach((m,i)=>{
+    const view=document.createElement('div');view.className='ms-view'+(i===0?' active':'');view.dataset.mk=m.key;
+    let tot=0,dn=0;subs.forEach(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
+    const p=tot?Math.round(dn/tot*100):0;
+    const tc=m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)';
+    view.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:5px;">
+      <span style="font-size:13px;font-weight:700;">${m.label} ${m.yr}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="prog-bar" style="width:80px;"><div class="prog-fill" style="width:${p}%;background:${tc}"></div></div>
+        <span style="font-size:12px;font-weight:700;color:${tc}">${p}%</span>
+      </div>
+    </div>
+    <div class="subj-scroll"><div class="subj-cols-wrap" style="grid-template-columns:repeat(${subs.length},1fr);display:grid;"></div></div>`;
+    views.appendChild(view);
+    const wrap=view.querySelector('.subj-cols-wrap');
+    subs.forEach(sub=>{
+      const topics=getN(DB,['planner',m.key,'c'+cls,fbKey(sub)])||[];const sd=topics.filter(t=>t.done).length;
+      const col=document.createElement('div');col.className='subj-col-r';
+      col.innerHTML=`<div class="subj-col-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:500">${sd}/${topics.length}</span></div>
+        <div class="subj-col-bd">${topics.length===0?'<div class="empty-msg">Not added</div>':topics.map(t=>`<div class="titem"><div class="ticon ${t.done?'done':'pend'}"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="titem-text${t.done?' dn':''}">${esc(t.text)}</div></div>`).join('')}</div>`;
+      wrap.appendChild(col);
+    });
+  });
+  const fi=MONTHS.findIndex(m=>subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;}));
+  if(fi>=0){document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));document.getElementById('msb-'+MONTHS[fi].key)?.classList.add('active');document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===MONTHS[fi].key));}
+}
+function renderNotes(cls){
+  const note=getN(DB,['marks','notes','c'+cls])||'';const card=document.getElementById('notesCard');
+  if(note.trim()){card.style.display='block';document.getElementById('notesTxt').textContent=note;}
+  else card.style.display='none';
+}
+
+// ── TERM RESULTS ─────────────────────────────────
+function loadResults(cls,termId){
+  curResCls=parseInt(cls)||null;curResTermId=termId;
+  const tabsEl=document.getElementById('resTabs'),cont=document.getElementById('resContent');
+  if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';tabsEl.style.display='none';return;}
+  tabsEl.style.display='flex';
+  tabsEl.innerHTML=TERMS.map(t=>`<button class="ttab${t.id===termId?' active':''}" onclick="loadResults('${cls}','${t.id}')">${t.label}</button>`).join('');
+  const students=getN(DB,['students','c'+cls])||[],total=getClassTMFromDB(cls),subs=getSubs(cls),term=TERMS.find(t=>t.id===termId);
+  if(!students.length){cont.innerHTML='<div class="no-data"><h3>No students listed</h3></div>';return;}
+  const rows=students.map((stu,si)=>{
+    const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
+    let totObt=0,maxObt=0;
+    subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTMFromDB(cls,s);});
+    const pctV=maxObt?(totObt/maxObt*100):0;
+    return{...stu,si,totObt,pctV,res};
+  }).sort((a,b)=>b.pctV-a.pctV);
+  const medals=['🥇','🥈','🥉'];
+  const top5=rows.slice(0,5);
+  const podColors=[['#f59e0b','#fffbeb'],['#9ca3af','#f9fafb'],['#d97706','#fefce8'],['#6366f1','#eef2ff'],['#10b981','#ecfdf5']];
+  let podHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px;">
+    ${top5.map((s,i)=>{const g=grade(s.pctV);const[col,bg]=podColors[i]||podColors[4];return`<div style="border:2px solid ${col};border-radius:12px;padding:14px;background:${bg};text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+      <div style="font-size:24px;margin-bottom:3px">${medals[i]||'#'+(i+1)}</div>
+      <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px">${i===0?'1st':i===1?'2nd':i===2?'3rd':(i+1)+'th'} Position</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(s.name)}</div>
+      <div style="font-size:10px;color:var(--muted)">S/O ${esc(s.father||'')}</div>
+      <div style="font-size:22px;font-weight:900;color:${col};margin-top:5px">${s.pctV?s.pctV.toFixed(1)+'%':'—'}</div>
+    </div>`}).join('')}
+  </div>`;
+  cont.innerHTML=podHtml+`<div class="card"><div class="card-head">
+    <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${term?.label||termId}</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="font-size:11px;color:var(--muted)">${students.length} students</div>
+      <button onclick="window.print()" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">🖨️ Print</button>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rank</th><th>Student</th><th>Father</th>
+    ${subs.map(s=>`<th style="font-size:9px">${s}</th>`).join('')}
+    <th>Total</th><th>%</th><th>Grade</th></tr></thead>
+  <tbody>${rows.map((s,ri)=>{const g=grade(s.pctV);return`<tr>
+    <td style="font-size:${ri<3?'16':'12'}px">${medals[ri]||ri+1}</td>
+    <td style="font-weight:700">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td>
+    ${subs.map(sub=>{const v=s.res[fbKey(sub)];return`<td>${v!==undefined?v:'—'}</td>`;}).join('')}
+    <td style="font-weight:700">${s.totObt||'—'}</td>
+    <td style="font-weight:700;color:${g.c}">${s.pctV?s.pctV.toFixed(1)+'%':'—'}</td>
+    <td><span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span></td>
+  </tr>`;}).join('')}</tbody></table></div></div>`;
+}
+
+// ── DAILY DIARY ───────────────────────────────────
+function loadDiary(cls){cls=parseInt(cls)||null;curDiaryCls=cls;const cont=document.getElementById('diaryContent');if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';return;}renderDiaryForDate(cls,todayKey());}
+function renderDiaryForDate(cls,dk){
+  const cont=document.getElementById('diaryContent');
+  cont.innerHTML=`<div class="diary-date-hdr">
+    <label style="font-size:12px;color:var(--muted);font-weight:600;">📅 Date:</label>
+    <input type="date" value="${dk}" id="pDiaryDate" onchange="renderDiaryForDate(${cls},this.value)">
+    <span style="font-size:13px;color:var(--muted);font-weight:500;">${fmtDay(dk)}</span>
+  </div>
+  <div class="diary-day-grid">
+    ${getSubs(cls).map(sub=>{
+      const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
+      const teacherInfo=periods.length?periods.map(p=>`${p.teacher} (P${p.period})`).join(', '):'';
+      const hws=getN(DB,['diary','c'+cls,dk,fbKey(sub)])||[];
+      return`<div class="diary-subj-card">
+        <div class="diary-subj-hd">
+          <div>
+            <div class="diary-subj-name">${esc(sub)}</div>
+            ${teacherInfo?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">👤 ${esc(teacherInfo)}</div>`:''}
+          </div>
+          <div class="diary-hw-count">${hws.length} task${hws.length!==1?'s':''}</div>
+        </div>
+        <div class="diary-hw-list">
+          ${hws.length?hws.map(h=>`<div class="diary-hw-item">
+            <div class="diary-hw-bullet">📌</div>
+            <div class="diary-hw-text">${esc(h)}</div>
+          </div>`).join(''):`<div class="diary-no-hw">No homework today ✓</div>`}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── PERIODS ───────────────────────────────────────
+function loadPeriods(cls){
+  cls=parseInt(cls)||null;const cont=document.getElementById('periodsContent');
+  if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';return;}
+  cont.innerHTML=`<div class="period-grid-view">
+    ${getSubs(cls).map(sub=>{
+      const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
+      return`<div class="period-card-view">
+        <div class="period-card-hd-view">${esc(sub)}</div>
+        <div class="period-list-view">
+          ${periods.length?periods.map(p=>`<div class="period-item-view"><span class="period-badge-view">P${p.period||'?'}</span><span>${esc(p.teacher)}</span></div>`).join(''):'<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">No periods set</div>'}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── BOARDS ────────────────────────────────────────
+function selBrd(btn,cls){curBrd=cls;document.querySelectorAll('#brdTabs .ttab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBrdContent(cls);}
+function renderBrdContent(cls){
+  const students=getN(DB,['boards','c'+cls])||[];const el=document.getElementById('brdContent');const medals=['🥇','🥈','🥉'];
+  if(!students.length){el.innerHTML='<div class="no-data"><h3>No results entered yet</h3></div>';return;}
+  const sorted=[...students].sort((a,b)=>(b.obtained/b.total)-(a.obtained/a.total));
+  const podColors=[['#f59e0b','#fffbeb'],['#9ca3af','#f9fafb'],['#d97706','#fefce8']];
+  const top3=sorted.slice(0,3);
+  let pod=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+    ${top3.map((s,i)=>{const p=pct(s.obtained,s.total);const[col,bg]=podColors[i];return`<div style="border:2px solid ${col};border-radius:12px;padding:13px;background:${bg};text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+      <div style="font-size:22px;margin-bottom:2px">${medals[i]}</div>
+      <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'}</div>
+      <div style="font-size:13px;font-weight:700;">${esc(s.name)}</div>
+      <div style="font-size:10px;color:var(--muted)">S/O ${esc(s.father||'')}</div>
+      <div style="font-size:20px;font-weight:900;color:${col};margin-top:4px">${p}%</div>
+    </div>`}).join('')}
+  </div>`;
+  el.innerHTML=pod+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results</div></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th></tr></thead>
+    <tbody>${sorted.map((s,i)=>{const p=pct(s.obtained,s.total);const g=grade(parseFloat(p));return`<tr><td style="font-size:${i<3?'16':'12'}px">${medals[i]||i+1}</td><td style="font-weight:700">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td><td>${s.year||'—'}</td><td>${s.total}</td><td style="font-weight:700">${s.obtained}</td><td style="font-weight:700;color:${g.c}">${p}%</td><td><span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span></td></tr>`;}).join('')}</tbody></table></div></div>`;
+}
+
+// ── WEEKLY ────────────────────────────────────────
+function selWk(sec){curWkSec=sec;document.querySelectorAll('.wt-seg-btn').forEach((b,i)=>b.classList.toggle('active',['matric','fsc'][i]===sec));renderWeekly(sec);}
+function computeToppers(sec,classes){
+  const map={};(getN(DB,['weekly',sec])||[]).forEach(test=>{if(!classes.includes(test.class))return;(test.students||[]).forEach(s=>{const p=test.total?parseFloat(((s.obtained/test.total)*100).toFixed(2)):0;if(p<60)return;const sid=s.name+'||'+s.father+'||'+test.class;if(!map[sid])map[sid]={name:s.name,father:s.father,class:test.class,total:0,count:0};map[sid].total+=p;map[sid].count++;});});
+  return Object.values(map).map(s=>({...s,avg:s.count?s.total/s.count:0})).filter(s=>s.count>0).sort((a,b)=>b.avg-a.avg);
+}
+function renderWeekly(sec){
+  const el=document.getElementById('weeklyContent'),tests=getN(DB,['weekly',sec])||[];
+  const classes=sec==='matric'?['9','10']:['11','12'],medals=['🥇','🥈','🥉'];
+  const top=computeToppers(sec,classes);
+  const podColors=[['#f59e0b','#fffbeb'],['#9ca3af','#f9fafb'],['#d97706','#fefce8']];
+  const accentCol=sec==='matric'?'#f59e0b':'#6366f1';
+  let tHtml=`<div class="card" style="margin-bottom:14px;border-color:${accentCol};">
+    <div class="card-head" style="background:${sec==='matric'?'#fffbeb':'#eef2ff'}">
+      <div class="card-title" style="color:${sec==='matric'?'#92400e':'#3730a3'}">🏆 ${sec==='matric'?'Matric':'FSc'} Weekly Toppers</div>
+      <div style="font-size:10px;color:var(--muted)">Avg % across passed tests (≥60%)</div>
+    </div><div style="padding:13px 16px;">`;
+  if(!top.length)tHtml+=`<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">No qualifying results yet</div>`;
+  else{tHtml+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:10px;">`;top.slice(0,3).forEach((s,i)=>{const[col,bg]=podColors[i];tHtml+=`<div style="border:2px solid ${col};border-radius:10px;padding:11px;background:${bg};text-align:center;"><div style="font-size:20px;margin-bottom:2px">${medals[i]}</div><div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'}</div><div style="font-size:13px;font-weight:700;">${esc(s.name)}</div><div style="font-size:10px;color:var(--muted)">Class ${s.class}</div><div style="font-size:18px;font-weight:900;color:${col};margin-top:4px">${s.avg.toFixed(1)}%</div></div>`;});tHtml+=`</div>`;
+  if(top.length>3){tHtml+=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th><th>Class</th><th>Tests</th><th>Avg %</th></tr></thead><tbody>`;top.slice(3).forEach((s,i)=>{tHtml+=`<tr><td>${i+4}</td><td>${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td><td>Class ${s.class}</td><td>${s.count}</td><td style="font-weight:700;color:#10b981">${s.avg.toFixed(1)}%</td></tr>`;});tHtml+=`</tbody></table></div>`;}
+  }
+  tHtml+=`</div></div>`;
+  if(!tests.length){el.innerHTML=tHtml+'<div class="no-data"><h3>No tests yet</h3></div>';return;}
+  let html=tHtml;
+  const grouped={};tests.forEach(t=>{const gk=t.date+'||'+t.class;if(!grouped[gk])grouped[gk]={date:t.date,class:t.class,tests:[]};grouped[gk].tests.push(t);});
+  Object.values(grouped).sort((a,b)=>a.date.localeCompare(b.date)).forEach(grp=>{
+    html+=`<div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Class ${esc(grp.class)} · ${esc(grp.date)}</div><div class="sec-hdr-line"></div></div>`;
+    grp.tests.forEach(test=>{
+      const sorted=[...(test.students||[])].sort((a,b)=>(b.obtained/test.total)-(a.obtained/test.total));let pos=0;
+      html+=`<div class="card" style="margin-bottom:10px;"><div class="card-head"><div class="card-title">📝 ${esc(test.subject||'Test')}</div><div style="font-size:10px;color:var(--muted)">Total: ${test.total} · Pass: 60%</div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Pos</th><th>Student</th><th>Father</th><th>Obtained/${test.total}</th><th>%</th><th>Status</th></tr></thead>
+        <tbody>${sorted.map(s=>{const p=test.total?((s.obtained/test.total)*100).toFixed(1):0;const passed=parseFloat(p)>=60;if(passed)pos++;const rank=passed?(medals[pos-1]||(pos+'')):' — ';return`<tr><td style="font-size:${pos<=3&&passed?'16':'12'}px">${rank}</td><td style="font-weight:700">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td><td style="font-weight:700">${s.obtained}/${test.total}</td><td style="font-weight:700;color:${passed?'var(--pass)':'var(--fail)'}">${p}%</td><td><span class="${passed?'pass-pill':'fail-pill'}">${passed?'PASS':'FAIL'}</span></td></tr>`;}).join('')}</tbody></table></div></div>`;
+    });
+  });
+  el.innerHTML=html;
+}
+
+// ── TOPPERS ───────────────────────────────────────
+function renderToppers(){
+  const mTop=computeToppers('matric',['9','10']),fTop=computeToppers('fsc',['11','12']),medals=['🥇','🥈','🥉'];
+  function topCard(title,data,cls){const top=data[0];if(!top)return`<div class="topper-card ${cls}"><div style="font-size:26px;margin-bottom:4px">🏆</div><div class="tcard-lbl">${title} Topper</div><div style="font-size:13px;color:var(--muted)">No qualifying data yet</div></div>`;return`<div class="topper-card ${cls}"><div style="font-size:26px;margin-bottom:3px">🏆</div><div class="tcard-lbl">${title} Overall Topper</div><div class="tcard-name">${esc(top.name)}</div><div class="tcard-det">S/O ${esc(top.father)} · Class ${top.class}</div><div class="tcard-pct">${top.avg.toFixed(1)}%</div><div style="font-size:10px;color:var(--muted)">${top.count} tests passed</div></div>`;}
+  document.getElementById('topperCards').innerHTML=topCard('Matric',mTop,'matric')+topCard('FSc',fTop,'fsc');
+  function posList(title,data,color){if(!data.length)return`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div style="padding:14px;text-align:center;color:var(--muted);font-size:12px;">No qualifying results</div></div>`;return`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div style="padding:10px 12px;">${data.slice(0,10).map((s,i)=>`<div class="pos-row"><div class="pos-num">${medals[i]||i+1}</div><div><div class="pos-name">${esc(s.name)}</div><div class="pos-det">S/O ${esc(s.father)} · Class ${s.class}</div></div><div class="pos-pct" style="color:${color}">${s.avg.toFixed(1)}%</div></div>`).join('')}</div></div>`;}
+  document.getElementById('positionLists').innerHTML=posList('🎖 Matric Position Holders',mTop,'#b45309')+posList('🎖 FSc Position Holders',fTop,'#4338ca');
+}
+
+// ── INIT ─────────────────────────────────────────
+initFirebase();
+</script>
+</body>
+</html>
