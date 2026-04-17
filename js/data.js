@@ -24,16 +24,29 @@ const DEFAULT_SETTINGS = {
     { key:'mar26', label:'March',     yr:2026, term:'t3' }
   ],
   classes: {
-    1:  { name:'Class 1',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
-    2:  { name:'Class 2',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
-    3:  { name:'Class 3',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
-    4:  { name:'Class 4',  subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
-    5:  { name:'Class 5',  subjects:['English','Urdu','Maths','Islamiat','Science','Social Studies','Grammar'], totalMarks:100 },
-    6:  { name:'Class 6',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
-    7:  { name:'Class 7',  subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
-    8:  { name:'Class 8',  subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 },
-    9:  { name:'Class 9',  subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 },
-    10: { name:'Class 10', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100 }
+    // ── BOYS SECTION ──────────────────────────────────────
+    1:  { name:'Class 1 (Boys)',   section:'boys', subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
+    2:  { name:'Class 2 (Boys)',   section:'boys', subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
+    3:  { name:'Class 3 (Boys)',   section:'boys', subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
+    4:  { name:'Class 4 (Boys)',   section:'boys', subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
+    5:  { name:'Class 5 (Boys)',   section:'boys', subjects:['English','Urdu','Maths','Islamiat','Science','Social Studies','Grammar'], totalMarks:100 },
+    6:  { name:'Class 6 (Boys)',   section:'boys', subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
+    7:  { name:'Class 7 (Boys)',   section:'boys', subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
+    8:  { name:'Class 8 (Boys)',   section:'boys', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    9:  { name:'Class 9 (Boys)',   section:'boys', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    10: { name:'Class 10 (Boys)',  section:'boys', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    11: { name:'Class 11 (Boys)',  section:'boys', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    12: { name:'Class 12 (Boys)',  section:'boys', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    // ── GIRLS SECTION ─────────────────────────────────────
+    104: { name:'Class 4 (Girls)',  section:'girls', subjects:['English','Maths','Urdu','Islamiat','General Knowledge','Grammar'], totalMarks:100 },
+    105: { name:'Class 5 (Girls)',  section:'girls', subjects:['English','Urdu','Maths','Islamiat','Science','Social Studies','Grammar'], totalMarks:100 },
+    106: { name:'Class 6 (Girls)',  section:'girls', subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
+    107: { name:'Class 7 (Girls)',  section:'girls', subjects:['English','Urdu','Maths','Islamiat','Science','History','Geography','Grammar'], totalMarks:100 },
+    108: { name:'Class 8 (Girls)',  section:'girls', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    109: { name:'Class 9 (Girls)',  section:'girls', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    110: { name:'Class 10 (Girls)', section:'girls', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    111: { name:'Class 11 (Girls)', section:'girls', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} },
+    112: { name:'Class 12 (Girls)', section:'girls', subjects:['English','Urdu','Maths','Islamiat','Pak Study','MQH','Physics','Chemistry','Biology'], totalMarks:100, subjectMarks:{'English':75,'Urdu':75,'Maths':75,'Islamiat':75,'Pak Study':75,'MQH':75,'Physics':75,'Chemistry':75,'Biology':75} }
   },
   school: {
     name:        'IQRA PUBLIC SCHOOL AND COLLEGE',
@@ -59,6 +72,14 @@ let SCHOOL    = SETTINGS.school;
 function getClassIds(){ return Object.keys(CLASSES).map(Number).sort((a,b)=>a-b); }
 function getSubs(cls){ return CLASSES[cls]?.subjects || []; }
 function getClassTM(cls){ return parseFloat(CLASSES[cls]?.totalMarks || SETTINGS.totalMarks || 100); }
+// Get total marks for a specific subject in a class (falls back to class total)
+function getSubjectTM(cls, sub){
+  const subMarks = CLASSES[cls]?.subjectMarks;
+  if(subMarks && subMarks[sub] !== undefined) return parseFloat(subMarks[sub]);
+  return getClassTM(cls);
+}
+// Check if class uses per-subject marks (class 8–12 and girls 8–12)
+function hasPerSubjectMarks(cls){ return !!(CLASSES[cls]?.subjectMarks); }
 
 const TC   = { t1:'#f97316', t2:'#3b82f6', t3:'#22c55e' };
 const TLbl = { t1:'Term 1',  t2:'Term 2',  t3:'Term 3'  };
