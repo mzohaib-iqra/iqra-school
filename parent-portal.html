@@ -149,7 +149,7 @@
 </div>
 
 </div>
-<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Since 1999 · Parent Portal</div>
+<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Founded 1999 · Parent Portal</div>
 
 <script>
 let DB={}, curCls=null, curBrd='9', curWkSec='matric', curResCls=null, curResTermId='t1', curDiaryCls=null;
@@ -211,7 +211,12 @@ function applyBranding(){
 
 function populateSelects(){
   const ids=getClassIds();
-  const opts='<option value="">— Choose a class —</option>'+ids.map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');
+  const boys=ids.filter(c=>CLASSES[c]?.section!=='girls');
+  const girls=ids.filter(c=>CLASSES[c]?.section==='girls');
+  function makeOpts(list){ return list.map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join(''); }
+  let opts='<option value="">— Choose a class —</option>';
+  if(boys.length) opts+=`<optgroup label="👦 Boys Section">${makeOpts(boys)}</optgroup>`;
+  if(girls.length) opts+=`<optgroup label="👧 Girls Section">${makeOpts(girls)}</optgroup>`;
   ['classSelect','resClassSel','diaryClassSel','periodsClassSel'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
 }
 function renderTermDates(){
@@ -232,6 +237,11 @@ function switchTab(id){
 }
 
 function getClassTMFromDB(cls){ return parseFloat(getN(DB,['settings','classes',cls,'totalMarks'])||CLASSES[cls]?.totalMarks||100); }
+function getSubjectTMFromDB(cls,sub){
+  const sm=getN(DB,['settings','classes',cls,'subjectMarks'])||CLASSES[cls]?.subjectMarks;
+  if(sm&&sm[sub]!==undefined) return parseFloat(sm[sub]);
+  return getClassTMFromDB(cls);
+}
 
 // ── PROGRESS ─────────────────────────────────────
 function loadClass(cls){
@@ -317,8 +327,9 @@ function loadResults(cls,termId){
   if(!students.length){cont.innerHTML='<div class="no-data"><h3>No students listed</h3></div>';return;}
   const rows=students.map((stu,si)=>{
     const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
-    let totObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);});
-    const maxObt=total*subs.length,pctV=maxObt?(totObt/maxObt*100):0;
+    let totObt=0,maxObt=0;
+    subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTMFromDB(cls,s);});
+    const pctV=maxObt?(totObt/maxObt*100):0;
     return{...stu,si,totObt,pctV,res};
   }).sort((a,b)=>b.pctV-a.pctV);
   const medals=['🥇','🥈','🥉'];
@@ -335,7 +346,10 @@ function loadResults(cls,termId){
   </div>`;
   cont.innerHTML=podHtml+`<div class="card"><div class="card-head">
     <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${term?.label||termId}</div>
-    <div style="font-size:11px;color:var(--muted)">Total/subject: ${total} · ${students.length} students</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="font-size:11px;color:var(--muted)">${students.length} students</div>
+      <button onclick="window.print()" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">🖨️ Print</button>
+    </div>
   </div>
   <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rank</th><th>Student</th><th>Father</th>
     ${subs.map(s=>`<th style="font-size:9px">${s}</th>`).join('')}

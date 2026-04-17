@@ -254,13 +254,27 @@ function renderCD(){
 function buildClassTabs(containerId,panelClass,onSel){
   const el=document.getElementById(containerId);el.innerHTML='';
   const ids=getClassIds();
+  let lastSection='';
   ids.forEach((c,i)=>{
     const locked=!canEdit(c);
+    const cls=CLASSES[c];
+    const section=cls?.section||'boys';
+    // Insert section divider
+    if(section!==lastSection){
+      const div=document.createElement('div');
+      div.className='section-divider '+section;
+      div.style.cssText='flex-basis:100%;margin:4px 0 2px;';
+      div.innerHTML=`<span>${section==='girls'?'👧 Girls Section':'👦 Boys Section'}</span>`;
+      el.appendChild(div);
+      lastSection=section;
+    }
     const b=document.createElement('button');
     b.className='ctab'+(i===0?' active':'')+(locked?' locked':'');
-    b.textContent=(CLASSES[c]?.name||'Class '+c)+(locked?' 🔒':'');
+    b.style.borderColor=section==='girls'?'rgba(236,72,153,.35)':'';
+    b.textContent=(cls?.name||'Class '+c)+(locked?' 🔒':'');
     b.onclick=(()=>{
-      document.querySelectorAll('#'+containerId+' .ctab').forEach((x,j)=>x.classList.toggle('active',j===i));
+      el.querySelectorAll('.ctab').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
       document.querySelectorAll('.'+panelClass).forEach(p=>p.classList.toggle('active',+p.dataset.c===c));
       if(onSel)onSel(c);
     });
@@ -276,12 +290,16 @@ function renderMarksPanels(){
     const cols=`2fr ${TERMS.map(()=>'1fr').join(' ')} 1fr`;
     const panel=document.createElement('div');
     panel.className='cpanel mpanel-m'+(i===0?' active':'');panel.dataset.c=cls;
+    const hasPerSub = hasPerSubjectMarks(cls);
     panel.innerHTML=`
       <div class="class-marks-banner">
         <span class="sy-badge">${CLASSES[cls]?.name||'Class '+cls}</span>
-        <label>Total Marks per Subject:</label>
-        <input class="tm-inp" id="ctm-${cls}" type="number" min="1" value="${tm}" ${editable?`onchange="onClassTMChange(${cls},this.value)"`:'disabled'}>
-        <span style="font-size:11px;color:var(--muted)">% = Obtained ÷ this total</span>
+        ${hasPerSub ? `<span style="font-size:11px;color:var(--t3)">✅ Per-subject marks active</span>` :
+          `<label>Total Marks per Subject:</label>
+           <input class="tm-inp" id="ctm-${cls}" type="number" min="1" value="${tm}" ${editable?`onchange="onClassTMChange(${cls},this.value)"`:'disabled'}>`}
+        ${hasPerSub && editable ? `<button class="btn-sm btn-add" onclick="openSubjectMarksModal(${cls})">⚙️ Edit Subject Marks</button>` : ''}
+        ${!hasPerSub && editable ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:#3b82f6;" onclick="enablePerSubjectMarks(${cls})">+ Per-Subject Marks</button>` : ''}
+        <span style="font-size:11px;color:var(--muted)">% = Obtained ÷ subject's total</span>
       </div>
       <div class="marks-wrap">
         <div class="marks-thead" style="grid-template-columns:${cols}">
@@ -325,15 +343,16 @@ function onM(inp){
   updM(+c);
 }
 function updM(cls){
-  const subs=getSubs(cls),total=getClassTM(cls);
+  const subs=getSubs(cls);
   subs.forEach(sub=>{
     const sk=fbKey(sub),sd=getN(DB,['marks','scores','c'+cls,sk])||{};
+    const subTotal=getSubjectTM(cls,sub);
     const sc=TERMS.map(t=>sd[t.id]).filter(v=>v!==undefined&&!isNaN(v));
     const avg=sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null;
-    const p=avg!==null?(avg/total*100):null;
+    const p=avg!==null?(avg/subTotal*100):null;
     const g=grade(p);
     const el=document.getElementById(`g-${cls}-${sk}`);
-    if(el)el.innerHTML=`<span class="gbadge" style="background:${g.c}22;color:${g.c}">${g.l}</span>`;
+    if(el)el.innerHTML=`<span class="gbadge" style="background:${g.c}22;color:${g.c}" title="Out of ${subTotal}">${g.l}</span>`;
   });
 }
 
@@ -412,11 +431,13 @@ function delStudent(cls,i){const s=getStudents(cls);s.splice(i,1);setN(DB,['stud
 function renderTermResult(cls,termId){
   const editable=canEdit(cls),students=getStudents(cls),total=getClassTM(cls),subs=getSubs(cls);
   const el=document.getElementById(`si-${cls}-${termId}`);const term=TERMS.find(t=>t.id===termId);
+  const getSTM=(sub)=>getSubjectTM(cls,sub);
   if(!el)return;
   if(!students.length){el.innerHTML='<div style="padding:18px;color:var(--muted);text-align:center;font-size:12px;">No students. Add in Student List tab.</div>';return;}
   el.innerHTML=`<div style="margin-bottom:8px;padding:8px 12px;background:var(--surf2);border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <span class="tl tl${termId.slice(1)}" style="padding:3px 10px;border-radius:100px;">${term?.label||termId}</span>
-    <span style="font-size:11px;color:var(--muted)">Total per subject: <strong style="color:var(--gold)">${total}</strong></span>
+    <span style="font-size:11px;color:var(--muted)">Total marks: <strong style="color:var(--gold)">${hasPerSubjectMarks(cls)?'Per-subject':total}</strong></span>
+    <button class="print-btn" style="margin-left:auto" onclick="window.print()">🖨️ Print Results</button>
   </div>
   <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th>
     ${subs.map(s=>`<th style="white-space:nowrap;font-size:9px">${s}</th>`).join('')}<th>Total</th><th>%</th><th>Grade</th>
@@ -424,11 +445,11 @@ function renderTermResult(cls,termId){
   const tbody=document.getElementById(`tr-${cls}-${termId}`);
   students.forEach((stu,si)=>{
     const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
-    let totObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);});
-    const maxObt=total*subs.length,pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
+    let totObt=0,maxObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSTM(s);});
+    const pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="color:var(--muted)">${si+1}</td><td style="font-weight:600">${esc(stu.name)}</td><td style="color:var(--muted)">${esc(stu.father||'')}</td>
-      ${subs.map(sub=>`<td><input class="ainp2" type="number" min="0" max="${total}" value="${res[fbKey(sub)]!==undefined?res[fbKey(sub)]:''}" placeholder="Obt" style="width:50px;" ${editable?`onchange="updResult(${cls},'${termId}',${si},'${fbKey(sub)}',this.value)"`:'disabled'}></td>`).join('')}
+      ${subs.map(sub=>`<td><input class="ainp2" type="number" min="0" max="${getSTM(sub)}" value="${res[fbKey(sub)]!==undefined?res[fbKey(sub)]:''}" placeholder="Obt" style="width:50px;" title="Out of ${getSTM(sub)}" ${editable?`onchange="updResult(${cls},'${termId}',${si},'${fbKey(sub)}',this.value)"`:'disabled'}></td>`).join('')}
       <td id="trT-${cls}-${termId}-${si}" style="font-weight:600">${totObt||'—'}</td>
       <td id="trP-${cls}-${termId}-${si}" style="font-weight:700;color:${g.c}">${pctV?pctV.toFixed(1)+'%':'—'}</td>
       <td><span class="gbadge" id="trG-${cls}-${termId}-${si}" style="background:${g.c}22;color:${g.c}">${g.l}</span></td>`;
@@ -436,13 +457,13 @@ function renderTermResult(cls,termId){
   });
 }
 function updResult(cls,tId,si,sk,val){
-  const total=getClassTM(cls),subs=getSubs(cls);
+  const subs=getSubs(cls);
   const res=getN(DB,['results','c'+cls,tId,'s'+si])||{};
   if(val===''||isNaN(parseFloat(val)))delete res[sk];else res[sk]=parseFloat(val);
   setN(DB,['results','c'+cls,tId,'s'+si],res);
   markDirty(`results/c${cls}/${tId}/s${si}`,Object.keys(res).length?res:null);
-  let totObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);});
-  const maxObt=total*subs.length,pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
+  let totObt=0,maxObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);});
+  const pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
   const tEl=document.getElementById(`trT-${cls}-${tId}-${si}`);
   const pEl=document.getElementById(`trP-${cls}-${tId}-${si}`);
   const gEl=document.getElementById(`trG-${cls}-${tId}-${si}`);
@@ -470,8 +491,11 @@ function renderPlannerPanels(){
     const tc=m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)';
     const panel=document.createElement('div');panel.className='mpanel'+(mi===0?' active':'');panel.dataset.mk=m.key;
     panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:5px;">
-      <span style="font-family:Playfair Display,serif;font-size:17px;font-weight:700;">${m.label} ${m.yr}</span>
-      <span class="tl tl${m.term.slice(1)}" style="padding:3px 10px;border-radius:100px;">${TLbl[m.term]}</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-family:Playfair Display,serif;font-size:17px;font-weight:700;">${m.label} ${m.yr}</span>
+        <span class="tl tl${m.term.slice(1)}" style="padding:3px 10px;border-radius:100px;">${TLbl[m.term]}</span>
+      </div>
+      <button class="print-btn" onclick="printPlanner('${m.key}','${m.label} ${m.yr}')">🖨️ Print Month</button>
     </div><div class="planner-cls-list" id="pcl-${m.key}"></div>`;
     holder.appendChild(panel);
     const list=document.getElementById('pcl-'+m.key);
@@ -721,7 +745,7 @@ function renderBrdPanel(cls){
       </div>`}).join('')}
     </div>`;
   }
-  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div></div>
+  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div><button class="print-btn" onclick="window.print()">🖨️ Print</button></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
     <tbody>${s.map((r,i)=>`<tr><td><input class="ainp2" value="${esc(r.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td><td><input class="ainp2" value="${esc(r.father||'')}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:120px;"></td><td><input class="ainp2" type="number" value="${r.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td><td><input class="ainp2" type="number" value="${r.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td><td><input class="ainp2" type="number" value="${r.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:65px;"></td><td style="font-weight:700;color:#22c55e">${r.total?((r.obtained/r.total)*100).toFixed(1)+'%':'—'}</td><td><button class="btn-sm btn-del" onclick="delBrd('${cls}',${i})">✕</button></td></tr>`).join('')}
     </tbody></table></div>
@@ -911,6 +935,77 @@ function renderAll(){
 }
 
 // ══════════════════════════════════════════════
+//  PER-SUBJECT MARKS MODAL
+// ══════════════════════════════════════════════
+function enablePerSubjectMarks(cls){
+  // Copy class total to all subjects as starting point
+  const subs=getSubs(cls), baseTM=getClassTM(cls);
+  if(!CLASSES[cls]) CLASSES[cls]={};
+  const sm={};subs.forEach(s=>sm[s]=baseTM);
+  CLASSES[cls].subjectMarks=sm;
+  setN(DB,['settings','classes',cls,'subjectMarks'],sm);
+  markDirty('settings/classes/'+cls+'/subjectMarks',sm);
+  renderMarksPanels();
+  showToast('Per-subject marks enabled for '+( CLASSES[cls]?.name||'Class '+cls),'ok');
+  setTimeout(()=>openSubjectMarksModal(cls),200);
+}
+
+function openSubjectMarksModal(cls){
+  const subs=getSubs(cls);
+  const existing=CLASSES[cls]?.subjectMarks||{};
+  const overlay=document.createElement('div');
+  overlay.id='smModal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(13,17,23,.85);z-index:500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML=`<div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:17px;font-weight:900;">${CLASSES[cls]?.name||'Class '+cls} · Subject Marks</div>
+      <button onclick="document.getElementById('smModal').remove()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surf2);color:var(--muted);cursor:pointer;font-size:13px;">✕</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px;">Set the total marks for each subject individually. Students' percentages will be calculated against these specific totals.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;" id="smRows">
+      ${subs.map(sub=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surf2);border-radius:8px;border:1px solid var(--border);">
+        <span style="flex:1;font-weight:600;font-size:13px;">${sub}</span>
+        <label style="font-size:11px;color:var(--muted);">Total Marks:</label>
+        <input class="tm-inp" id="sm-${cls}-${fbKey(sub)}" type="number" min="1" max="1000" value="${existing[sub]||getClassTM(cls)}" style="width:80px;">
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="document.getElementById('smModal').remove()" style="padding:7px 16px;border-radius:7px;border:1px solid var(--border);background:var(--surf2);color:var(--muted);cursor:pointer;font-size:12px;">Cancel</button>
+      <button onclick="saveSubjectMarks(${cls})" style="padding:7px 18px;border-radius:7px;border:none;background:var(--gold);color:#000;font-size:12px;font-weight:700;cursor:pointer;">💾 Save Subject Marks</button>
+    </div>
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(239,68,68,.08);border-radius:7px;border:1px solid rgba(239,68,68,.2);font-size:11px;color:#ef4444;">
+      ⚠ Removing per-subject marks: <button onclick="disablePerSubjectMarks(${cls})" style="padding:2px 8px;border-radius:5px;border:none;background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Reset to Single Total</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveSubjectMarks(cls){
+  const subs=getSubs(cls);const sm={};
+  subs.forEach(sub=>{
+    const inp=document.getElementById(`sm-${cls}-${fbKey(sub)}`);
+    sm[sub]=parseFloat(inp?.value)||getClassTM(cls);
+  });
+  if(!CLASSES[cls])CLASSES[cls]={};
+  CLASSES[cls].subjectMarks=sm;
+  setN(DB,['settings','classes',cls,'subjectMarks'],sm);
+  markDirty('settings/classes/'+cls+'/subjectMarks',sm);
+  document.getElementById('smModal')?.remove();
+  renderMarksPanels();
+  showToast('Subject marks saved','ok');
+}
+
+function disablePerSubjectMarks(cls){
+  if(!confirm('Remove per-subject marks and use one total for all subjects?'))return;
+  if(CLASSES[cls]) delete CLASSES[cls].subjectMarks;
+  setN(DB,['settings','classes',cls,'subjectMarks'],null);
+  markDirty('settings/classes/'+cls+'/subjectMarks',null);
+  document.getElementById('smModal')?.remove();
+  renderMarksPanels();
+  showToast('Switched to single total marks','info');
+}
+
+// ══════════════════════════════════════════════
 //  PLANNER REPORT
 // ══════════════════════════════════════════════
 function populatePlannerReportSelects(){
@@ -1034,6 +1129,13 @@ function importTimetableCSV(inp){
   reader.readAsText(file);inp.value='';
 }
 
+
+// ── PRINT PLANNER ────────────────────────────
+function printPlanner(mk, monthLabel){
+  // Open planner class items for printing
+  document.querySelectorAll(`#pcl-${mk} .planner-cls-item`).forEach(el=>el.classList.add('open'));
+  window.print();
+}
 </script>
 </body>
 </html>
