@@ -47,7 +47,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .cdrow{display:flex;justify-content:space-between;}.cdrow .l{color:var(--muted);}
 
 /* TABS */
-.ctabs{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px;}
+.ctabs{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px;align-items:center;}
 .ctab{padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--surf);cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);font-family:inherit;}
 .ctab:hover{border-color:var(--gold);color:var(--gold);}.ctab.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:700;}
 .ctab.locked{opacity:.35;cursor:not-allowed;}
@@ -237,3 +237,17 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 /* TIMETABLE IMPORT */
 .tt-import-bar{background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .tt-import-bar span{font-size:11px;color:var(--muted);}
+
+/* SECTION BADGES (Boys / Girls) */
+.section-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:8px;}
+.section-badge.boys{background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3);}
+.section-badge.girls{background:rgba(236,72,153,.15);color:#ec4899;border:1px solid rgba(236,72,153,.3);}
+.section-divider{display:flex;align-items:center;gap:8px;margin:8px 0 4px;}
+.section-divider span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;}
+.section-divider.boys span{color:#3b82f6;}
+.section-divider.girls span{color:#ec4899;}
+.section-divider::before,.section-divider::after{content:'';flex:1;height:1px;}
+.section-divider.boys::before,.section-divider.boys::after{background:rgba(59,130,246,.3);}
+.section-divider.girls::before,.section-divider.girls::after{background:rgba(236,72,153,.3);}
+/* Subject marks modal */
+#smModal input.tm-inp{width:80px;font-size:13px;padding:5px 8px;}
