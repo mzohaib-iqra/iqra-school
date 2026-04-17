@@ -4,13 +4,13 @@
 //  Project Settings → Your Apps → Web App → Config
 // ═══════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+ apiKey: "AIzaSyBiDDwQY5VPHLEXp2h4wO79potOs9L9A54",
+  authDomain: "iqra-parents.firebaseapp.com",
+  databaseURL: "https://iqra-parents-default-rtdb.firebaseio.com",
+  projectId: "iqra-parents",
+  storageBucket: "iqra-parents.firebasestorage.app",
+  messagingSenderId: "1038703318060",
+  appId: "1:1038703318060:web:1d93561f010de9de006d89"
 };
 
 // Teacher accounts — role:"admin" gets full access
