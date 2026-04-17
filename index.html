@@ -174,7 +174,7 @@ function afterLogin(){
 function doLogout(){sessionStorage.removeItem('iqra_t');location.reload();}
 document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 (()=>{const s=sessionStorage.getItem('iqra_t');if(s){try{currentTeacher=JSON.parse(s);afterLogin();}catch(e){sessionStorage.removeItem('iqra_t');}}})();
-function canEdit(cls){return currentTeacher&&currentTeacher.classes.includes(+cls);}
+function canEdit(cls){return currentTeacher&&(currentTeacher.role==='admin'||currentTeacher.classes.includes(+cls));}
 
 // ══════════════════════════════════════════════
 //  FIREBASE
@@ -839,9 +839,27 @@ function renderSettings(){
         <div class="settings-row"><label>Syllabus By</label><input class="s-inp" id="se-syl-${t.id}" type="date" value="${t.syllabus}"></div>
       </div>
     </div>`).join('')}
-    <div class="settings-card" style="grid-column:1/-1">
-      <div class="settings-card-hd">📚 Classes &amp; Subjects <button class="btn-sm btn-add" style="margin-left:auto;" onclick="addNewClass()">+ Add Class</button></div>
-      <div class="settings-card-body"><div id="classesConfig"></div></div>
+    <!-- BOYS SECTION CLASSES -->
+    <div class="settings-card" style="grid-column:1/-1;border-left:4px solid #3b82f6;">
+      <div class="settings-card-hd" style="background:rgba(59,130,246,.06);">
+        👦 Boys Section – Classes &amp; Subjects
+        <button class="btn-sm btn-add" style="margin-left:auto;" onclick="addNewClass('boys')">+ Add Boys Class</button>
+      </div>
+      <div class="settings-card-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Edit class name, total marks, and comma-separated subjects. Changes apply to all Boys classes.</p>
+        <div id="classesConfigBoys"></div>
+      </div>
+    </div>
+    <!-- GIRLS SECTION CLASSES -->
+    <div class="settings-card" style="grid-column:1/-1;border-left:4px solid #ec4899;">
+      <div class="settings-card-hd" style="background:rgba(236,72,153,.06);">
+        👧 Girls Section – Classes &amp; Subjects
+        <button class="btn-sm btn-add" style="margin-left:auto;background:rgba(236,72,153,.15);color:#ec4899;" onclick="addNewClass('girls')">+ Add Girls Class</button>
+      </div>
+      <div class="settings-card-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Girls section classes (4–12). Subjects and marks can be set independently from Boys section.</p>
+        <div id="classesConfigGirls"></div>
+      </div>
     </div>
     <div class="settings-card">
       <div class="settings-card-hd">📆 Academic Months</div>
@@ -876,18 +894,55 @@ function collectSocials(){
 }
 
 function renderClassesConfig(){
-  const el=document.getElementById('classesConfig');if(!el)return;el.innerHTML='';
-  getClassIds().forEach(cls=>{
+  const boys=getClassIds().filter(c=>CLASSES[c]?.section!=='girls');
+  const girls=getClassIds().filter(c=>CLASSES[c]?.section==='girls');
+  renderClassSection('classesConfigBoys', boys, 'boys');
+  renderClassSection('classesConfigGirls', girls, 'girls');
+}
+
+function renderClassSection(containerId, ids, section){
+  const el=document.getElementById(containerId);if(!el)return;el.innerHTML='';
+  if(!ids.length){
+    el.innerHTML=`<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px;font-style:italic;">No ${section} classes added yet. Click "+ Add ${section==='girls'?'Girls':'Boys'} Class" above.</div>`;
+    return;
+  }
+  ids.forEach(cls=>{
     const cc=CLASSES[cls];const subs=cc?.subjects||[];
-    const div=document.createElement('div');div.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:7px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;';
-    div.innerHTML=`<input class="s-inp" value="${esc(cc?.name||'Class '+cls)}" id="cn-${cls}" style="width:120px;"><span style="font-size:11px;color:var(--muted)">Total Marks:</span><input class="tm-inp" id="ctm-s-${cls}" value="${cc?.totalMarks||100}" type="number" min="1"><span style="font-size:11px;color:var(--muted)">Subjects:</span><input class="s-inp" value="${subs.map(s=>esc(s)).join(', ')}" id="cs-${cls}" style="flex:1;min-width:180px;"><button class="btn-sm btn-del" onclick="deleteClass(${cls})">✕ Remove</button>`;
+    const hasPerSub=!!(cc?.subjectMarks);
+    const accentColor=section==='girls'?'#ec4899':'#3b82f6';
+    const div=document.createElement('div');
+    div.style.cssText=`border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:7px;`;
+    div.innerHTML=`
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:${hasPerSub?'8':'0'}px;">
+        <span style="font-size:10px;padding:2px 8px;border-radius:100px;font-weight:700;background:${section==='girls'?'rgba(236,72,153,.1)':'rgba(59,130,246,.1)'};color:${accentColor}">${section==='girls'?'👧':'👦'}</span>
+        <input class="s-inp" value="${esc(cc?.name||'Class '+cls)}" id="cn-${cls}" style="width:140px;" placeholder="Class name">
+        <span style="font-size:11px;color:var(--muted)">Total Marks:</span>
+        <input class="tm-inp" id="ctm-s-${cls}" value="${cc?.totalMarks||100}" type="number" min="1" style="width:65px;">
+        <span style="font-size:11px;color:var(--muted)">Subjects:</span>
+        <input class="s-inp" value="${subs.map(s=>esc(s)).join(', ')}" id="cs-${cls}" style="flex:1;min-width:180px;" placeholder="Subject1, Subject2, ...">
+        ${hasPerSub?`<button class="btn-sm" style="background:rgba(34,197,94,.15);color:#22c55e;" onclick="openSubjectMarksModal(${cls})">⚙️ Sub Marks</button>`:''}
+        <button class="btn-sm btn-del" onclick="deleteClass(${cls})">✕ Remove</button>
+      </div>
+      ${hasPerSub?`<div style="display:flex;flex-wrap:wrap;gap:5px;padding:6px 8px;background:var(--surf2);border-radius:6px;border:1px solid var(--border);">
+        ${subs.map(s=>`<span style="font-size:11px;background:var(--surf);border:1px solid var(--border);border-radius:5px;padding:2px 8px;"><strong>${esc(s)}</strong>: ${cc.subjectMarks?.[s]||cc.totalMarks||100}</span>`).join('')}
+      </div>`:''}`;
     el.appendChild(div);
   });
 }
-function addNewClass(){
-  const ids=getClassIds();const newId=ids.length?Math.max(...ids)+1:1;
-  CLASSES[newId]={name:'Class '+newId,subjects:['English','Maths','Urdu'],totalMarks:100};
-  renderClassesConfig();showToast('Class '+newId+' added – set subjects then Save','info');
+function addNewClass(section='boys'){
+  const ids=getClassIds();
+  // For girls, use 1xx range; for boys use normal range
+  let newId;
+  if(section==='girls'){
+    const girlIds=ids.filter(c=>CLASSES[c]?.section==='girls');
+    newId=girlIds.length?Math.max(...girlIds)+1:104;
+  } else {
+    const boyIds=ids.filter(c=>CLASSES[c]?.section!=='girls');
+    newId=boyIds.length?Math.max(...boyIds)+1:1;
+  }
+  const label=section==='girls'?'Girls':'Boys';
+  CLASSES[newId]={name:'Class '+(newId>100?newId-100:newId)+' ('+label+')',section,subjects:['English','Maths','Urdu'],totalMarks:100};
+  renderClassesConfig();showToast('New '+label+' class added – fill subjects then Save','info');
 }
 function deleteClass(cls){
   if(!confirm('Remove '+(CLASSES[cls]?.name||'Class '+cls)+'?'))return;
@@ -911,7 +966,16 @@ function saveSettings(){
   const newMonths=MONTHS.map(m=>({...m,term:document.getElementById('smt-'+m.key)?.value||m.term}));
   getClassIds().forEach(cls=>{
     const nameEl=document.getElementById('cn-'+cls);const subEl=document.getElementById('cs-'+cls);const tmEl=document.getElementById('ctm-s-'+cls);
-    if(nameEl&&subEl)CLASSES[cls]={name:nameEl.value.trim()||'Class '+cls,subjects:subEl.value.split(',').map(s=>s.trim()).filter(Boolean),totalMarks:parseFloat(tmEl?.value)||100};
+    if(nameEl&&subEl){
+      // Preserve existing properties (section, subjectMarks etc.)
+      const existing=CLASSES[cls]||{};
+      CLASSES[cls]={
+        ...existing,
+        name:nameEl.value.trim()||'Class '+cls,
+        subjects:subEl.value.split(',').map(s=>s.trim()).filter(Boolean),
+        totalMarks:parseFloat(tmEl?.value)||100
+      };
+    }
   });
   const school={name:document.getElementById('ss-name').value.trim(),city:document.getElementById('ss-city').value.trim(),phone1:document.getElementById('ss-ph1').value.trim(),phone2:document.getElementById('ss-ph2').value.trim(),founderName:document.getElementById('ss-fn').value.trim(),founderDesc:document.getElementById('ss-fd').value.trim(),socials:collectSocials()};
   const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,totalMarks:100};
