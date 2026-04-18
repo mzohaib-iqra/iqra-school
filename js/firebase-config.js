@@ -18,7 +18,7 @@ const TEACHER_ACCOUNTS = [
   { username:"admin",    password:"iqra@admin00",   name:"Muhammad Zohaib (Principal)", classes:[1,2,3,4,5,6,7,8,9,10], role:"admin" },
   { username:"teacher1", password:"teacher@1234", name:"Teacher – Classes 1–5",       classes:[1,2,3,4,5],            role:"teacher" },
   { username:"teacher2", password:"teacher@5678", name:"Teacher – Classes 6–10",      classes:[6,7,8,9,10],           role:"teacher" },
- { username:"teacher3", password:"teacher5678", name:"Teacher – Classes 1–10",      classes:[1,2,3,4,5,6,7,8,9,10],           role:"teacher" },
+ { username:"teacher3", password:"teacher5678", name:"Teacher – Classes 1–10",      classes:[1,2,3,4,5,6,7,8,9,10,11,12],           role:"teacher" },
  { username:"teacher5", password:"teacher5678", name:"Teacher – Classes 1–10",      classes:[1,2,3,4,5,6,7,8,9,10,11,12,108,109,110,111,112],           role:"teacher" },
  { username:"teacher4", password:"female001",  name:"Teacher - Female Section",    classes:[104,105,106,107,108,109,110,111,112,113], role:"teacher" }
 ];
