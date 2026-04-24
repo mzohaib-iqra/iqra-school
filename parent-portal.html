@@ -275,40 +275,112 @@ function renderPlanner(cls){
   tabs.innerHTML='';views.innerHTML='';
   const subs=getSubs(cls);
   const hasAny=MONTHS.some(m=>subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;}));
-  if(!hasAny){views.innerHTML='<div class="no-data"><h3>📅 No syllabus plan yet</h3></div>';return;}
+  if(!hasAny){views.innerHTML='<div class="no-data"><h3>📅 No syllabus plan yet</h3><p>The teacher has not added the monthly plan yet.</p></div>';return;}
+
+  // Month selector tabs
   MONTHS.forEach((m,i)=>{
     const hasD=subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;});
     const btn=document.createElement('button');
-    btn.className='ms-btn'+(i===0?' active':'');if(!hasD)btn.style.opacity='.4';
+    btn.className='ms-btn'+(i===0?' active':'');
+    if(!hasD)btn.style.opacity='.35';
     btn.textContent=m.label;btn.id='msb-'+m.key;
-    btn.onclick=(mk=>()=>{document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===mk));})(m.key);
+    btn.onclick=(mk=>()=>{
+      document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===mk));
+    })(m.key);
     tabs.appendChild(btn);
   });
+
+  // Month panels
   MONTHS.forEach((m,i)=>{
-    const view=document.createElement('div');view.className='ms-view'+(i===0?' active':'');view.dataset.mk=m.key;
-    let tot=0,dn=0;subs.forEach(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
+    const view=document.createElement('div');
+    view.className='ms-view'+(i===0?' active':'');
+    view.dataset.mk=m.key;
+
+    const tc=m.term==='t1'?'#f97316':m.term==='t2'?'#6366f1':'#10b981';
+    let tot=0,dn=0;
+    subs.forEach(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)])||[];tot+=t.length;dn+=t.filter(x=>x.done).length;});
     const p=tot?Math.round(dn/tot*100):0;
-    const tc=m.term==='t1'?'var(--t1)':m.term==='t2'?'var(--t2)':'var(--t3)';
-    view.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:5px;">
-      <span style="font-size:13px;font-weight:700;">${m.label} ${m.yr}</span>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="prog-bar" style="width:80px;"><div class="prog-fill" style="width:${p}%;background:${tc}"></div></div>
-        <span style="font-size:12px;font-weight:700;color:${tc}">${p}%</span>
-      </div>
-    </div>
-    <div class="subj-scroll"><div class="subj-cols-wrap" style="grid-template-columns:repeat(${subs.length},1fr);display:grid;"></div></div>`;
+
+    // Month header with overall progress ring
+    const monthHtml=`
+      <div class="planner-month-hdr">
+        <div class="planner-month-left">
+          <div class="planner-month-ring" style="--ring-color:${tc};--ring-pct:${p};">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="5"/>
+              <circle cx="26" cy="26" r="22" fill="none" stroke="${tc}" stroke-width="5"
+                stroke-dasharray="${Math.round(2*3.14159*22)}"
+                stroke-dashoffset="${Math.round(2*3.14159*22*(1-p/100))}"
+                stroke-linecap="round" transform="rotate(-90 26 26)"/>
+              <text x="26" y="30" text-anchor="middle" font-size="11" font-weight="700" fill="${tc}">${p}%</text>
+            </svg>
+          </div>
+          <div>
+            <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;line-height:1.1">${m.label} ${m.yr}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">${TLbl[m.term]} &nbsp;·&nbsp; ${dn} of ${tot} topics done</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="planner-stat-pill" style="background:${p>=70?'rgba(16,185,129,.1)':p>=40?'rgba(249,115,22,.1)':'rgba(239,68,68,.08)'};color:${p>=70?'#10b981':p>=40?'#f97316':'#ef4444'};">
+            ${p>=70?'✅ On Track':p>=40?'⚡ In Progress':'⏳ Getting Started'}
+          </span>
+        </div>
+      </div>`;
+
+    // Subject cards — vertical rows, one per subject
+    const subjectCards=subs.map(sub=>{
+      const topics=getN(DB,['planner',m.key,'c'+cls,fbKey(sub)])||[];
+      const done=topics.filter(t=>t.done).length;
+      const pend=topics.length-done;
+      const sp=topics.length?Math.round(done/topics.length*100):0;
+      const barColor=sp>=70?'#10b981':sp>=40?'#6366f1':'#f97316';
+
+      if(!topics.length) return `
+        <div class="planner-subj-row planner-subj-empty">
+          <div class="planner-subj-name">${esc(sub)}</div>
+          <div class="planner-subj-empty-msg">Not planned yet</div>
+        </div>`;
+
+      const topicList=topics.map(t=>`
+        <div class="planner-topic-item ${t.done?'done':'pending'}">
+          <div class="planner-topic-check ${t.done?'checked':''}">
+            ${t.done?`<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 2.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+          </div>
+          <span class="planner-topic-text ${t.done?'done':''}">${esc(t.text)}</span>
+        </div>`).join('');
+
+      return `
+        <div class="planner-subj-row">
+          <div class="planner-subj-header">
+            <div class="planner-subj-name">${esc(sub)}</div>
+            <div class="planner-subj-meta">
+              ${done>0?`<span class="planner-badge done-badge">✓ ${done} done</span>`:''}
+              ${pend>0?`<span class="planner-badge pend-badge">${pend} pending</span>`:''}
+            </div>
+          </div>
+          <div class="planner-subj-bar-wrap">
+            <div class="planner-subj-bar-track">
+              <div class="planner-subj-bar-fill" style="width:${sp}%;background:linear-gradient(90deg,${barColor},${barColor}cc)"></div>
+            </div>
+            <span class="planner-subj-pct" style="color:${barColor}">${sp}%</span>
+          </div>
+          <div class="planner-topics-grid">${topicList}</div>
+        </div>`;
+    }).join('');
+
+    view.innerHTML=monthHtml+`<div class="planner-subjects-list">${subjectCards}</div>`;
     views.appendChild(view);
-    const wrap=view.querySelector('.subj-cols-wrap');
-    subs.forEach(sub=>{
-      const topics=getN(DB,['planner',m.key,'c'+cls,fbKey(sub)])||[];const sd=topics.filter(t=>t.done).length;
-      const col=document.createElement('div');col.className='subj-col-r';
-      col.innerHTML=`<div class="subj-col-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:500">${sd}/${topics.length}</span></div>
-        <div class="subj-col-bd">${topics.length===0?'<div class="empty-msg">Not added</div>':topics.map(t=>`<div class="titem"><div class="ticon ${t.done?'done':'pend'}"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="titem-text${t.done?' dn':''}">${esc(t.text)}</div></div>`).join('')}</div>`;
-      wrap.appendChild(col);
-    });
   });
+
+  // Auto-activate first month with data
   const fi=MONTHS.findIndex(m=>subs.some(s=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(s)]);return t&&t.length;}));
-  if(fi>=0){document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));document.getElementById('msb-'+MONTHS[fi].key)?.classList.add('active');document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===MONTHS[fi].key));}
+  if(fi>=0){
+    document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('msb-'+MONTHS[fi].key)?.classList.add('active');
+    document.querySelectorAll('.ms-view').forEach(v=>v.classList.toggle('active',v.dataset.mk===MONTHS[fi].key));
+  }
 }
 function renderNotes(cls){
   const note=getN(DB,['marks','notes','c'+cls])||'';const card=document.getElementById('notesCard');
