@@ -185,3 +185,116 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 /* Section optgroup labels in selectors */
 .sel optgroup{font-weight:700;color:var(--muted);}
 .sel option{font-weight:500;}
+
+/* ═══════════════════════════════════════════════
+   PLANNER — NEW VERTICAL CARD LAYOUT
+════════════════════════════════════════════════ */
+
+/* Month header */
+.planner-month-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;flex-wrap:wrap;gap:12px;
+  padding:16px 18px;background:#fff;border-radius:var(--radius);
+  border:1.5px solid var(--border);box-shadow:var(--shadow);
+}
+.planner-month-left{display:flex;align-items:center;gap:14px;}
+.planner-month-ring svg{display:block;filter:drop-shadow(0 2px 6px rgba(99,102,241,.15));}
+.planner-stat-pill{
+  font-size:11px;font-weight:700;padding:5px 13px;
+  border-radius:100px;white-space:nowrap;
+}
+
+/* Subject list container */
+.planner-subjects-list{display:flex;flex-direction:column;gap:12px;}
+
+/* Individual subject row */
+.planner-subj-row{
+  background:#fff;border-radius:var(--radius);
+  border:1.5px solid var(--border);overflow:hidden;
+  box-shadow:var(--shadow);transition:border-color .15s;
+}
+.planner-subj-row:hover{border-color:var(--accent);}
+.planner-subj-row.planner-subj-empty{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;opacity:.5;
+}
+.planner-subj-empty-msg{font-size:12px;color:var(--muted);font-style:italic;}
+
+/* Subject header inside row */
+.planner-subj-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px 8px;flex-wrap:wrap;gap:6px;
+}
+.planner-subj-name{
+  font-size:14px;font-weight:800;color:var(--accent);
+  letter-spacing:-.2px;
+}
+.planner-subj-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.planner-badge{
+  font-size:10px;font-weight:700;padding:3px 9px;
+  border-radius:100px;white-space:nowrap;
+}
+.done-badge{background:rgba(16,185,129,.12);color:#10b981;}
+.pend-badge{background:rgba(249,115,22,.1);color:#f97316;}
+
+/* Progress bar inside subject row */
+.planner-subj-bar-wrap{
+  display:flex;align-items:center;gap:10px;
+  padding:0 16px 10px;
+}
+.planner-subj-bar-track{
+  flex:1;height:8px;background:var(--border);
+  border-radius:100px;overflow:hidden;
+}
+.planner-subj-bar-fill{
+  height:100%;border-radius:100px;
+  transition:width .5s cubic-bezier(.4,0,.2,1);
+}
+.planner-subj-pct{
+  font-size:12px;font-weight:800;min-width:34px;text-align:right;
+}
+
+/* Topics grid — 2-col on desktop, 1-col on mobile */
+.planner-topics-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:6px;
+  padding:8px 16px 14px;
+  border-top:1px solid var(--border);
+  background:var(--surface2);
+}
+
+/* Single topic item */
+.planner-topic-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 12px;border-radius:9px;
+  background:#fff;border:1px solid var(--border);
+  transition:all .15s;
+}
+.planner-topic-item.done{background:rgba(16,185,129,.04);border-color:rgba(16,185,129,.2);}
+.planner-topic-item.pending{background:#fff;}
+.planner-topic-item:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 3px 10px rgba(99,102,241,.08);}
+
+.planner-topic-check{
+  width:18px;height:18px;border-radius:5px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.planner-topic-check.checked{background:#10b981;}
+.planner-topic-check:not(.checked){background:transparent;border:2px solid var(--border);}
+
+.planner-topic-text{
+  font-size:12px;line-height:1.4;flex:1;color:var(--text);font-weight:500;
+}
+.planner-topic-text.done{
+  color:var(--muted);text-decoration:line-through;
+  text-decoration-color:rgba(16,185,129,.5);
+}
+
+/* Mobile adjustments */
+@media(max-width:540px){
+  .planner-topics-grid{grid-template-columns:1fr;}
+  .planner-month-hdr{padding:12px 14px;}
+  .planner-subj-header{padding:10px 14px 6px;}
+  .planner-subj-bar-wrap{padding:0 14px 8px;}
+  .planner-topics-grid{padding:8px 14px 12px;}
+}
