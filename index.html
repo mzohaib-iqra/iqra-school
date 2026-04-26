@@ -44,6 +44,8 @@
       <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('announcements');renderAnnList()">📢 Announce</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('toppers-admin');renderTopperAdminPanel('primary_boys')">🏅 Toppers</button>
       <a class="ntab parent-link" href="parent-portal.html" target="_blank">👨‍👩‍👧 Parent Portal ↗</a>
     </div>
   </div>
@@ -146,6 +148,47 @@
 <div class="section" id="sec-settings">
   <div id="settingsContent"></div>
 </div>
+
+<!-- ANNOUNCEMENTS -->
+<div class="section" id="sec-announcements">
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-head">
+      <div class="card-title">📢 New Announcement</div>
+      <span style="font-size:11px;color:var(--muted)">Appears as a banner in the Parent Portal</span>
+    </div>
+    <div style="padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <textarea id="ann-text" placeholder="Type announcement text…" rows="2" style="flex:1;min-width:220px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;"></textarea>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <label style="font-size:10px;color:var(--muted)">Banner Color</label>
+        <select class="ainp2" id="ann-color">
+          <option value="#4f46e5">🟣 Indigo (default)</option>
+          <option value="#16a34a">🟢 Green (info)</option>
+          <option value="#d97706">🟡 Amber (warning)</option>
+          <option value="#dc2626">🔴 Red (urgent)</option>
+          <option value="#0369a1">🔵 Blue</option>
+        </select>
+        <button class="addbtn2" onclick="addAnnouncement()">📢 Publish</button>
+      </div>
+    </div>
+  </div>
+  <div id="annList"></div>
+</div>
+
+<!-- TOPPERS ADMIN -->
+<div class="section" id="sec-toppers-admin">
+  <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+    Toppers are auto-calculated from Term Results. You can manually override any position or add additional position holders here.
+  </p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="topperAdminTabs">
+    <button class="ctab active" onclick="selTopperAdminTab('primary_boys',this)">Primary Boys</button>
+    <button class="ctab" onclick="selTopperAdminTab('primary_girls',this)">Primary Girls</button>
+    <button class="ctab" onclick="selTopperAdminTab('middle_boys',this)">Middle Boys</button>
+    <button class="ctab" onclick="selTopperAdminTab('middle_girls',this)">Middle Girls</button>
+    <button class="ctab" onclick="selTopperAdminTab('high_boys',this)">High Boys</button>
+    <button class="ctab" onclick="selTopperAdminTab('high_girls',this)">High Girls</button>
+  </div>
+  <div id="topperAdminPanel"></div>
+</div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -219,7 +262,7 @@ function showToast(msg,type='ok'){const el=document.getElementById('toast');el.t
 // ══════════════════════════════════════════════
 //  SECTION SWITCH
 // ══════════════════════════════════════════════
-const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings'];
+const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings','announcements','toppers-admin'];
 function switchSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
   document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
@@ -868,8 +911,59 @@ function renderSettings(){
       </div>
     </div>
   </div>
+  <!-- CLASS ORDER -->
+    <div class="settings-card" style="grid-column:1/-1">
+      <div class="settings-card-hd">↕️ Class Display Order</div>
+      <div class="settings-card-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Use ▲ ▼ to reorder how classes appear in tabs across the system.</p>
+        <div id="classOrderPanel"></div>
+      </div>
+    </div>
+  <!-- PORTAL APPEARANCE -->
+    <div class="settings-card">
+      <div class="settings-card-hd">🎨 Portal Appearance</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>Font Size</label>
+          <select class="s-inp" id="ss-fs">
+            <option value="sm" ${(getN(DB,['settings','portal','fontSize'])||'md')==='sm'?'selected':''}>Small</option>
+            <option value="md" ${(getN(DB,['settings','portal','fontSize'])||'md')==='md'?'selected':''}>Medium (default)</option>
+            <option value="lg" ${(getN(DB,['settings','portal','fontSize'])||'md')==='lg'?'selected':''}>Large</option>
+            <option value="xl" ${(getN(DB,['settings','portal','fontSize'])||'md')==='xl'?'selected':''}>Extra Large</option>
+          </select>
+        </div>
+        <div class="settings-row"><label>Font Family</label>
+          <select class="s-inp" id="ss-ff">
+            <option value="DM Sans" ${'DM Sans'===(getN(DB,['settings','portal','fontFamily'])||'DM Sans')?'selected':''}>DM Sans (modern)</option>
+            <option value="Georgia" ${'Georgia'===(getN(DB,['settings','portal','fontFamily'])||'')?'selected':''}>Georgia (classic)</option>
+            <option value="Arial" ${'Arial'===(getN(DB,['settings','portal','fontFamily'])||'')?'selected':''}>Arial (clean)</option>
+            <option value="Roboto" ${'Roboto'===(getN(DB,['settings','portal','fontFamily'])||'')?'selected':''}>Roboto</option>
+          </select>
+        </div>
+        <div class="settings-row"><label>Accent Color</label>
+          <input type="color" id="ss-ac" value="${getN(DB,['settings','portal','accentColor'])||'#6366f1'}" style="width:48px;height:32px;border-radius:6px;border:1px solid var(--border);cursor:pointer;padding:2px;">
+          <span style="font-size:11px;color:var(--muted)">Used for highlights in parent portal</span>
+        </div>
+        <div class="settings-row"><label>Bold Headers</label>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+            <input type="checkbox" id="ss-bh" ${getN(DB,['settings','portal','boldHeaders'])!==false?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+            <span style="font-size:11px;color:var(--muted)">Make subject headers bold</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <!-- PLANNER YEAR -->
+    <div class="settings-card">
+      <div class="settings-card-hd">📅 Planner Year Range</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>Start Year</label><input class="s-inp" id="ss-py-start" type="number" min="2020" max="2040" value="${getN(DB,['settings','plannerYear','start'])||2025}" style="width:90px;"></div>
+        <div class="settings-row"><label>End Year</label><input class="s-inp" id="ss-py-end" type="number" min="2020" max="2040" value="${getN(DB,['settings','plannerYear','end'])||2026}" style="width:90px;"></div>
+        <p style="font-size:11px;color:var(--muted)">Months in the planner show within this academic year range.</p>
+      </div>
+    </div>
+  </div>
   <button class="s-save-btn" onclick="saveSettings()">💾 Save All Settings</button>`;
   renderClassesConfig();
+  renderClassOrderPanel();
 }
 
 let _socialCount=0;
@@ -978,7 +1072,24 @@ function saveSettings(){
     }
   });
   const school={name:document.getElementById('ss-name').value.trim(),city:document.getElementById('ss-city').value.trim(),phone1:document.getElementById('ss-ph1').value.trim(),phone2:document.getElementById('ss-ph2').value.trim(),founderName:document.getElementById('ss-fn').value.trim(),founderDesc:document.getElementById('ss-fd').value.trim(),socials:collectSocials()};
-  const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,totalMarks:100};
+  // Portal appearance
+  const portal={
+    fontSize:document.getElementById('ss-fs')?.value||'md',
+    fontFamily:document.getElementById('ss-ff')?.value||'DM Sans',
+    accentColor:document.getElementById('ss-ac')?.value||'#6366f1',
+    boldHeaders:document.getElementById('ss-bh')?.checked!==false
+  };
+  // Planner year
+  const plannerYear={
+    start:parseInt(document.getElementById('ss-py-start')?.value)||2025,
+    end:parseInt(document.getElementById('ss-py-end')?.value)||2026
+  };
+  const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,
+    totalMarks:100,portal,plannerYear,
+    classOrder:getN(DB,['settings','classOrder'])||[],
+    announcements:getN(DB,['settings','announcements'])||[],
+    toppers:getN(DB,['settings','toppers'])||{}
+  };
   setN(DB,['settings'],newSettings);markDirty('settings',newSettings);
   SETTINGS=newSettings;TERMS=newTerms;MONTHS=newMonths;SCHOOL=school;
   document.getElementById('hSub').textContent=`${school.phone1} / ${school.phone2}`;
@@ -1200,6 +1311,229 @@ function printPlanner(mk, monthLabel){
   document.querySelectorAll(`#pcl-${mk} .planner-cls-item`).forEach(el=>el.classList.add('open'));
   window.print();
 }
+
+// ══════════════════════════════════════════════
+//  ANNOUNCEMENTS
+// ══════════════════════════════════════════════
+function addAnnouncement(){
+  const text=document.getElementById('ann-text').value.trim();
+  if(!text){showToast('Enter announcement text','info');return;}
+  const color=document.getElementById('ann-color').value;
+  const anns=getN(DB,['settings','announcements'])||[];
+  anns.unshift({id:Date.now(),text,color,active:true,createdAt:new Date().toISOString()});
+  setN(DB,['settings','announcements'],anns);
+  markDirty('settings/announcements',anns);
+  document.getElementById('ann-text').value='';
+  renderAnnList();showToast('Announcement published!','ok');
+}
+
+function renderAnnList(){
+  const el=document.getElementById('annList');if(!el)return;
+  const anns=getN(DB,['settings','announcements'])||[];
+  if(!anns.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px;">No announcements yet.</div>';return;}
+  el.innerHTML=anns.map((a,i)=>`
+    <div style="background:var(--surf);border:1px solid var(--border);border-left:4px solid ${a.color||'#6366f1'};border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${esc(a.text)}</div>
+        <div style="font-size:10px;color:var(--muted);">${new Date(a.createdAt).toLocaleString('en-IN')}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" ${a.active?'checked':''} onchange="toggleAnn(${i},this.checked)" style="cursor:pointer;">
+          ${a.active?'<span style="color:#22c55e;font-weight:600">Live</span>':'<span>Hidden</span>'}
+        </label>
+        <button class="btn-sm btn-del" onclick="deleteAnn(${i})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleAnn(i,active){
+  const anns=getN(DB,['settings','announcements'])||[];
+  if(anns[i])anns[i].active=active;
+  setN(DB,['settings','announcements'],anns);
+  markDirty('settings/announcements',anns);
+  renderAnnList();
+}
+
+function deleteAnn(i){
+  const anns=getN(DB,['settings','announcements'])||[];
+  anns.splice(i,1);
+  setN(DB,['settings','announcements'],anns);
+  markDirty('settings/announcements',anns);
+  renderAnnList();
+}
+
+// ══════════════════════════════════════════════
+//  CLASS ORDER (drag-free up/down buttons)
+// ══════════════════════════════════════════════
+function moveClass(cls, direction){
+  const order=getOrderedClassIds().map(Number);
+  const i=order.indexOf(cls);
+  if(i<0)return;
+  const newI=i+direction;
+  if(newI<0||newI>=order.length)return;
+  [order[i],order[newI]]=[order[newI],order[i]];
+  setN(DB,['settings','classOrder'],order);
+  markDirty('settings/classOrder',order);
+  SETTINGS.classOrder=order;
+  renderClassOrderPanel();
+  // rebuild tabs in other sections
+  renderMarksTabs();renderStudentsTabs();renderDiaryTabs();renderTimetableTabs();
+}
+
+function renderClassOrderPanel(){
+  const el=document.getElementById('classOrderPanel');if(!el)return;
+  const ids=getOrderedClassIds();
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:5px;">
+    ${ids.map((cls,i)=>{
+      const cc=CLASSES[cls];const section=cc?.section||'boys';
+      const col=section==='girls'?'#ec4899':'#3b82f6';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;border-left:3px solid ${col};">
+        <span style="font-size:12px;font-weight:600;flex:1;">${esc(cc?.name||'Class '+cls)}</span>
+        <span style="font-size:10px;padding:2px 7px;border-radius:100px;background:${section==='girls'?'rgba(236,72,153,.1)':'rgba(59,130,246,.1)'};color:${col}">${section}</span>
+        <button class="btn-sm" style="padding:3px 7px;" onclick="moveClass(${cls},-1)" ${i===0?'disabled':''} title="Move Up">▲</button>
+        <button class="btn-sm" style="padding:3px 7px;" onclick="moveClass(${cls},1)" ${i===ids.length-1?'disabled':''} title="Move Down">▼</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+//  SCHOOL TOPPERS ADMIN
+// ══════════════════════════════════════════════
+const LEVEL_MAP={
+  primary_boys:{label:'Primary Boys',levels:['primary'],section:'boys'},
+  primary_girls:{label:'Primary Girls',levels:['primary'],section:'girls'},
+  middle_boys:{label:'Middle Boys',levels:['middle'],section:'boys'},
+  middle_girls:{label:'Middle Girls',levels:['middle'],section:'girls'},
+  high_boys:{label:'High Boys',levels:['high'],section:'boys'},
+  high_girls:{label:'High Girls',levels:['high'],section:'girls'}
+};
+
+function selTopperAdminTab(key,btn){
+  document.querySelectorAll('#topperAdminTabs .ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTopperAdminPanel(key);
+}
+
+// Auto-calculate toppers from term results
+function calcToppers(levelKey){
+  const {levels,section}=LEVEL_MAP[levelKey];
+  const clsIds=getClassIds().filter(c=>{
+    const {level,section:sec}=getSchoolLevel(c);
+    return levels.includes(level)&&sec===section;
+  });
+  const studentScores=[];
+  clsIds.forEach(cls=>{
+    const students=getN(DB,['students','c'+cls])||[];
+    students.forEach((stu,si)=>{
+      let totalObt=0,maxObt=0,termCount=0;
+      TERMS.forEach(t=>{
+        const res=getN(DB,['results','c'+cls,t.id,'s'+si])||{};
+        const subs=getSubs(cls);
+        subs.forEach(s=>{
+          const v=res[fbKey(s)];
+          if(v!==undefined&&!isNaN(v)){totalObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);}
+        });
+        if(Object.keys(res).length)termCount++;
+      });
+      if(maxObt>0){
+        studentScores.push({name:stu.name,father:stu.father||'',cls,className:CLASSES[cls]?.name||'Class '+cls,pct:parseFloat((totalObt/maxObt*100).toFixed(2)),totalObt,maxObt});
+      }
+    });
+  });
+  return studentScores.sort((a,b)=>b.pct-a.pct);
+}
+
+function renderTopperAdminPanel(levelKey){
+  const el=document.getElementById('topperAdminPanel');if(!el)return;
+  const {label}=LEVEL_MAP[levelKey];
+  const autoToppers=calcToppers(levelKey);
+  const savedOverrides=getN(DB,['settings','toppers',levelKey])||[];
+  // Merge: saved overrides take rank position, fill rest from auto
+  const top3=[];
+  for(let rank=1;rank<=3;rank++){
+    const override=savedOverrides.find(o=>o.rank===rank);
+    const auto=autoToppers[rank-1];
+    top3.push({rank,override,auto});
+  }
+  el.innerHTML=`
+    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:13px;font-weight:700;">🏅 ${label}</span>
+      <span style="font-size:11px;color:var(--muted)">Auto-calculated from all term results. Override any position manually.</span>
+      <button class="btn-sm btn-add" style="margin-left:auto" onclick="autoFillToppers('${levelKey}')">↻ Recalculate</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${top3.map(({rank,override,auto})=>{
+        const medals=['🥇','🥈','🥉'];
+        const using=override||auto;
+        return`<div style="background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:relative;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:22px">${medals[rank-1]}</span>
+            <span style="font-size:13px;font-weight:700;">${rank===1?'1st':rank===2?'2nd':'3rd'} Position</span>
+            ${override?'<span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(251,191,36,.15);color:var(--gold);font-weight:600">Manual Override</span>':'<span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(34,197,94,.12);color:#22c55e;font-weight:600">Auto</span>'}
+          </div>
+          ${using?`<div style="background:var(--surf2);border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border);">
+            <div style="font-weight:700;font-size:14px;">${esc(using.name)}</div>
+            <div style="font-size:11px;color:var(--muted);">S/O ${esc(using.father)} · ${esc(using.className||using.cls)}</div>
+            <div style="font-size:18px;font-weight:900;color:#22c55e;margin-top:4px">${using.pct}%</div>
+          </div>`:'<div style="padding:10px;color:var(--muted);font-size:12px;font-style:italic;">No data available</div>'}
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:end;">
+            <div><label style="font-size:10px;color:var(--muted)">Name (override)</label>
+              <input class="ainp2" id="to-name-${levelKey}-${rank}" placeholder="${esc(auto?.name||'Student name')}" value="${esc(override?.name||'')}" style="width:100%"></div>
+            <div><label style="font-size:10px;color:var(--muted)">Father Name</label>
+              <input class="ainp2" id="to-father-${levelKey}-${rank}" placeholder="${esc(auto?.father||'Father name')}" value="${esc(override?.father||'')}" style="width:100%"></div>
+            <div><label style="font-size:10px;color:var(--muted)">% Score</label>
+              <input class="ainp2" id="to-pct-${levelKey}-${rank}" type="number" min="0" max="100" step="0.1" placeholder="${auto?.pct||''}" value="${override?.pct||''}" style="width:100%"></div>
+            <div style="display:flex;gap:4px;">
+              <button class="addbtn2" onclick="saveTopperOverride('${levelKey}',${rank})">💾</button>
+              ${override?`<button class="btn-sm btn-del" onclick="clearTopperOverride('${levelKey}',${rank})">✕</button>`:''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${autoToppers.length>3?`<div style="margin-top:12px;"><div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;">All Calculated Rankings (from term results):</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th><th>Class</th><th>Score</th></tr></thead>
+    <tbody>${autoToppers.slice(0,10).map((s,i)=>`<tr><td>${i+1}</td><td style="font-weight:600">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father)}</td><td>${esc(s.className)}</td><td style="font-weight:700;color:#22c55e">${s.pct}%</td></tr>`).join('')}</tbody></table></div></div>`:''}`
+  ;
+}
+
+function saveTopperOverride(levelKey,rank){
+  const name=document.getElementById(`to-name-${levelKey}-${rank}`)?.value.trim();
+  const father=document.getElementById(`to-father-${levelKey}-${rank}`)?.value.trim();
+  const pct=parseFloat(document.getElementById(`to-pct-${levelKey}-${rank}`)?.value);
+  if(!name){showToast('Enter student name','info');return;}
+  const overrides=getN(DB,['settings','toppers',levelKey])||[];
+  const existing=overrides.findIndex(o=>o.rank===rank);
+  const entry={rank,name,father:father||'',pct:isNaN(pct)?0:pct,manual:true};
+  if(existing>=0)overrides[existing]=entry;else overrides.push(entry);
+  setN(DB,['settings','toppers',levelKey],overrides);
+  markDirty('settings/toppers/'+levelKey,overrides);
+  renderTopperAdminPanel(levelKey);
+  showToast('Topper saved','ok');
+}
+
+function clearTopperOverride(levelKey,rank){
+  const overrides=getN(DB,['settings','toppers',levelKey])||[];
+  const idx=overrides.findIndex(o=>o.rank===rank);
+  if(idx>=0)overrides.splice(idx,1);
+  setN(DB,['settings','toppers',levelKey],overrides);
+  markDirty('settings/toppers/'+levelKey,overrides);
+  renderTopperAdminPanel(levelKey);
+  showToast('Override cleared – using auto calculation','info');
+}
+
+function autoFillToppers(levelKey){
+  const top=calcToppers(levelKey);
+  if(!top.length){showToast('No term results available to calculate','info');return;}
+  const overrides=top.slice(0,3).map((s,i)=>({rank:i+1,name:s.name,father:s.father,pct:s.pct,className:s.className,manual:false}));
+  setN(DB,['settings','toppers',levelKey],overrides);
+  markDirty('settings/toppers/'+levelKey,overrides);
+  renderTopperAdminPanel(levelKey);
+  showToast('Toppers recalculated from term results','ok');
+}
+
 </script>
 </body>
 </html>
