@@ -59,7 +59,7 @@
     <button class="ntab" onclick="switchTab('periods')">🕐 Periods</button>
     <button class="ntab" onclick="switchTab('boards')">🏆 Board Results</button>
     <button class="ntab" onclick="switchTab('weekly')">📝 Weekly Tests</button>
-    <button class="ntab" onclick="switchTab('toppers')">⭐ Weekly Tests Toppers</button>
+    <button class="ntab" onclick="switchTab('toppers')">⭐ Weekly Test Toppers</button>
   
   </div>
 </div>
@@ -91,6 +91,18 @@
   </div>
 </div>
 
+<!-- DAILY DIARY -->
+<div class="tab-section" id="tab-diary">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="diaryClassSel" onchange="loadDiary(this.value)">
+      <option value="">— Choose a class —</option>
+    </select>
+  </div>
+  <div id="diaryContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+</div>
+
+  
 <!-- TERM RESULTS -->
 <div class="tab-section" id="tab-results">
   <div class="sel-wrap">
@@ -103,15 +115,20 @@
   <div id="resContent"><div class="no-data"><h3>Select a class above</h3></div></div>
 </div>
 
-<!-- DAILY DIARY -->
-<div class="tab-section" id="tab-diary">
-  <div class="sel-wrap">
-    <span class="sel-lbl">Select Class</span>
-    <select class="sel" id="diaryClassSel" onchange="loadDiary(this.value)">
-      <option value="">— Choose a class —</option>
-    </select>
+  <!-- SCHOOL TOPPERS -->
+<div class="tab-section" id="tab-school-toppers">
+  <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Overall School Toppers</div><div class="sec-hdr-line"></div></div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Top position holders across all classes, grouped by level and section. Based on cumulative term results.</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="stLevelTabs">
+    <button class="ttab active" onclick="selSchoolTopperLevel('all',this)">All Levels</button>
+    <button class="ttab" onclick="selSchoolTopperLevel('primary',this)">📗 Primary (1–5)</button>
+    <button class="ttab" onclick="selSchoolTopperLevel('middle',this)">📘 Middle (6–8)</button>
+    <button class="ttab" onclick="selSchoolTopperLevel('high',this)">📕 High (9–12)</button>
   </div>
-  <div id="diaryContent"><div class="no-data"><h3>Select a class above</h3></div></div>
+  <div class="sec-hdr"><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div><div class="sec-hdr-txt" style="color:#3b82f6">👦 BOYS SECTION</div><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div></div>
+  <div id="schoolToppersBoys"></div>
+  <div class="sec-hdr" style="margin-top:18px;"><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div><div class="sec-hdr-txt" style="color:#ec4899">👧 GIRLS SECTION</div><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div></div>
+  <div id="schoolToppersGirls"></div>
 </div>
 
 <!-- PERIODS -->
@@ -152,24 +169,10 @@
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="positionLists"></div>
 </div>
 
-<!-- SCHOOL TOPPERS -->
-<div class="tab-section" id="tab-school-toppers">
-  <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Overall School Toppers</div><div class="sec-hdr-line"></div></div>
-  <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Top position holders across all classes, grouped by level and section. Based on cumulative term results.</p>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="stLevelTabs">
-    <button class="ttab active" onclick="selSchoolTopperLevel('all',this)">All Levels</button>
-    <button class="ttab" onclick="selSchoolTopperLevel('primary',this)">📗 Primary (1–5)</button>
-    <button class="ttab" onclick="selSchoolTopperLevel('middle',this)">📘 Middle (6–8)</button>
-    <button class="ttab" onclick="selSchoolTopperLevel('high',this)">📕 High (9–12)</button>
-  </div>
-  <div class="sec-hdr"><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div><div class="sec-hdr-txt" style="color:#3b82f6">👦 BOYS SECTION</div><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div></div>
-  <div id="schoolToppersBoys"></div>
-  <div class="sec-hdr" style="margin-top:18px;"><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div><div class="sec-hdr-txt" style="color:#ec4899">👧 GIRLS SECTION</div><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div></div>
-  <div id="schoolToppersGirls"></div>
-</div>
+
 
 </div>
-<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Founded 1999 · Parent Portal</div>
+<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Since 1999 · Parent Portal</div>
 
 <script>
 let DB={}, curCls=null, curBrd='9', curWkSec='matric', curResCls=null, curResTermId='t1', curDiaryCls=null;
