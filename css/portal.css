@@ -298,3 +298,22 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
   .planner-subj-bar-wrap{padding:0 14px 8px;}
   .planner-topics-grid{padding:8px 14px 12px;}
 }
+
+/* ═══════════════════════════════════════════════
+   ANNOUNCEMENTS BANNER
+════════════════════════════════════════════════ */
+#annBanner { position: relative; z-index: 10; }
+.ann-banner-item {
+  animation: slideDown .3s ease;
+}
+@keyframes slideDown {
+  from { opacity:0; transform:translateY(-8px); }
+  to   { opacity:1; transform:none; }
+}
+
+/* ═══════════════════════════════════════════════
+   SCHOOL TOPPERS SECTION
+════════════════════════════════════════════════ */
+#schoolToppersBoys, #schoolToppersGirls {
+  animation: fi .2s ease;
+}
