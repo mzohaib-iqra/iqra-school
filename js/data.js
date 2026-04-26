@@ -10,18 +10,18 @@ const DEFAULT_SETTINGS = {
     { id:'t3', label:'Term 3', exam:'2026-03-15', syllabus:'2026-02-06' }
   ],
   months: [
-    { key:'apr25', label:'April',     yr:2025, term:'t1' },
-    { key:'may25', label:'May',       yr:2025, term:'t1' },
-    { key:'jun25', label:'June',      yr:2025, term:'t1' },
-    { key:'jul25', label:'July',      yr:2025, term:'t1' },
-    { key:'aug25', label:'August',    yr:2025, term:'t1' },
-    { key:'sep25', label:'September', yr:2025, term:'t1' },
-    { key:'oct25', label:'October',   yr:2025, term:'t2' },
-    { key:'nov25', label:'November',  yr:2025, term:'t2' },
-    { key:'dec25', label:'December',  yr:2025, term:'t2' },
-    { key:'jan26', label:'January',   yr:2026, term:'t3' },
-    { key:'feb26', label:'February',  yr:2026, term:'t3' },
-    { key:'mar26', label:'March',     yr:2026, term:'t3' }
+    { key:'apr26', label:'April',     yr:2025, term:'t1' },
+    { key:'may26', label:'May',       yr:2025, term:'t1' },
+    { key:'jun26', label:'June',      yr:2025, term:'t1' },
+    { key:'jul26', label:'July',      yr:2025, term:'t1' },
+    { key:'aug26', label:'August',    yr:2025, term:'t1' },
+    { key:'sep26', label:'September', yr:2025, term:'t1' },
+    { key:'oct26', label:'October',   yr:2025, term:'t2' },
+    { key:'nov26', label:'November',  yr:2025, term:'t2' },
+    { key:'dec26', label:'December',  yr:2025, term:'t2' },
+    { key:'jan27', label:'January',   yr:2026, term:'t3' },
+    { key:'feb27', label:'February',  yr:2026, term:'t3' },
+    { key:'mar27', label:'March',     yr:2026, term:'t3' }
   ],
   classes: {
     // ── BOYS SECTION ──────────────────────────────────────
