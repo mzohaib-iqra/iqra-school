@@ -52,15 +52,14 @@
 
 <div class="nav-strip">
   <div class="nav-inner">
-    <button class="ntab active" onclick="switchTab('progress')">📊 Plannar</button>
+    <button class="ntab active" onclick="switchTab('progress')">📊 Progress</button>
+    <button class="ntab" onclick="switchTab('results')">📋 Results</button>
     <button class="ntab" onclick="switchTab('diary')">📔 Diary</button>
-<button class="ntab" onclick="switchTab('results')">📋 Results</button>
-      <button class="ntab" onclick="switchTab('school-toppers')">🏅 School Toppers</button>
     <button class="ntab" onclick="switchTab('periods')">🕐 Periods</button>
-    <button class="ntab" onclick="switchTab('boards')">🏆 Board Results</button>
-    <button class="ntab" onclick="switchTab('weekly')">📝 Weekly Tests</button>
-    <button class="ntab" onclick="switchTab('toppers')">⭐ Weekly Test Toppers</button>
-  
+    <button class="ntab" onclick="switchTab('boards')">🏆 Boards</button>
+    <button class="ntab" onclick="switchTab('weekly')">📝 Weekly</button>
+    <button class="ntab" onclick="switchTab('toppers')">⭐ Toppers</button>
+    <button class="ntab" onclick="switchTab('school-toppers')">🏅 School Toppers</button>
   </div>
 </div>
 
@@ -91,18 +90,6 @@
   </div>
 </div>
 
-<!-- DAILY DIARY -->
-<div class="tab-section" id="tab-diary">
-  <div class="sel-wrap">
-    <span class="sel-lbl">Select Class</span>
-    <select class="sel" id="diaryClassSel" onchange="loadDiary(this.value)">
-      <option value="">— Choose a class —</option>
-    </select>
-  </div>
-  <div id="diaryContent"><div class="no-data"><h3>Select a class above</h3></div></div>
-</div>
-
-  
 <!-- TERM RESULTS -->
 <div class="tab-section" id="tab-results">
   <div class="sel-wrap">
@@ -115,20 +102,15 @@
   <div id="resContent"><div class="no-data"><h3>Select a class above</h3></div></div>
 </div>
 
-  <!-- SCHOOL TOPPERS -->
-<div class="tab-section" id="tab-school-toppers">
-  <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Overall School Toppers</div><div class="sec-hdr-line"></div></div>
-  <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Top position holders across all classes, grouped by level and section. Based on cumulative term results.</p>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="stLevelTabs">
-    <button class="ttab active" onclick="selSchoolTopperLevel('all',this)">All Levels</button>
-    <button class="ttab" onclick="selSchoolTopperLevel('primary',this)">📗 Primary (1–5)</button>
-    <button class="ttab" onclick="selSchoolTopperLevel('middle',this)">📘 Middle (6–8)</button>
-    <button class="ttab" onclick="selSchoolTopperLevel('high',this)">📕 High (9–12)</button>
+<!-- DAILY DIARY -->
+<div class="tab-section" id="tab-diary">
+  <div class="sel-wrap">
+    <span class="sel-lbl">Select Class</span>
+    <select class="sel" id="diaryClassSel" onchange="loadDiary(this.value)">
+      <option value="">— Choose a class —</option>
+    </select>
   </div>
-  <div class="sec-hdr"><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div><div class="sec-hdr-txt" style="color:#3b82f6">👦 BOYS SECTION</div><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div></div>
-  <div id="schoolToppersBoys"></div>
-  <div class="sec-hdr" style="margin-top:18px;"><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div><div class="sec-hdr-txt" style="color:#ec4899">👧 GIRLS SECTION</div><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div></div>
-  <div id="schoolToppersGirls"></div>
+  <div id="diaryContent"><div class="no-data"><h3>Select a class above</h3></div></div>
 </div>
 
 <!-- PERIODS -->
@@ -169,10 +151,24 @@
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="positionLists"></div>
 </div>
 
-
+<!-- SCHOOL TOPPERS -->
+<div class="tab-section" id="tab-school-toppers">
+  <div class="sec-hdr"><div class="sec-hdr-line"></div><div class="sec-hdr-txt">Overall School Toppers</div><div class="sec-hdr-line"></div></div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Top position holders across all classes, grouped by level and section. Based on cumulative term results.</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="stLevelTabs">
+    <button class="ttab active" onclick="selSchoolTopperLevel('all',this)">All Levels</button>
+    <button class="ttab" onclick="selSchoolTopperLevel('primary',this)">📗 Primary (1–5)</button>
+    <button class="ttab" onclick="selSchoolTopperLevel('middle',this)">📘 Middle (6–8)</button>
+    <button class="ttab" onclick="selSchoolTopperLevel('high',this)">📕 High (9–12)</button>
+  </div>
+  <div class="sec-hdr"><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div><div class="sec-hdr-txt" style="color:#3b82f6">👦 BOYS SECTION</div><div class="sec-hdr-line" style="background:rgba(59,130,246,.3)"></div></div>
+  <div id="schoolToppersBoys"></div>
+  <div class="sec-hdr" style="margin-top:18px;"><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div><div class="sec-hdr-txt" style="color:#ec4899">👧 GIRLS SECTION</div><div class="sec-hdr-line" style="background:rgba(236,72,153,.3)"></div></div>
+  <div id="schoolToppersGirls"></div>
+</div>
 
 </div>
-<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Since 1999 · Parent Portal</div>
+<div class="footer" id="footerEl">IQRA Public School and College Dara Pezu · Founded 1999 · Parent Portal</div>
 
 <script>
 let DB={}, curCls=null, curBrd='9', curWkSec='matric', curResCls=null, curResTermId='t1', curDiaryCls=null;
@@ -415,40 +411,6 @@ function renderNotes(cls){
   else card.style.display='none';
 }
 
-// ── DAILY DIARY ───────────────────────────────────
-function loadDiary(cls){cls=parseInt(cls)||null;curDiaryCls=cls;const cont=document.getElementById('diaryContent');if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';return;}renderDiaryForDate(cls,todayKey());}
-function renderDiaryForDate(cls,dk){
-  const cont=document.getElementById('diaryContent');
-  cont.innerHTML=`<div class="diary-date-hdr">
-    <label style="font-size:12px;color:var(--muted);font-weight:600;">📅 Date:</label>
-    <input type="date" value="${dk}" id="pDiaryDate" onchange="renderDiaryForDate(${cls},this.value)">
-    <span style="font-size:13px;color:var(--muted);font-weight:500;">${fmtDay(dk)}</span>
-  </div>
-  <div class="diary-day-grid">
-    ${getSubs(cls).map(sub=>{
-      const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
-      const teacherInfo=periods.length?periods.map(p=>`${p.teacher} (P${p.period})`).join(', '):'';
-      const hws=getN(DB,['diary','c'+cls,dk,fbKey(sub)])||[];
-      return`<div class="diary-subj-card">
-        <div class="diary-subj-hd">
-          <div>
-            <div class="diary-subj-name">${esc(sub)}</div>
-            ${teacherInfo?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">👤 ${esc(teacherInfo)}</div>`:''}
-          </div>
-          <div class="diary-hw-count">${hws.length} task${hws.length!==1?'s':''}</div>
-        </div>
-        <div class="diary-hw-list">
-          ${hws.length?hws.map(h=>`<div class="diary-hw-item">
-            <div class="diary-hw-bullet">📌</div>
-            <div class="diary-hw-text">${esc(h)}</div>
-          </div>`).join(''):`<div class="diary-no-hw">No homework today ✓</div>`}
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-  
 // ── TERM RESULTS ─────────────────────────────────
 function loadResults(cls,termId){
   curResCls=parseInt(cls)||null;curResTermId=termId;
@@ -497,101 +459,37 @@ function loadResults(cls,termId){
   </tr>`;}).join('')}</tbody></table></div></div>`;
 }
 
-// ══════════════════════════════════════════════════════════════
-//  SCHOOL TOPPERS (Overall)
-// ══════════════════════════════════════════════════════════════
-let curSchoolLevel='all';
-
-function selSchoolTopperLevel(level,btn){
-  curSchoolLevel=level;
-  document.querySelectorAll('#stLevelTabs .ttab').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  renderSchoolToppers(level);
-}
-
-function getSchoolLevelLocal(cls){
-  const num=+cls>100?+cls-100:+cls;
-  const section=(CLASSES[cls]?.section)||'boys';
-  const level=num<=5?'primary':num<=8?'middle':'high';
-  return{level,section};
-}
-
-function calcSchoolToppers(section,level){
-  // First check for manual overrides
-  const levelKey=level+'_'+section;
-  const overrides=getN(DB,['settings','toppers',levelKey])||[];
-  if(overrides.length>0){
-    return overrides.map(o=>({
-      name:o.name,father:o.father||'',
-      pct:o.pct,cls:'',
-      className:o.className||'',
-      rank:o.rank,manual:true
-    })).sort((a,b)=>a.rank-b.rank);
-  }
-  // Auto-calculate from term results
-  const clsIds=getClassIds().filter(c=>{
-    const {level:lv,section:sec}=getSchoolLevelLocal(c);
-    const matchLevel=level==='all'||lv===level;
-    return matchLevel&&sec===section;
-  });
-  const scores=[];
-  clsIds.forEach(cls=>{
-    const students=getN(DB,['students','c'+cls])||[];
-    students.forEach((stu,si)=>{
-      let totObt=0,maxObt=0;
-      TERMS.forEach(t=>{
-        const res=getN(DB,['results','c'+cls,t.id,'s'+si])||{};
-        getSubs(cls).forEach(s=>{
-          const v=res[fbKey(s)];
-          if(v!==undefined&&!isNaN(v)){totObt+=parseFloat(v);maxObt+=getSubjectTMFromDB(cls,s);}
-        });
-      });
-      if(maxObt>0) scores.push({name:stu.name,father:stu.father||'',cls,className:CLASSES[cls]?.name||'Class '+cls,pct:parseFloat((totObt/maxObt*100).toFixed(2)),manual:false});
-    });
-  });
-  return scores.sort((a,b)=>b.pct-a.pct);
-}
-
-function renderSchoolToppers(level){
-  curSchoolLevel=level;
-  renderSectionToppers('boys','schoolToppersBoys',level);
-  renderSectionToppers('girls','schoolToppersGirls',level);
-}
-
-function renderSectionToppers(section,containerId,level){
-  const el=document.getElementById(containerId);if(!el)return;
-  // If level=all, render primary+middle+high separately
-  const levels=level==='all'?['primary','middle','high']:[level];
-  const medals=['🥇','🥈','🥉'];
-  const podColors=[['#f59e0b','rgba(245,158,11,.08)'],['#9ca3af','rgba(156,163,175,.08)'],['#d97706','rgba(217,119,6,.08)']];
-  const levelLabels={primary:'📗 Primary (Class 1–5)',middle:'📘 Middle (Class 6–8)',high:'📕 High (Class 9–12)'};
-  const sectionColor=section==='girls'?'#ec4899':'#3b82f6';
-  let html='';
-  levels.forEach(lv=>{
-    const toppers=calcSchoolToppers(section,lv).slice(0,3);
-    html+=`<div style="margin-bottom:18px;">
-      <div style="font-size:12px;font-weight:700;color:${sectionColor};margin-bottom:10px;padding:5px 12px;background:${section==='girls'?'rgba(236,72,153,.06)':'rgba(59,130,246,.06)'};border-radius:8px;border-left:3px solid ${sectionColor};">${levelLabels[lv]||lv}</div>`;
-    if(!toppers.length){
-      html+=`<div style="padding:14px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);text-align:center;color:var(--muted);font-size:12px;">No term results available yet</div>`;
-    } else {
-      html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;">`;
-      toppers.forEach((t,i)=>{
-        const[col,bg]=podColors[i]||podColors[2];
-        html+=`<div style="border:2px solid ${col};border-radius:12px;padding:14px;background:${bg};text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.06);">
-          <div style="font-size:22px;margin-bottom:3px">${medals[i]}</div>
-          <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px">${i===0?'1st':i===1?'2nd':'3rd'} Position</div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(t.name)}</div>
-          <div style="font-size:10px;color:var(--muted)">S/O ${esc(t.father)}</div>
-          ${t.className?`<div style="font-size:10px;color:var(--muted)">${esc(t.className)}</div>`:''}
-          <div style="font-size:20px;font-weight:900;color:${col};margin-top:5px">${t.pct}%</div>
-          ${t.manual?'<div style="font-size:9px;color:var(--muted);margin-top:2px">★ Official</div>':''}
-        </div>`;
-      });
-      html+=`</div>`;
-    }
-    html+=`</div>`;
-  });
-  el.innerHTML=html||'<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">No data available</div>';
+// ── DAILY DIARY ───────────────────────────────────
+function loadDiary(cls){cls=parseInt(cls)||null;curDiaryCls=cls;const cont=document.getElementById('diaryContent');if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';return;}renderDiaryForDate(cls,todayKey());}
+function renderDiaryForDate(cls,dk){
+  const cont=document.getElementById('diaryContent');
+  cont.innerHTML=`<div class="diary-date-hdr">
+    <label style="font-size:12px;color:var(--muted);font-weight:600;">📅 Date:</label>
+    <input type="date" value="${dk}" id="pDiaryDate" onchange="renderDiaryForDate(${cls},this.value)">
+    <span style="font-size:13px;color:var(--muted);font-weight:500;">${fmtDay(dk)}</span>
+  </div>
+  <div class="diary-day-grid">
+    ${getSubs(cls).map(sub=>{
+      const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
+      const teacherInfo=periods.length?periods.map(p=>`${p.teacher} (P${p.period})`).join(', '):'';
+      const hws=getN(DB,['diary','c'+cls,dk,fbKey(sub)])||[];
+      return`<div class="diary-subj-card">
+        <div class="diary-subj-hd">
+          <div>
+            <div class="diary-subj-name">${esc(sub)}</div>
+            ${teacherInfo?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">👤 ${esc(teacherInfo)}</div>`:''}
+          </div>
+          <div class="diary-hw-count">${hws.length} task${hws.length!==1?'s':''}</div>
+        </div>
+        <div class="diary-hw-list">
+          ${hws.length?hws.map(h=>`<div class="diary-hw-item">
+            <div class="diary-hw-bullet">📌</div>
+            <div class="diary-hw-text">${esc(h)}</div>
+          </div>`).join(''):`<div class="diary-no-hw">No homework today ✓</div>`}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 // ── PERIODS ───────────────────────────────────────
@@ -722,7 +620,102 @@ function applyPortalAppearance(){
   subjectNames.forEach(el=>{el.style.fontWeight=p.boldHeaders!==false?'700':'500';});
 }
 
+// ══════════════════════════════════════════════════════════════
+//  SCHOOL TOPPERS (Overall)
+// ══════════════════════════════════════════════════════════════
+let curSchoolLevel='all';
 
+function selSchoolTopperLevel(level,btn){
+  curSchoolLevel=level;
+  document.querySelectorAll('#stLevelTabs .ttab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderSchoolToppers(level);
+}
+
+function getSchoolLevelLocal(cls){
+  const num=+cls>100?+cls-100:+cls;
+  const section=(CLASSES[cls]?.section)||'boys';
+  const level=num<=5?'primary':num<=8?'middle':'high';
+  return{level,section};
+}
+
+function calcSchoolToppers(section,level){
+  // First check for manual overrides
+  const levelKey=level+'_'+section;
+  const overrides=getN(DB,['settings','toppers',levelKey])||[];
+  if(overrides.length>0){
+    return overrides.map(o=>({
+      name:o.name,father:o.father||'',
+      pct:o.pct,cls:'',
+      className:o.className||'',
+      rank:o.rank,manual:true
+    })).sort((a,b)=>a.rank-b.rank);
+  }
+  // Auto-calculate from term results
+  const clsIds=getClassIds().filter(c=>{
+    const {level:lv,section:sec}=getSchoolLevelLocal(c);
+    const matchLevel=level==='all'||lv===level;
+    return matchLevel&&sec===section;
+  });
+  const scores=[];
+  clsIds.forEach(cls=>{
+    const students=getN(DB,['students','c'+cls])||[];
+    students.forEach((stu,si)=>{
+      let totObt=0,maxObt=0;
+      TERMS.forEach(t=>{
+        const res=getN(DB,['results','c'+cls,t.id,'s'+si])||{};
+        getSubs(cls).forEach(s=>{
+          const v=res[fbKey(s)];
+          if(v!==undefined&&!isNaN(v)){totObt+=parseFloat(v);maxObt+=getSubjectTMFromDB(cls,s);}
+        });
+      });
+      if(maxObt>0) scores.push({name:stu.name,father:stu.father||'',cls,className:CLASSES[cls]?.name||'Class '+cls,pct:parseFloat((totObt/maxObt*100).toFixed(2)),manual:false});
+    });
+  });
+  return scores.sort((a,b)=>b.pct-a.pct);
+}
+
+function renderSchoolToppers(level){
+  curSchoolLevel=level;
+  renderSectionToppers('boys','schoolToppersBoys',level);
+  renderSectionToppers('girls','schoolToppersGirls',level);
+}
+
+function renderSectionToppers(section,containerId,level){
+  const el=document.getElementById(containerId);if(!el)return;
+  // If level=all, render primary+middle+high separately
+  const levels=level==='all'?['primary','middle','high']:[level];
+  const medals=['🥇','🥈','🥉'];
+  const podColors=[['#f59e0b','rgba(245,158,11,.08)'],['#9ca3af','rgba(156,163,175,.08)'],['#d97706','rgba(217,119,6,.08)']];
+  const levelLabels={primary:'📗 Primary (Class 1–5)',middle:'📘 Middle (Class 6–8)',high:'📕 High (Class 9–12)'};
+  const sectionColor=section==='girls'?'#ec4899':'#3b82f6';
+  let html='';
+  levels.forEach(lv=>{
+    const toppers=calcSchoolToppers(section,lv).slice(0,3);
+    html+=`<div style="margin-bottom:18px;">
+      <div style="font-size:12px;font-weight:700;color:${sectionColor};margin-bottom:10px;padding:5px 12px;background:${section==='girls'?'rgba(236,72,153,.06)':'rgba(59,130,246,.06)'};border-radius:8px;border-left:3px solid ${sectionColor};">${levelLabels[lv]||lv}</div>`;
+    if(!toppers.length){
+      html+=`<div style="padding:14px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);text-align:center;color:var(--muted);font-size:12px;">No term results available yet</div>`;
+    } else {
+      html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;">`;
+      toppers.forEach((t,i)=>{
+        const[col,bg]=podColors[i]||podColors[2];
+        html+=`<div style="border:2px solid ${col};border-radius:12px;padding:14px;background:${bg};text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.06);">
+          <div style="font-size:22px;margin-bottom:3px">${medals[i]}</div>
+          <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px">${i===0?'1st':i===1?'2nd':'3rd'} Position</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(t.name)}</div>
+          <div style="font-size:10px;color:var(--muted)">S/O ${esc(t.father)}</div>
+          ${t.className?`<div style="font-size:10px;color:var(--muted)">${esc(t.className)}</div>`:''}
+          <div style="font-size:20px;font-weight:900;color:${col};margin-top:5px">${t.pct}%</div>
+          ${t.manual?'<div style="font-size:9px;color:var(--muted);margin-top:2px">★ Official</div>':''}
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  });
+  el.innerHTML=html||'<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">No data available</div>';
+}
 
 </script>
 </body>
