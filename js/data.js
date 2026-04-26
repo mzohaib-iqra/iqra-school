@@ -59,6 +59,24 @@ const DEFAULT_SETTINGS = {
     ],
     founderName: 'Principal Abdul Qayyum Khan (Late)',
     founderDesc: 'IQRA is an educational institute founded by Principal Abdul Qayyum Khan (Late) in 1999. His vision of excellence in education lives on in every student.'
+  },
+  // ── Portal appearance ────────────────────────────────────
+  portal: {
+    fontSize:   'md',        // sm | md | lg | xl
+    fontFamily: 'DM Sans',   // DM Sans | Georgia | Arial | Roboto
+    accentColor:'#6366f1',   // any hex
+    boldHeaders: true
+  },
+  // ── Planner year range ───────────────────────────────────
+  plannerYear: { start: 2025, end: 2026 },
+  // ── Class display order (array of class IDs) ─────────────
+  classOrder: [],
+  // ── Announcements ────────────────────────────────────────
+  announcements: [],          // [{id, text, color, active, createdAt}]
+  // ── School toppers (manual overrides) ────────────────────
+  toppers: {
+    // auto-calculated from term results, but can be overridden
+    // format: { primary_boys: [{rank,name,father,cls,pct,override}], ... }
   }
 };
 
@@ -80,6 +98,23 @@ function getSubjectTM(cls, sub){
 }
 // Check if class uses per-subject marks (class 8–12 and girls 8–12)
 function hasPerSubjectMarks(cls){ return !!(CLASSES[cls]?.subjectMarks); }
+
+// ── Class ordering ────────────────────────────────────────────
+function getOrderedClassIds(){
+  const all=getClassIds();
+  const order=(SETTINGS.classOrder||[]).map(Number).filter(id=>all.includes(id));
+  const rest=all.filter(id=>!order.includes(id));
+  return [...order,...rest];
+}
+
+// ── School level groupings ────────────────────────────────────
+function getSchoolLevel(cls){
+  const c=CLASSES[cls];
+  const section=c?.section||'boys';
+  const num=cls>100?cls-100:cls;
+  const level=num<=5?'primary':num<=8?'middle':'high';
+  return {level,section,label:level.charAt(0).toUpperCase()+level.slice(1)};
+}
 
 const TC   = { t1:'#f97316', t2:'#3b82f6', t3:'#22c55e' };
 const TLbl = { t1:'Term 1',  t2:'Term 2',  t3:'Term 3'  };
