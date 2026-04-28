@@ -52,14 +52,15 @@
 
 <div class="nav-strip">
   <div class="nav-inner">
-    <button class="ntab active" onclick="switchTab('progress')">📊 Progress</button>
-    <button class="ntab" onclick="switchTab('results')">📋 Results</button>
-    <button class="ntab" onclick="switchTab('diary')">📔 Diary</button>
-    <button class="ntab" onclick="switchTab('periods')">🕐 Periods</button>
-    <button class="ntab" onclick="switchTab('boards')">🏆 Boards</button>
-    <button class="ntab" onclick="switchTab('weekly')">📝 Weekly</button>
-    <button class="ntab" onclick="switchTab('toppers')">⭐ Toppers</button>
-    <button class="ntab" onclick="switchTab('school-toppers')">🏅 School Toppers</button>
+    <div id="portalNavInner" style="display:contents">
+    <button class="ntab active" data-tab="progress" onclick="switchTab('progress')">📊 Progress</button>
+    <button class="ntab" data-tab="diary" onclick="switchTab('diary')">📔 Diary</button>
+    <button class="ntab" data-tab="results" onclick="switchTab('results')">📋 Results</button>
+    <button class="ntab" data-tab="school-toppers" onclick="switchTab('school-toppers')">🏅 School Toppers</button>
+    <button class="ntab" data-tab="toppers" onclick="switchTab('toppers')">⭐ Weekly Toppers</button>
+    <button class="ntab" data-tab="boards" onclick="switchTab('boards')">🏆 Boards</button>
+    <button class="ntab" data-tab="periods" onclick="switchTab('periods')">🕐 Periods</button>
+  </div>
   </div>
 </div>
 
@@ -206,6 +207,8 @@ function initFirebase(){
       if(document.getElementById('tab-school-toppers').classList.contains('active')) renderSchoolToppers('all');
       renderAnnouncementBanner();
       applyPortalAppearance();
+      applyHeaderBanner();
+      setTimeout(renderPopupAnnouncements,800);
     });
   }catch(e){document.getElementById('syncMsg').textContent='❌ Error: '+e.message;}
 }
@@ -229,6 +232,37 @@ function applyBranding(){
   // Footer
   document.getElementById('footerEl').innerHTML=`${esc(s.name)} ${esc(s.city)} · Founded 1999 · Parent Portal<br>📞 ${esc(s.phone1||'')} / ${esc(s.phone2||'')}`;
   document.title=(s.name||'IQRA')+' – Parent Portal';
+  // Apply banner
+  applyHeaderBanner();
+  // Apply tab order from settings
+  const tabOrder=getN(DB,['settings','tabOrder','portal']);
+  if(tabOrder) applyPortalTabOrder(tabOrder);
+}
+
+function applyHeaderBanner(){
+  const b=getN(DB,['settings','banner'])||{};
+  const GRADIENTS={
+    'gradient-default':'linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 70%,#6366f1 100%)',
+    'gradient-green':'linear-gradient(135deg,#052e16,#166534,#15803d)',
+    'gradient-maroon':'linear-gradient(135deg,#3f0404,#7f1d1d,#b91c1c)',
+    'gradient-dark':'linear-gradient(135deg,#020617,#0f172a,#1e293b)',
+    'gradient-sunset':'linear-gradient(135deg,#7c2d12,#9a3412,#c2410c,#f97316)',
+  };
+  const hdr=document.querySelector('.header');if(!hdr)return;
+  const type=b.type||'gradient-default';
+  if(type==='photo'){
+    const photo=getN(DB,['settings','bannerPhoto']);
+    if(photo){hdr.style.background=`url('${photo}') center/cover no-repeat`;hdr.style.backgroundBlendMode='overlay';}
+  } else if(type==='color'){
+    hdr.style.background=b.color||'#1e3a5f';
+  } else {
+    hdr.style.background=GRADIENTS[type]||GRADIENTS['gradient-default'];
+  }
+  // Height
+  const banner=document.querySelector('.school-banner');if(banner){
+    const hMap={compact:'12px 22px 8px',normal:'22px 22px 14px',tall:'36px 22px 22px'};
+    banner.style.padding=hMap[b.height||'normal'];
+  }
 }
 
 function populateSelects(){
@@ -252,11 +286,22 @@ function renderTermDates(){
 
 function switchTab(id){
   document.querySelectorAll('.tab-section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+id));
-  document.querySelectorAll('.ntab').forEach((t,i)=>t.classList.toggle('active',['progress','results','diary','periods','boards','weekly','toppers','school-toppers'][i]===id));
+  document.querySelectorAll('.ntab[data-tab]').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
   if(id==='boards') renderBrdContent(curBrd);
   if(id==='weekly') renderWeekly(curWkSec);
   if(id==='toppers') renderToppers();
   if(id==='school-toppers') renderSchoolToppers('all');
+}
+
+function applyPortalTabOrder(order){
+  if(!order||!order.length) return;
+  const nav=document.getElementById('portalNavInner');if(!nav)return;
+  const btns=Array.from(nav.querySelectorAll('.ntab[data-tab]'));
+  const btnMap={};btns.forEach(b=>btnMap[b.dataset.tab]=b);
+  nav.innerHTML='';
+  order.forEach(tab=>{ if(btnMap[tab]) nav.appendChild(btnMap[tab]); });
+  // append any not in order
+  btns.forEach(b=>{ if(!order.includes(b.dataset.tab)) nav.appendChild(b); });
 }
 
 function getClassTMFromDB(cls){ return parseFloat(getN(DB,['settings','classes',cls,'totalMarks'])||CLASSES[cls]?.totalMarks||100); }
@@ -377,7 +422,10 @@ function renderPlanner(cls){
       return `
         <div class="planner-subj-row">
           <div class="planner-subj-header">
-            <div class="planner-subj-name">${esc(sub)}</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <div class="planner-subj-name">${esc(sub)}</div>
+              ${(()=>{const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];return periods.length?`<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;"><span>👤</span><span>${periods.map(p=>p.teacher+(p.period?' (P'+p.period+')':'')).join(', ')}</span></div>`:'';})()}
+            </div>
             <div class="planner-subj-meta">
               ${done>0?`<span class="planner-badge done-badge">✓ ${done} done</span>`:''}
               ${pend>0?`<span class="planner-badge pend-badge">${pend} pending</span>`:''}
@@ -717,6 +765,74 @@ function renderSectionToppers(section,containerId,level){
   el.innerHTML=html||'<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">No data available</div>';
 }
 
+
+function showPopupAnn(ann){
+  const overlay=document.getElementById('popupAnnOverlay');
+  const box=document.getElementById('popupAnnBox');
+  if(!overlay||!box) return;
+  const bgStyle=ann.bgType==='color'
+    ? `background:${ann.bgColor||'rgba(30,27,75,.92)'};`
+    : ann.bgType==='photo'&&ann.bgPhoto
+      ? `background:url('${ann.bgPhoto}') center/cover;`
+      : `background:linear-gradient(135deg,${ann.gradFrom||'#312e81'},${ann.gradTo||'#6366f1'});`;
+  box.className=ann.glassEffect?'popup-glass':'';
+  box.style.cssText=`max-width:480px;width:100%;position:relative;border-radius:20px;overflow:hidden;box-shadow:0 32px 64px rgba(0,0,0,.3);animation:popupIn .35s cubic-bezier(.34,1.56,.64,1);${bgStyle}`;
+  const textColor=ann.textColor||'#ffffff';
+  const fontSize={'sm':'13px','md':'15px','lg':'18px','xl':'22px'}[ann.fontSize||'md'];
+  box.innerHTML=`
+    ${ann.photo?`<img src="${ann.photo}" style="width:100%;max-height:200px;object-fit:cover;display:block;">`:''}
+    <div style="padding:${ann.photo?'16px':'28px'} 24px 24px;">
+      ${ann.badge?`<div style="display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:100px;background:rgba(255,255,255,.2);color:${textColor};margin-bottom:12px;">${esc(ann.badge)}</div>`:''}
+      <div style="font-size:${fontSize};font-weight:${ann.bold?'700':'500'};color:${textColor};line-height:1.5;margin-bottom:${ann.subtitle?'8px':'0'}">${esc(ann.title||'')}</div>
+      ${ann.subtitle?`<div style="font-size:${parseInt(fontSize)-2}px;color:${textColor};opacity:.8;line-height:1.5;">${esc(ann.subtitle)}</div>`:''}
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+        ${ann.btnText?`<button onclick="closePopupAnn(null,true,'${ann.id}')" style="padding:8px 20px;border-radius:100px;border:none;background:rgba(255,255,255,.25);color:${textColor};font-weight:700;font-size:13px;cursor:pointer;">${esc(ann.btnText)}</button>`:''}
+        <button onclick="closePopupAnn(null,true,'${ann.id}')" style="padding:8px 20px;border-radius:100px;border:none;background:rgba(255,255,255,.15);color:${textColor};font-size:13px;cursor:pointer;">✕ Close</button>
+      </div>
+    </div>`;
+  overlay.style.display='flex';
+}
+
+function closePopupAnn(event,force,annId){
+  if(event&&event.target.id!=='popupAnnOverlay'&&!force) return;
+  document.getElementById('popupAnnOverlay').style.display='none';
+  if(annId){
+    const seen=JSON.parse(sessionStorage.getItem('iqra_seen_popups')||'[]');
+    seen.push(String(annId));
+    sessionStorage.setItem('iqra_seen_popups',JSON.stringify(seen));
+    setTimeout(()=>{
+      const popups=(getN(DB,['settings','popupAnnouncements'])||[]).filter(p=>p.active);
+      const unseenNext=popups.find(p=>!seen.includes(String(p.id)));
+      if(unseenNext) showPopupAnn(unseenNext);
+    },500);
+  }
+}
+
+
+function renderPopupAnnouncements(){
+  const popups=(getN(DB,['settings','popupAnnouncements'])||[]).filter(p=>p.active);
+  if(!popups.length) return;
+  const seen=JSON.parse(sessionStorage.getItem('iqra_seen_popups')||'[]');
+  const toShow=popups.find(p=>!seen.includes(String(p.id)));
+  if(toShow) showPopupAnn(toShow);
+}
+
 </script>
+
+<!-- POPUP ANNOUNCEMENT -->
+<div id="popupAnnOverlay" style="display:none;position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);" onclick="closePopupAnn(event)">
+  <div id="popupAnnBox" style="max-width:480px;width:100%;position:relative;border-radius:20px;overflow:hidden;box-shadow:0 32px 64px rgba(0,0,0,.3);animation:popupIn .35s cubic-bezier(.34,1.56,.64,1);">
+  </div>
+</div>
+<style>
+@keyframes popupIn{from{opacity:0;transform:scale(.85) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.popup-glass{
+  background:rgba(255,255,255,.18);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border:1.5px solid rgba(255,255,255,.35);
+}
+</style>
+
 </body>
 </html>

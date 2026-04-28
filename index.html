@@ -151,10 +151,11 @@
 
 <!-- ANNOUNCEMENTS -->
 <div class="section" id="sec-announcements">
+  <!-- Banner Announcements -->
   <div class="card" style="margin-bottom:14px;">
     <div class="card-head">
-      <div class="card-title">📢 New Announcement</div>
-      <span style="font-size:11px;color:var(--muted)">Appears as a banner in the Parent Portal</span>
+      <div class="card-title">📢 Banner Announcement</div>
+      <span style="font-size:11px;color:var(--muted)">Appears as a top bar in Parent Portal</span>
     </div>
     <div style="padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
       <textarea id="ann-text" placeholder="Type announcement text…" rows="2" style="flex:1;min-width:220px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;"></textarea>
@@ -172,6 +173,71 @@
     </div>
   </div>
   <div id="annList"></div>
+
+  <!-- Popup Announcements -->
+  <div class="card" style="margin-top:18px;">
+    <div class="card-head">
+      <div class="card-title">✨ Popup / Advertisement (Glass Style)</div>
+      <span style="font-size:11px;color:var(--muted)">Appears as a centered popup with blur glass effect</span>
+    </div>
+    <div style="padding:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Title *</label>
+          <input class="ainp2" id="pop-title" placeholder="Main title text" style="width:100%;"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Subtitle</label>
+          <input class="ainp2" id="pop-subtitle" placeholder="Supporting text" style="width:100%;"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Badge Label</label>
+          <input class="ainp2" id="pop-badge" placeholder="e.g. 📢 NOTICE" style="width:100%;"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Button Text</label>
+          <input class="ainp2" id="pop-btn" placeholder="e.g. Learn More" style="width:100%;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Text Color</label>
+          <input type="color" id="pop-textcolor" value="#ffffff" style="width:48px;height:32px;border-radius:5px;border:1px solid var(--border);cursor:pointer;padding:2px;"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Font Size</label>
+          <select class="ainp2" id="pop-fontsize" style="width:100%;">
+            <option value="sm">Small</option><option value="md" selected>Medium</option>
+            <option value="lg">Large</option><option value="xl">Extra Large</option>
+          </select></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Bold Text</label>
+          <select class="ainp2" id="pop-bold" style="width:100%;">
+            <option value="true" selected>Yes</option><option value="false">No</option>
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Background</label>
+          <select class="ainp2" id="pop-bgtype" onchange="togglePopBgFields()" style="width:100%;">
+            <option value="gradient">🎨 Gradient</option>
+            <option value="color">🟦 Solid Color</option>
+            <option value="photo">📷 Photo</option>
+          </select></div>
+        <div id="pop-grad-from-wrap"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Gradient From</label>
+          <input type="color" id="pop-gradfrom" value="#312e81" style="width:48px;height:32px;border-radius:5px;border:1px solid var(--border);cursor:pointer;padding:2px;"></div>
+        <div id="pop-grad-to-wrap"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Gradient To</label>
+          <input type="color" id="pop-gradto" value="#6366f1" style="width:48px;height:32px;border-radius:5px;border:1px solid var(--border);cursor:pointer;padding:2px;"></div>
+      </div>
+      <div id="pop-color-row" style="display:none;margin-bottom:10px;">
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Solid Color</label>
+        <input type="color" id="pop-bgcolor" value="#1e1b4b" style="width:48px;height:32px;border-radius:5px;border:1px solid var(--border);cursor:pointer;padding:2px;">
+      </div>
+      <div id="pop-photo-row" style="display:none;margin-bottom:10px;">
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Background Photo</label>
+        <label class="btn-sm btn-add" style="cursor:pointer;display:inline-block;">Upload Photo<input type="file" accept="image/*" style="display:none" onchange="uploadPopBgPhoto(this)"></label>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <label style="font-size:10px;color:var(--muted);">Glass Effect</label>
+        <input type="checkbox" id="pop-glass" checked style="width:16px;height:16px;cursor:pointer;">
+        <span style="font-size:11px;color:var(--muted);">Enable frosted glass blur (like iPhone)</span>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Image (optional — shown at top)</label>
+        <label class="btn-sm btn-add" style="cursor:pointer;display:inline-block;">Upload Image<input type="file" accept="image/*" style="display:none" onchange="uploadPopPhoto(this)"></label>
+        <span id="popPhotoName" style="font-size:11px;color:var(--muted);margin-left:8px;"></span>
+      </div>
+      <button class="addbtn2" onclick="addPopupAnn()">✨ Publish Popup</button>
+    </div>
+  </div>
+  <div style="margin-top:12px;" id="popupAnnList"></div>
 </div>
 
 <!-- TOPPERS ADMIN -->
@@ -236,9 +302,15 @@ function applySettings(){
   if(DB.settings){
     SETTINGS=Object.assign({},DEFAULT_SETTINGS,DB.settings);
     if(DB.settings.terms)  TERMS=DB.settings.terms;
-    if(DB.settings.months) MONTHS=DB.settings.months;
+    // Regenerate months from plannerYear if set, otherwise use stored months
+    if(DB.settings.plannerYear&&DB.settings.plannerYear.start){
+      MONTHS=generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS);
+    } else if(DB.settings.months){
+      MONTHS=DB.settings.months;
+    }
     if(DB.settings.classes)CLASSES=DB.settings.classes;
     if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
+    if(DB.settings.tabOrder) applyTabOrder(DB.settings.tabOrder);
   }
 }
 
@@ -904,6 +976,23 @@ function renderSettings(){
         <div id="classesConfigGirls"></div>
       </div>
     </div>
+    <!-- TAB ORDER -->
+    <div class="settings-card" style="grid-column:1/-1">
+      <div class="settings-card-hd">🗂️ Tab Order (Admin &amp; Parent Portal)</div>
+      <div class="settings-card-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Drag or use ▲ ▼ to reorder tabs. Changes apply to both Admin Panel and Parent Portal navigation.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.7px;">Admin Panel Tabs</div>
+            <div id="adminTabOrder"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.7px;">Parent Portal Tabs</div>
+            <div id="portalTabOrder"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="settings-card">
       <div class="settings-card-hd">📆 Academic Months</div>
       <div class="settings-card-body" style="max-height:240px;overflow-y:auto;">
@@ -919,7 +1008,40 @@ function renderSettings(){
         <div id="classOrderPanel"></div>
       </div>
     </div>
-  <!-- PORTAL APPEARANCE -->
+  <!-- HEADER BANNER -->
+    <div class="settings-card">
+      <div class="settings-card-hd">🖼️ Header Banner (Parent Portal)</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>Banner Style</label>
+          <select class="s-inp" id="ss-banner-type" onchange="previewBannerStyle()">
+            <option value="gradient-default">🎨 Default Gradient (Indigo)</option>
+            <option value="gradient-green">🌿 Green Gradient</option>
+            <option value="gradient-maroon">🔴 Maroon Gradient</option>
+            <option value="gradient-dark">⬛ Dark Navy</option>
+            <option value="gradient-sunset">🌅 Sunset</option>
+            <option value="color">🟦 Solid Color</option>
+            <option value="photo">📷 Custom Photo</option>
+          </select>
+        </div>
+        <div id="banner-color-row" style="display:none" class="settings-row">
+          <label>Solid Color</label>
+          <input type="color" id="ss-banner-color" value="#1e3a5f" style="width:48px;height:32px;border-radius:6px;border:1px solid var(--border);cursor:pointer;padding:2px;">
+        </div>
+        <div id="banner-photo-row" style="display:none">
+          <label class="btn-sm btn-add" style="cursor:pointer;display:inline-block;margin-bottom:6px;">📷 Upload Photo<input type="file" accept="image/*" style="display:none" onchange="uploadBannerPhoto(this)"></label>
+          <div id="bannerPhotoPreview"></div>
+        </div>
+        <div class="settings-row" style="margin-top:6px;">
+          <label>Banner Height</label>
+          <select class="s-inp" id="ss-banner-height" style="width:110px;">
+            <option value="compact">Compact</option>
+            <option value="normal" selected>Normal</option>
+            <option value="tall">Tall</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- PORTAL APPEARANCE -->
     <div class="settings-card">
       <div class="settings-card-hd">🎨 Portal Appearance</div>
       <div class="settings-card-body">
@@ -1084,11 +1206,14 @@ function saveSettings(){
     start:parseInt(document.getElementById('ss-py-start')?.value)||2025,
     end:parseInt(document.getElementById('ss-py-end')?.value)||2026
   };
-  const newSettings={sessionYear:sy,terms:newTerms,months:newMonths,classes:CLASSES,school,
+  // Regenerate months from the new planner year
+  const newMonthsFromYear=generateMonthsFromYear(plannerYear.start,plannerYear.end,newTerms);
+  const newSettings={sessionYear:sy,terms:newTerms,months:newMonthsFromYear,classes:CLASSES,school,
     totalMarks:100,portal,plannerYear,
     classOrder:getN(DB,['settings','classOrder'])||[],
     announcements:getN(DB,['settings','announcements'])||[],
-    toppers:getN(DB,['settings','toppers'])||{}
+    toppers:getN(DB,['settings','toppers'])||{},
+    tabOrder:getN(DB,['settings','tabOrder'])||null
   };
   setN(DB,['settings'],newSettings);markDirty('settings',newSettings);
   SETTINGS=newSettings;TERMS=newTerms;MONTHS=newMonths;SCHOOL=school;
@@ -1532,6 +1657,229 @@ function autoFillToppers(levelKey){
   markDirty('settings/toppers/'+levelKey,overrides);
   renderTopperAdminPanel(levelKey);
   showToast('Toppers recalculated from term results','ok');
+}
+
+
+// ══════════════════════════════════════════════
+//  TAB ORDER
+// ══════════════════════════════════════════════
+const DEFAULT_ADMIN_TABS = ['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings','announcements','toppers-admin'];
+const DEFAULT_PORTAL_TABS = ['progress','diary','results','school-toppers','toppers','boards','periods'];
+const ADMIN_TAB_LABELS  = {marks:'📊 Marks',students:'👥 Students',planner:'📅 Planner',diary:'📔 Diary',timetable:'🕐 Periods',report:'📋 Weekly Report','planner-report':'📊 Planner Report',boards:'🏆 Boards',weekly:'📝 Weekly Tests',settings:'⚙️ Settings',announcements:'📢 Announce','toppers-admin':'🏅 Toppers'};
+const PORTAL_TAB_LABELS = {progress:'📊 Progress',diary:'📔 Diary',results:'📋 Results','school-toppers':'🏅 School Toppers',toppers:'⭐ Toppers',boards:'🏆 Boards',periods:'🕐 Periods',weekly:'📝 Weekly'};
+
+function renderTabOrderPanel(){
+  renderTabOrderList('adminTabOrder', DEFAULT_ADMIN_TABS, ADMIN_TAB_LABELS, 'admin');
+  renderTabOrderList('portalTabOrder', DEFAULT_PORTAL_TABS, PORTAL_TAB_LABELS, 'portal');
+}
+
+function getTabOrder(type){
+  const saved=getN(DB,['settings','tabOrder',type]);
+  const def=type==='admin'?DEFAULT_ADMIN_TABS:DEFAULT_PORTAL_TABS;
+  if(!saved||!saved.length) return def;
+  // merge: keep saved order, append any new tabs not in saved
+  const merged=[...saved.filter(t=>def.includes(t)),...def.filter(t=>!saved.includes(t))];
+  return merged;
+}
+
+function renderTabOrderList(containerId, defaultTabs, labels, type){
+  const el=document.getElementById(containerId);if(!el)return;
+  const order=getTabOrder(type);
+  el.innerHTML=order.map((tab,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;">
+      <span style="font-size:12px;flex:1;">${labels[tab]||tab}</span>
+      <button class="btn-sm" style="padding:2px 7px;" onclick="moveTab('${type}','${tab}',-1)" ${i===0?'disabled':''}>▲</button>
+      <button class="btn-sm" style="padding:2px 7px;" onclick="moveTab('${type}','${tab}',1)" ${i===order.length-1?'disabled':''}>▼</button>
+    </div>`).join('');
+}
+
+function moveTab(type,tab,dir){
+  const order=getTabOrder(type);
+  const i=order.indexOf(tab);if(i<0)return;
+  const newI=i+dir;if(newI<0||newI>=order.length)return;
+  [order[i],order[newI]]=[order[newI],order[i]];
+  setN(DB,['settings','tabOrder',type],order);
+  markDirty('settings/tabOrder/'+type,order);
+  renderTabOrderList(type==='admin'?'adminTabOrder':'portalTabOrder',type==='admin'?DEFAULT_ADMIN_TABS:DEFAULT_PORTAL_TABS,type==='admin'?ADMIN_TAB_LABELS:PORTAL_TAB_LABELS,type);
+  showToast('Tab order updated – click Save Changes','info');
+}
+
+function applyTabOrder(tabOrder){
+  if(!tabOrder) return;
+  // Apply portal tab order (admin tabs rebuild on load anyway)
+  const portalOrder=tabOrder.portal;
+  if(portalOrder&&portalOrder.length){
+    // Store for parent portal to read
+    window._portalTabOrder=portalOrder;
+  }
+}
+
+// ══════════════════════════════════════════════
+//  HEADER BANNER
+// ══════════════════════════════════════════════
+const BANNER_GRADIENTS = {
+  'gradient-default': 'linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 70%,#6366f1 100%)',
+  'gradient-green':   'linear-gradient(135deg,#052e16,#166534,#15803d)',
+  'gradient-maroon':  'linear-gradient(135deg,#3f0404,#7f1d1d,#b91c1c)',
+  'gradient-dark':    'linear-gradient(135deg,#020617,#0f172a,#1e293b)',
+  'gradient-sunset':  'linear-gradient(135deg,#7c2d12,#9a3412,#c2410c,#f97316)',
+};
+
+function previewBannerStyle(){
+  const type=document.getElementById('ss-banner-type')?.value;
+  document.getElementById('banner-color-row').style.display=type==='color'?'flex':'none';
+  document.getElementById('banner-photo-row').style.display=type==='photo'?'block':'none';
+}
+
+function uploadBannerPhoto(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    document.getElementById('bannerPhotoPreview').innerHTML=`<img src="${dataUrl}" style="width:100%;max-height:80px;object-fit:cover;border-radius:7px;margin-top:4px;">`;
+    setN(DB,['settings','bannerPhoto'],dataUrl);
+    markDirty('settings/bannerPhoto',dataUrl);
+    showToast('Photo ready – click Save All Settings','info');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Extend saveSettings to save banner settings
+const _origSaveSettings=saveSettings;
+function saveSettings(){
+  _origSaveSettings();
+  // Banner
+  const bannerType=document.getElementById('ss-banner-type')?.value||'gradient-default';
+  const bannerColor=document.getElementById('ss-banner-color')?.value||'#1e3a5f';
+  const bannerHeight=document.getElementById('ss-banner-height')?.value||'normal';
+  const tabOrder={admin:getTabOrder('admin'),portal:getTabOrder('portal')};
+  const bannerSettings={type:bannerType,color:bannerColor,height:bannerHeight};
+  setN(DB,['settings','banner'],bannerSettings);
+  setN(DB,['settings','tabOrder'],tabOrder);
+  markDirty('settings/banner',bannerSettings);
+  markDirty('settings/tabOrder',tabOrder);
+}
+
+// Extend renderSettings to also call renderTabOrderPanel
+const _origRenderSettings=renderSettings;
+function renderSettings(){
+  _origRenderSettings();
+  renderTabOrderPanel();
+  // Set banner form values
+  setTimeout(()=>{
+    const b=getN(DB,['settings','banner'])||{};
+    const typeEl=document.getElementById('ss-banner-type');
+    if(typeEl&&b.type)typeEl.value=b.type;
+    const colorEl=document.getElementById('ss-banner-color');
+    if(colorEl&&b.color)colorEl.value=b.color;
+    const heightEl=document.getElementById('ss-banner-height');
+    if(heightEl&&b.height)heightEl.value=b.height;
+    previewBannerStyle();
+  },100);
+}
+
+
+// ══════════════════════════════════════════════
+//  POPUP ANNOUNCEMENTS ADMIN
+// ══════════════════════════════════════════════
+let _popBgPhoto='', _popPhoto='';
+
+function togglePopBgFields(){
+  const t=document.getElementById('pop-bgtype')?.value;
+  document.getElementById('pop-grad-from-wrap').style.display=t==='gradient'?'block':'none';
+  document.getElementById('pop-grad-to-wrap').style.display=t==='gradient'?'block':'none';
+  document.getElementById('pop-color-row').style.display=t==='color'?'block':'none';
+  document.getElementById('pop-photo-row').style.display=t==='photo'?'block':'none';
+}
+
+function uploadPopBgPhoto(inp){
+  const file=inp.files[0];if(!file)return;
+  const r=new FileReader();r.onload=e=>{_popBgPhoto=e.target.result;showToast('BG photo loaded','ok');};r.readAsDataURL(file);
+}
+function uploadPopPhoto(inp){
+  const file=inp.files[0];if(!file)return;
+  const r=new FileReader();r.onload=e=>{_popPhoto=e.target.result;document.getElementById('popPhotoName').textContent=file.name;showToast('Image loaded','ok');};r.readAsDataURL(file);
+}
+
+function addPopupAnn(){
+  const title=document.getElementById('pop-title')?.value.trim();
+  if(!title){showToast('Enter a title','info');return;}
+  const bgType=document.getElementById('pop-bgtype')?.value||'gradient';
+  const ann={
+    id:Date.now(),
+    title,
+    subtitle:document.getElementById('pop-subtitle')?.value.trim()||'',
+    badge:document.getElementById('pop-badge')?.value.trim()||'',
+    btnText:document.getElementById('pop-btn')?.value.trim()||'',
+    textColor:document.getElementById('pop-textcolor')?.value||'#ffffff',
+    fontSize:document.getElementById('pop-fontsize')?.value||'md',
+    bold:document.getElementById('pop-bold')?.value==='true',
+    bgType,
+    bgColor:bgType==='color'?(document.getElementById('pop-bgcolor')?.value||'#1e1b4b'):'',
+    gradFrom:bgType==='gradient'?(document.getElementById('pop-gradfrom')?.value||'#312e81'):'',
+    gradTo:bgType==='gradient'?(document.getElementById('pop-gradto')?.value||'#6366f1'):'',
+    bgPhoto:bgType==='photo'?_popBgPhoto:'',
+    glassEffect:document.getElementById('pop-glass')?.checked!==false,
+    photo:_popPhoto||'',
+    active:true,
+    createdAt:new Date().toISOString()
+  };
+  const popups=getN(DB,['settings','popupAnnouncements'])||[];
+  popups.unshift(ann);
+  setN(DB,['settings','popupAnnouncements'],popups);
+  markDirty('settings/popupAnnouncements',popups);
+  _popBgPhoto='';_popPhoto='';
+  document.getElementById('popPhotoName').textContent='';
+  renderPopupAnnList();
+  showToast('Popup published!','ok');
+}
+
+function renderPopupAnnList(){
+  const el=document.getElementById('popupAnnList');if(!el)return;
+  const popups=getN(DB,['settings','popupAnnouncements'])||[];
+  if(!popups.length){el.innerHTML='<div style="text-align:center;padding:18px;color:var(--muted);font-size:12px;">No popups yet.</div>';return;}
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Published Popups</div>`+
+  popups.map((p,i)=>`
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:7px;display:flex;align-items:flex-start;gap:10px;">
+      ${p.photo?`<img src="${p.photo}" style="width:44px;height:44px;border-radius:7px;object-fit:cover;flex-shrink:0;">`:
+        `<div style="width:44px;height:44px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,${p.gradFrom||p.bgColor||'#312e81'},${p.gradTo||p.bgColor||'#6366f1'});"></div>`}
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:2px;">${esc(p.title)}</div>
+        ${p.subtitle?`<div style="font-size:11px;color:var(--muted);">${esc(p.subtitle)}</div>`:''}
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;">${new Date(p.createdAt).toLocaleString('en-IN')}</div>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;">
+          <input type="checkbox" ${p.active?'checked':''} onchange="togglePopup(${i},this.checked)">
+          <span style="color:${p.active?'#22c55e':'var(--muted)'};font-weight:600">${p.active?'Live':'Off'}</span>
+        </label>
+        <button class="btn-sm btn-del" onclick="deletePopup(${i})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function togglePopup(i,active){
+  const popups=getN(DB,['settings','popupAnnouncements'])||[];
+  if(popups[i])popups[i].active=active;
+  setN(DB,['settings','popupAnnouncements'],popups);
+  markDirty('settings/popupAnnouncements',popups);
+  renderPopupAnnList();
+}
+
+function deletePopup(i){
+  const popups=getN(DB,['settings','popupAnnouncements'])||[];
+  popups.splice(i,1);
+  setN(DB,['settings','popupAnnouncements'],popups);
+  markDirty('settings/popupAnnouncements',popups);
+  renderPopupAnnList();
+}
+
+// Call renderPopupAnnList when announcements section opens
+const _origSwitchSec=switchSec;
+function switchSec(id){
+  _origSwitchSec(id);
+  if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
+  if(id==='settings'){ /* already handled */ }
 }
 
 </script>
