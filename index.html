@@ -1874,22 +1874,27 @@ function deletePopup(i){
   renderPopupAnnList();
 }
 
-// This replaces the code that was causing the crash
-const oldSwitchSec = window.switchSec;
+(function() {
+    // We capture the original version only ONCE
+    const originalFunction = window.switchSec;
 
-window.switchSec = function(id) {
-    // 1. Run the original function first so the page actually switches
-    if (typeof oldSwitchSec === "function") {
-        oldSwitchSec(id);
-    }
+    // We make sure we aren't accidentally overwriting our own fix
+    if (originalFunction && !originalFunction._isPatched) {
+        window.switchSec = function(id) {
+            // 1. Run the original code
+            originalFunction(id);
 
-    // 2. This is your "Custom Logic"
-    // It says: "If the section we just opened is 'announcements', run these two tasks."
-    if (id === 'announcements') {
-        renderAnnList();
-        renderPopupAnnList();
+            // 2. Run your specific announcement logic
+            if (id === 'announcements') {
+                if (typeof renderAnnList === "function") renderAnnList();
+                if (typeof renderPopupAnnList === "function") renderPopupAnnList();
+            }
+        };
+
+        // Mark this function as "fixed" so it doesn't loop again
+        window.switchSec._isPatched = true;
     }
-};
+})();
 </script>
 </body>
 </html>
