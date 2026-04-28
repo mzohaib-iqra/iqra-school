@@ -116,6 +116,29 @@ function getSchoolLevel(cls){
   return {level,section,label:level.charAt(0).toUpperCase()+level.slice(1)};
 }
 
+// ── Generate months from planner year ──────────────────────────
+function generateMonthsFromYear(startYear, endYear, terms){
+  const sy=parseInt(startYear)||2025;
+  const ey=parseInt(endYear)||sy+1;
+  const allMonths=[
+    {month:3,label:'April'},  {month:4,label:'May'},   {month:5,label:'June'},
+    {month:6,label:'July'},   {month:7,label:'August'},{month:8,label:'September'},
+    {month:9,label:'October'},{month:10,label:'November'},{month:11,label:'December'},
+    {month:0,label:'January'},{month:1,label:'February'},{month:2,label:'March'}
+  ];
+  const t=terms||TERMS;
+  const t1End=t[0]?.syllabus||`${sy}-07-18`;
+  const t2End=t[1]?.syllabus||`${sy}-11-14`;
+  return allMonths.map((m,i)=>{
+    const yr=m.month>=3?sy:ey;
+    const mon=String(m.month+1).padStart(2,'0');
+    const key=(m.label.slice(0,3).toLowerCase())+(String(yr).slice(2));
+    // Assign term based on month position
+    const term=i<=5?'t1':i<=8?'t2':'t3';
+    return{key,label:m.label,yr,term};
+  });
+}
+
 const TC   = { t1:'#f97316', t2:'#3b82f6', t3:'#22c55e' };
 const TLbl = { t1:'Term 1',  t2:'Term 2',  t3:'Term 3'  };
 
