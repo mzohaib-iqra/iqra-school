@@ -1874,14 +1874,22 @@ function deletePopup(i){
   renderPopupAnnList();
 }
 
-// Call renderPopupAnnList when announcements section opens
-const _origSwitchSec=switchSec;
-function switchSec(id){
-  _origSwitchSec(id);
-  if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
-  if(id==='settings'){ /* already handled */ }
-}
+// This replaces the code that was causing the crash
+const oldSwitchSec = window.switchSec;
 
+window.switchSec = function(id) {
+    // 1. Run the original function first so the page actually switches
+    if (typeof oldSwitchSec === "function") {
+        oldSwitchSec(id);
+    }
+
+    // 2. This is your "Custom Logic"
+    // It says: "If the section we just opened is 'announcements', run these two tasks."
+    if (id === 'announcements') {
+        renderAnnList();
+        renderPopupAnnList();
+    }
+};
 </script>
 </body>
 </html>
