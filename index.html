@@ -338,9 +338,11 @@ const SECS=['marks','students','planner','diary','timetable','report','planner-r
 function switchSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
   document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
-  if(id==='boards')renderBrdPanel('9');
-  if(id==='weekly')renderWkPanel('matric');
-  if(id==='settings')renderSettings();
+  if(id==='boards') renderBrdPanel('9');
+  if(id==='weekly') renderWkPanel('matric');
+  if(id==='settings') renderSettings();
+  if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
+  if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
   if(id==='report'){
     document.getElementById('reportDate').value=todayKey();
     populateReportClassSel();
@@ -1086,6 +1088,19 @@ function renderSettings(){
   <button class="s-save-btn" onclick="saveSettings()">💾 Save All Settings</button>`;
   renderClassesConfig();
   renderClassOrderPanel();
+  renderTabOrderPanel();
+  // Restore banner form values
+  setTimeout(()=>{
+    const b=getN(DB,['settings','banner'])||{};
+    const typeEl=document.getElementById('ss-banner-type');
+    if(typeEl&&b.type){ typeEl.value=b.type; previewBannerStyle(); }
+    const colorEl=document.getElementById('ss-banner-color');
+    if(colorEl&&b.color) colorEl.value=b.color;
+    const heightEl=document.getElementById('ss-banner-height');
+    if(heightEl&&b.height) heightEl.value=b.height;
+    const bp=getN(DB,['settings','bannerPhoto']);
+    if(bp&&b.type==='photo') document.getElementById('bannerPhotoPreview').innerHTML=`<img src="${bp}" style="width:100%;max-height:80px;object-fit:cover;border-radius:7px;">`;
+  },80);
 }
 
 let _socialCount=0;
@@ -1212,13 +1227,25 @@ function saveSettings(){
     totalMarks:100,portal,plannerYear,
     classOrder:getN(DB,['settings','classOrder'])||[],
     announcements:getN(DB,['settings','announcements'])||[],
+    popupAnnouncements:getN(DB,['settings','popupAnnouncements'])||[],
     toppers:getN(DB,['settings','toppers'])||{},
-    tabOrder:getN(DB,['settings','tabOrder'])||null
+    tabOrder:{admin:getTabOrder('admin'),portal:getTabOrder('portal')},
+    banner:{
+      type:document.getElementById('ss-banner-type')?.value||'gradient-default',
+      color:document.getElementById('ss-banner-color')?.value||'#1e3a5f',
+      height:document.getElementById('ss-banner-height')?.value||'normal'
+    },
+    bannerPhoto:getN(DB,['settings','bannerPhoto'])||null
   };
   setN(DB,['settings'],newSettings);markDirty('settings',newSettings);
-  SETTINGS=newSettings;TERMS=newTerms;MONTHS=newMonths;SCHOOL=school;
+  SETTINGS=newSettings;TERMS=newTerms;
+  MONTHS=DB.settings?.plannerYear?.start
+    ? generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,newTerms)
+    : newMonths;
+  SCHOOL=school;
   document.getElementById('hSub').textContent=`${school.phone1} / ${school.phone2}`;
-  renderCD();showToast('Settings saved – click 💾 Save Changes to sync','info');
+  renderCD();
+  showToast('Settings saved – click 💾 Save Changes to sync','info');
 }
 
 // ══════════════════════════════════════════════
@@ -1744,39 +1771,9 @@ function uploadBannerPhoto(inp){
   reader.readAsDataURL(file);
 }
 
-// Extend saveSettings to save banner settings
-const _origSaveSettings=saveSettings;
-function saveSettings(){
-  _origSaveSettings();
-  // Banner
-  const bannerType=document.getElementById('ss-banner-type')?.value||'gradient-default';
-  const bannerColor=document.getElementById('ss-banner-color')?.value||'#1e3a5f';
-  const bannerHeight=document.getElementById('ss-banner-height')?.value||'normal';
-  const tabOrder={admin:getTabOrder('admin'),portal:getTabOrder('portal')};
-  const bannerSettings={type:bannerType,color:bannerColor,height:bannerHeight};
-  setN(DB,['settings','banner'],bannerSettings);
-  setN(DB,['settings','tabOrder'],tabOrder);
-  markDirty('settings/banner',bannerSettings);
-  markDirty('settings/tabOrder',tabOrder);
-}
+// saveSettings banner extension merged into main function
 
-// Extend renderSettings to also call renderTabOrderPanel
-const _origRenderSettings=renderSettings;
-function renderSettings(){
-  _origRenderSettings();
-  renderTabOrderPanel();
-  // Set banner form values
-  setTimeout(()=>{
-    const b=getN(DB,['settings','banner'])||{};
-    const typeEl=document.getElementById('ss-banner-type');
-    if(typeEl&&b.type)typeEl.value=b.type;
-    const colorEl=document.getElementById('ss-banner-color');
-    if(colorEl&&b.color)colorEl.value=b.color;
-    const heightEl=document.getElementById('ss-banner-height');
-    if(heightEl&&b.height)heightEl.value=b.height;
-    previewBannerStyle();
-  },100);
-}
+// renderSettings extension merged into main function
 
 
 // ══════════════════════════════════════════════
@@ -1874,27 +1871,9 @@ function deletePopup(i){
   renderPopupAnnList();
 }
 
-(function() {
-    // We capture the original version only ONCE
-    const originalFunction = window.switchSec;
+// Call renderPopupAnnList when announcements section opens
+// switchSec extension merged into main function
 
-    // We make sure we aren't accidentally overwriting our own fix
-    if (originalFunction && !originalFunction._isPatched) {
-        window.switchSec = function(id) {
-            // 1. Run the original code
-            originalFunction(id);
-
-            // 2. Run your specific announcement logic
-            if (id === 'announcements') {
-                if (typeof renderAnnList === "function") renderAnnList();
-                if (typeof renderPopupAnnList === "function") renderPopupAnnList();
-            }
-        };
-
-        // Mark this function as "fixed" so it doesn't loop again
-        window.switchSec._isPatched = true;
-    }
-})();
 </script>
 </body>
 </html>
