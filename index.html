@@ -1001,9 +1001,14 @@ function renderSettings(){
       </div>
     </div>
     <div class="settings-card">
-      <div class="settings-card-hd">📆 Academic Months</div>
-      <div class="settings-card-body" style="max-height:240px;overflow-y:auto;">
-        ${MONTHS.map(m=>`<div class="settings-row"><label>${m.label} ${m.yr}</label><select class="s-inp" id="smt-${m.key}" style="flex:0;width:90px;">${TERMS.map(t=>`<option value="${t.id}"${m.term===t.id?' selected':''}>${t.label}</option>`).join('')}</select></div>`).join('')}
+      <div class="settings-card-hd">📆 Academic Months &amp; Display Years</div>
+      <div class="settings-card-body" style="max-height:300px;overflow-y:auto;">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">The <strong>Display Year</strong> is the label shown next to each month in the planner and parent portal. Changing it does <em>not</em> affect stored data.</p>
+        ${MONTHS.map(m=>`<div class="settings-row" style="gap:5px;">
+          <label style="min-width:75px;font-size:11px;">${m.label}</label>
+          <input class="s-inp" id="smyr-${m.key}" type="number" min="2000" max="2100" value="${m.yr||new Date().getFullYear()}" style="width:76px;" title="Display year for ${m.label}">
+          <select class="s-inp" id="smt-${m.key}" style="flex:0;width:90px;">${TERMS.map(t=>`<option value="${t.id}"${m.term===t.id?' selected':''}>${t.label}</option>`).join('')}</select>
+        </div>`).join('')}
       </div>
     </div>
   </div>
@@ -1090,10 +1095,27 @@ function renderSettings(){
       </div>
     </div>
   </div>
+  <!-- CLEAR PLANNER DATA (Admin only) -->
+  <div class="settings-card" style="grid-column:1/-1;border:1px solid rgba(239,68,68,.3);">
+    <div class="settings-card-hd" style="background:rgba(239,68,68,.06);color:#ef4444;">🗑️ Clear Planner Data (Admin Only)</div>
+    <div class="settings-card-body">
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Permanently clears all planner topics for a specific class and month. <strong style="color:#ef4444">This cannot be undone.</strong> Student marks, diary, and results are NOT affected.</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Class</label>
+          <select class="ainp2" id="clr-cls" style="width:140px;"></select></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;">Month</label>
+          <select class="ainp2" id="clr-month" style="width:140px;"></select></div>
+        <button onclick="clearPlannerData()" style="padding:6px 14px;border-radius:7px;border:none;background:rgba(239,68,68,.15);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ Clear This Month's Planner</button>
+        <button onclick="clearAllPlannerForClass()" style="padding:6px 14px;border-radius:7px;border:none;background:rgba(239,68,68,.25);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">⚠️ Clear ALL Months for Class</button>
+      </div>
+    </div>
+  </div>
+  </div>
   <button class="s-save-btn" onclick="saveSettings()">💾 Save All Settings</button>`;
   renderClassesConfig();
   renderClassOrderPanel();
   renderTabOrderPanel();
+  populateClearPlannerSelects();
   // Restore banner form values
   setTimeout(()=>{
     const b=getN(DB,['settings','banner'])||{};
@@ -1199,7 +1221,12 @@ function uploadFounderPic(inp){
 function saveSettings(){
   const sy=document.getElementById('ss-sy').value.trim();
   const newTerms=TERMS.map(t=>({id:t.id,label:document.getElementById(`se-lbl-${t.id}`)?.value.trim()||t.label,exam:document.getElementById(`se-exam-${t.id}`)?.value||t.exam,syllabus:document.getElementById(`se-syl-${t.id}`)?.value||t.syllabus}));
-  const newMonths=MONTHS.map(m=>({...m,term:document.getElementById('smt-'+m.key)?.value||m.term}));
+  // Save month term assignments + display year labels (no data change)
+  const newMonths=MONTHS.map(m=>({
+    ...m,
+    term:document.getElementById('smt-'+m.key)?.value||m.term,
+    yr:parseInt(document.getElementById('smyr-'+m.key)?.value)||m.yr
+  }));
   getClassIds().forEach(cls=>{
     const nameEl=document.getElementById('cn-'+cls);const subEl=document.getElementById('cs-'+cls);const tmEl=document.getElementById('ctm-s-'+cls);
     if(nameEl&&subEl){
@@ -1884,6 +1911,60 @@ function deletePopup(i){
 
 // Call renderPopupAnnList when announcements section opens
 // switchSec extension merged into main function
+
+
+// ══════════════════════════════════════════════
+//  CLEAR PLANNER DATA (Admin only)
+// ══════════════════════════════════════════════
+function populateClearPlannerSelects(){
+  const clsSel=document.getElementById('clr-cls');
+  const mSel=document.getElementById('clr-month');
+  if(clsSel) clsSel.innerHTML=getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');
+  if(mSel)   mSel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label} ${m.yr}</option>`).join('');
+}
+
+function clearPlannerData(){
+  if(currentTeacher?.role!=='admin'){showToast('Admin only','err');return;}
+  const cls=document.getElementById('clr-cls')?.value;
+  const mk=document.getElementById('clr-month')?.value;
+  const m=MONTHS.find(x=>x.key===mk);
+  const cn=CLASSES[cls]?.name||'Class '+cls;
+  if(!cls||!mk){showToast('Select class and month','info');return;}
+  if(!confirm(`⚠️ Permanently clear ALL planner topics for:\n${cn} — ${m?.label||mk} ${m?.yr||''}?\n\nThis CANNOT be undone.`))return;
+  // Remove from DB object
+  if(DB.planner&&DB.planner[mk]&&DB.planner[mk]['c'+cls]){
+    delete DB.planner[mk]['c'+cls];
+  }
+  // Write null to Firebase to delete
+  if(db&&fbReady){
+    db.ref(`iqra/planner/${mk}/c${cls}`).remove()
+      .then(()=>showToast(`✅ Cleared ${cn} – ${m?.label||mk}. Planner data removed.`,'ok'))
+      .catch(e=>showToast('Error: '+e.message,'err'));
+  } else {
+    showToast('Offline – clear will sync when connected','info');
+  }
+  // Re-render planner if visible
+  renderPlannerPanels();
+}
+
+function clearAllPlannerForClass(){
+  if(currentTeacher?.role!=='admin'){showToast('Admin only','err');return;}
+  const cls=document.getElementById('clr-cls')?.value;
+  const cn=CLASSES[cls]?.name||'Class '+cls;
+  if(!cls){showToast('Select a class','info');return;}
+  if(!confirm(`⚠️ Permanently clear ALL planner data for ${cn} across ALL months?\n\nThis CANNOT be undone.`))return;
+  // Remove all months for this class
+  MONTHS.forEach(m=>{
+    if(DB.planner&&DB.planner[m.key]&&DB.planner[m.key]['c'+cls]){
+      delete DB.planner[m.key]['c'+cls];
+    }
+    if(db&&fbReady){
+      db.ref(`iqra/planner/${m.key}/c${cls}`).remove();
+    }
+  });
+  showToast(`✅ Cleared ALL planner data for ${cn}`,'ok');
+  renderPlannerPanels();
+}
 
 </script>
 </body>
