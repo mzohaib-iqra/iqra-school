@@ -193,7 +193,13 @@ function initFirebase(){
       DB=s.val()||{};
       if(DB.settings){
         if(DB.settings.terms) TERMS=DB.settings.terms;
-        if(DB.settings.months) MONTHS=DB.settings.months;
+        // Use stored months — never auto-regenerate on load to preserve planner data
+        if(DB.settings.months&&DB.settings.months.length) MONTHS=DB.settings.months;
+        if(!MONTHS||!MONTHS.length){
+          MONTHS=DB.settings.plannerYear&&DB.settings.plannerYear.start
+            ? generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS)
+            : DEFAULT_SETTINGS.months;
+        }
         if(DB.settings.classes) CLASSES=DB.settings.classes;
         if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
       }

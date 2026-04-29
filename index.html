@@ -302,11 +302,16 @@ function applySettings(){
   if(DB.settings){
     SETTINGS=Object.assign({},DEFAULT_SETTINGS,DB.settings);
     if(DB.settings.terms)  TERMS=DB.settings.terms;
-    // Regenerate months from plannerYear if set, otherwise use stored months
-    if(DB.settings.plannerYear&&DB.settings.plannerYear.start){
-      MONTHS=generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS);
-    } else if(DB.settings.months){
+    // Use stored months from Firebase — do NOT auto-regenerate on load.
+    // Months are only regenerated when admin explicitly saves Settings with a new planner year.
+    if(DB.settings.months&&DB.settings.months.length) {
       MONTHS=DB.settings.months;
+    }
+    // If no months stored yet, generate from plannerYear or use defaults
+    if(!MONTHS||!MONTHS.length){
+      MONTHS=DB.settings.plannerYear&&DB.settings.plannerYear.start
+        ? generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS)
+        : DEFAULT_SETTINGS.months;
     }
     if(DB.settings.classes)CLASSES=DB.settings.classes;
     if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
@@ -1221,8 +1226,14 @@ function saveSettings(){
     start:parseInt(document.getElementById('ss-py-start')?.value)||2025,
     end:parseInt(document.getElementById('ss-py-end')?.value)||2026
   };
-  // Regenerate months from the new planner year
-  const newMonthsFromYear=generateMonthsFromYear(plannerYear.start,plannerYear.end,newTerms);
+  // Only regenerate months if the planner year changed from what's stored
+  const storedYear=getN(DB,['settings','plannerYear'])||{};
+  const yearChanged=(plannerYear.start!==storedYear.start||plannerYear.end!==storedYear.end);
+  const existingMonths=getN(DB,['settings','months'])||MONTHS;
+  const newMonthsFromYear=yearChanged
+    ? generateMonthsFromYear(plannerYear.start,plannerYear.end,newTerms)
+    : existingMonths;
+  if(yearChanged) showToast('⚠ Planner year changed — months regenerated. Firebase data keys unchanged.','info');
   const newSettings={sessionYear:sy,terms:newTerms,months:newMonthsFromYear,classes:CLASSES,school,
     totalMarks:100,portal,plannerYear,
     classOrder:getN(DB,['settings','classOrder'])||[],
