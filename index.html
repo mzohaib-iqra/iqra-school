@@ -39,7 +39,7 @@
       <button class="ntab"           onclick="switchSec('planner')">📅 Planner</button>
       <button class="ntab"           onclick="switchSec('diary')">📔 Diary</button>
       <button class="ntab"           onclick="switchSec('timetable')">🕐 Periods</button>
-      <button class="ntab admin-only" style="display:none" onclick="switchSec('report')">📋 Weekly Report</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('report')">📔 Diary Report</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('planner-report')">📊 Planner Report</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
@@ -98,18 +98,47 @@
   <div id="ttPanels"></div>
 </div>
 
-<!-- WEEKLY REPORT -->
+<!-- DIARY REPORT -->
 <div class="section" id="sec-report">
-  <div class="report-controls">
-    <label style="font-size:11px;color:var(--muted)">📅 Any date in the week:</label>
-    <input class="report-date-inp" type="date" id="reportDate" value="">
-    <select class="report-date-inp" id="reportClass" style="width:120px;">
-      <option value="">All Classes</option>
-    </select>
-    <button class="report-gen-btn" onclick="generateReport()">📋 Generate Report</button>
-    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  <!-- Inner tabs -->
+  <div class="inner-tabs" style="margin-bottom:12px;">
+    <button class="itab active" onclick="selReportTab('classwise',this)">📋 Class-wise Diary</button>
+    <button class="itab" onclick="selReportTab('teacherwise',this)">👤 Teacher-wise Report</button>
+    <button class="itab" onclick="selReportTab('totm',this)">🏅 Teacher of the Month</button>
   </div>
-  <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate Report.</div></div>
+  <div class="inner-panel active" id="rp-classwise">
+    <div class="report-controls">
+      <label style="font-size:11px;color:var(--muted)">📅 Any date in the week (Mon–Sat):</label>
+      <input class="report-date-inp" type="date" id="reportDate" value="">
+      <select class="report-date-inp" id="reportClass" style="width:130px;">
+        <option value="">All Classes</option>
+      </select>
+      <button class="report-gen-btn" onclick="generateReport()">📋 Generate</button>
+      <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    </div>
+    <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate.</div></div>
+  </div>
+  <div class="inner-panel" id="rp-teacherwise">
+    <div class="report-controls">
+      <label style="font-size:11px;color:var(--muted)">📅 Any date in the week:</label>
+      <input class="report-date-inp" type="date" id="twrDate" value="">
+      <select class="report-date-inp" id="twrTeacher" style="width:180px;">
+        <option value="">All Teachers</option>
+      </select>
+      <button class="report-gen-btn" onclick="generateTeacherReport()">👤 Generate</button>
+      <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    </div>
+    <div id="teacherReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate.</div></div>
+  </div>
+  <div class="inner-panel" id="rp-totm">
+    <div class="report-controls">
+      <label style="font-size:11px;color:var(--muted)">📅 Month:</label>
+      <select class="report-date-inp" id="totmMonth" style="width:140px;"></select>
+      <button class="report-gen-btn" onclick="generateTOTM()">🏅 Calculate</button>
+      <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    </div>
+    <div id="totmContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Calculate.</div></div>
+  </div>
 </div>
 
 <!-- PLANNER REPORT -->
@@ -350,7 +379,10 @@ function switchSec(id){
   if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
   if(id==='report'){
     document.getElementById('reportDate').value=todayKey();
+    document.getElementById('twrDate').value=todayKey();
     populateReportClassSel();
+    populateTeacherSel();
+    populateTOTMMonths();
   }
 }
 
@@ -767,7 +799,7 @@ function generateReport(){
   const {start,end}=getWeekRange(dateVal);
   const dates=getWeekDates(start);
   const classIds=filterCls?[+filterCls]:getClassIds();
-  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat']; // Mon-Sat (school closed Sunday)
   const cont=document.getElementById('reportContent');
 
   let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
@@ -1730,7 +1762,7 @@ function autoFillToppers(levelKey){
 // ══════════════════════════════════════════════
 const DEFAULT_ADMIN_TABS = ['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings','announcements','toppers-admin'];
 const DEFAULT_PORTAL_TABS = ['progress','diary','results','school-toppers','toppers','boards','periods'];
-const ADMIN_TAB_LABELS  = {marks:'📊 Marks',students:'👥 Students',planner:'📅 Planner',diary:'📔 Diary',timetable:'🕐 Periods',report:'📋 Weekly Report','planner-report':'📊 Planner Report',boards:'🏆 Boards',weekly:'📝 Weekly Tests',settings:'⚙️ Settings',announcements:'📢 Announce','toppers-admin':'🏅 Toppers'};
+const ADMIN_TAB_LABELS  = {marks:'📊 Marks',students:'👥 Students',planner:'📅 Planner',diary:'📔 Diary',timetable:'🕐 Periods',report:'📔 Diary Report','planner-report':'📊 Planner Report',boards:'🏆 Boards',weekly:'📝 Weekly Tests',settings:'⚙️ Settings',announcements:'📢 Announce','toppers-admin':'🏅 Toppers'};
 const PORTAL_TAB_LABELS = {progress:'📊 Progress',diary:'📔 Diary',results:'📋 Results','school-toppers':'🏅 School Toppers',toppers:'⭐ Toppers',boards:'🏆 Boards',periods:'🕐 Periods',weekly:'📝 Weekly'};
 
 function renderTabOrderPanel(){
@@ -1964,6 +1996,289 @@ function clearAllPlannerForClass(){
   });
   showToast(`✅ Cleared ALL planner data for ${cn}`,'ok');
   renderPlannerPanels();
+}
+
+
+// ══════════════════════════════════════════════
+//  REPORT INNER TABS
+// ══════════════════════════════════════════════
+function selReportTab(tab, btn){
+  document.querySelectorAll('#sec-report .itab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#sec-report .inner-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('rp-'+tab).classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+//  TEACHER HELPERS
+// ══════════════════════════════════════════════
+function getAllTeachers(){
+  // Gather unique teacher names from timetable data
+  const teachers=new Set();
+  getClassIds().forEach(cls=>{
+    getSubs(cls).forEach(sub=>{
+      const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
+      periods.forEach(p=>{ if(p.teacher) teachers.add(p.teacher); });
+    });
+  });
+  // Also include from TEACHER_ACCOUNTS
+  (TEACHER_ACCOUNTS||[]).forEach(t=>{ if(t.name) teachers.add(t.name); });
+  return [...teachers].sort();
+}
+
+function getTeacherAssignments(teacherName){
+  // Returns [{cls, clsName, subject, period}] for a teacher
+  const assignments=[];
+  getClassIds().forEach(cls=>{
+    getSubs(cls).forEach(sub=>{
+      const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
+      periods.forEach(p=>{
+        if(p.teacher===teacherName){
+          assignments.push({cls,clsName:CLASSES[cls]?.name||'Class '+cls,subject:sub,period:p.period});
+        }
+      });
+    });
+  });
+  return assignments;
+}
+
+function populateTeacherSel(){
+  const sel=document.getElementById('twrTeacher');if(!sel)return;
+  const teachers=getAllTeachers();
+  sel.innerHTML='<option value="">All Teachers</option>'+teachers.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+}
+
+function populateTOTMMonths(){
+  const sel=document.getElementById('totmMonth');if(!sel)return;
+  sel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  TEACHER-WISE DIARY + PLANNER REPORT
+// ══════════════════════════════════════════════
+function generateTeacherReport(){
+  const dateVal=document.getElementById('twrDate')?.value||todayKey();
+  const filterTeacher=document.getElementById('twrTeacher')?.value;
+  const {start,end}=getWeekRange(dateVal);
+  const dates=getWeekDates(start);
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cont=document.getElementById('teacherReportContent');
+
+  const teachers=filterTeacher?[filterTeacher]:getAllTeachers();
+  if(!teachers.length){
+    cont.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No teachers found. Add periods in the Periods tab first.</div>';
+    return;
+  }
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">👤 Teacher-wise Report</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtDate(start)} – ${fmtDate(end)} (Mon–Sat)</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>`;
+
+  teachers.forEach(teacher=>{
+    const assignments=getTeacherAssignments(teacher);
+    if(!assignments.length) return; // skip teachers with no periods assigned
+
+    // ── DIARY SECTION ──────────────────────────────────────────────
+    let totalHW=0, daysWithHW=0;
+    const diaryRows=dates.map((dk,di)=>{
+      const dayHW=[];
+      assignments.forEach(({cls,clsName,subject})=>{
+        const sk=fbKey(subject);
+        const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+        if(hws.length) dayHW.push({clsName,subject,hws});
+        totalHW+=hws.length;
+      });
+      if(dayHW.length) daysWithHW++;
+      return{date:dk,day:dayNames[di],dayHW};
+    });
+
+    // ── PLANNER SECTION ─────────────────────────────────────────────
+    let plannerRows=[];
+    assignments.forEach(({cls,clsName,subject})=>{
+      const sk=fbKey(subject);
+      let totalTopics=0,doneTopics=0;
+      MONTHS.forEach(m=>{
+        const topics=getN(DB,['planner',m.key,'c'+cls,sk])||[];
+        totalTopics+=topics.length;
+        doneTopics+=topics.filter(t=>t.done).length;
+      });
+      if(totalTopics>0) plannerRows.push({clsName,subject,totalTopics,doneTopics,pct:Math.round(doneTopics/totalTopics*100)});
+    });
+
+    const diaryScore=dates.length>0?Math.round(daysWithHW/dates.length*100):0;
+    const plannerScore=plannerRows.length?Math.round(plannerRows.reduce((a,r)=>a+r.pct,0)/plannerRows.length):0;
+    const overall=Math.round((diaryScore+plannerScore)/2);
+    const statCls=overall>=70?'stat-good':overall>=40?'stat-warn':'stat-bad';
+
+    html+=`<div class="report-card" style="margin-bottom:14px;">
+      <div class="report-card-hd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:16px;">👤</span>
+        <span style="font-size:14px;font-weight:900;flex:1;">${esc(teacher)}</span>
+        <span class="report-stat ${statCls}">Overall ${overall}%</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:100px;background:rgba(59,130,246,.12);color:#3b82f6;">Diary ${diaryScore}%</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:100px;background:rgba(34,197,94,.12);color:#22c55e;">Planner ${plannerScore}%</span>
+      </div>
+
+      <div style="padding:10px 13px;border-bottom:1px solid var(--border);">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;">📚 Assigned Subjects</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          ${assignments.map(a=>`<span style="font-size:11px;padding:2px 9px;border-radius:100px;background:var(--surf2);border:1px solid var(--border);">${esc(a.clsName)} · ${esc(a.subject)} (P${a.period||'?'})</span>`).join('')}
+        </div>
+      </div>
+
+      <div style="padding:10px 13px;border-bottom:1px solid var(--border);">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;">📔 This Week's Diary (${totalHW} homework entries · ${daysWithHW}/${dates.length} days)</div>
+        ${diaryRows.map(row=>`<div class="day-row">
+          <div class="day-label"><strong>${row.day}</strong><br><span style="font-size:10px">${row.date.slice(5)}</span></div>
+          <div class="day-content">
+            ${row.dayHW.length
+              ? row.dayHW.map(d=>`<div style="margin-bottom:4px;"><span style="font-size:10px;color:var(--muted);font-weight:600">${esc(d.clsName)} – ${esc(d.subject)}:</span> ${d.hws.map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}</div>`).join('')
+              : '<span class="no-hw-tag">No entries</span>'}
+          </div>
+        </div>`).join('')}
+      </div>
+
+      ${plannerRows.length?`<div style="padding:10px 13px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;">📅 Planner Coverage (All Months)</div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Class</th><th>Subject</th><th>Done</th><th>Total</th><th>Progress</th></tr></thead><tbody>
+          ${plannerRows.map(r=>{const col=r.pct>=70?'#22c55e':r.pct>=40?'#fbbf24':'#ef4444';return`<tr>
+            <td>${esc(r.clsName)}</td><td style="font-weight:600">${esc(r.subject)}</td>
+            <td style="font-weight:700;color:#22c55e">${r.doneTopics}</td>
+            <td style="color:var(--muted)">${r.totalTopics}</td>
+            <td style="min-width:120px;"><div style="display:flex;align-items:center;gap:6px;">
+              <div style="flex:1;height:6px;background:var(--border);border-radius:100px;overflow:hidden;"><div style="width:${r.pct}%;height:100%;background:${col};border-radius:100px;"></div></div>
+              <span style="font-size:11px;font-weight:700;color:${col}">${r.pct}%</span>
+            </div></td>
+          </tr>`;}).join('')}
+        </tbody></table></div>
+      </div>`:''}
+    </div>`;
+  });
+
+  cont.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
+//  TEACHER OF THE MONTH
+// ══════════════════════════════════════════════
+function generateTOTM(){
+  const mk=document.getElementById('totmMonth')?.value;
+  if(!mk){showToast('Select a month','info');return;}
+  const m=MONTHS.find(x=>x.key===mk);
+  const cont=document.getElementById('totmContent');
+
+  const teachers=getAllTeachers();
+  if(!teachers.length){
+    cont.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No teachers found. Add periods first.</div>';
+    return;
+  }
+
+  // Get all weeks in this month for diary scoring
+  const monthDate=new Date(m.yr||(new Date().getFullYear()), ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label), 1);
+  const weeks=getWeeksInMonth(monthDate.getFullYear(), monthDate.getMonth());
+
+  const scores=[];
+
+  teachers.forEach(teacher=>{
+    const assignments=getTeacherAssignments(teacher);
+    if(!assignments.length) return;
+
+    // ── DIARY score: % of days in month where HW was entered ──────
+    let totalDays=0,daysWithEntry=0;
+    weeks.forEach(wk=>{
+      wk.dates.forEach(dk=>{
+        totalDays++;
+        const hasEntry=assignments.some(({cls,subject})=>{
+          const hws=getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[];
+          return hws.length>0;
+        });
+        if(hasEntry) daysWithEntry++;
+      });
+    });
+    const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
+
+    // ── PLANNER score: % done for this specific month ──────────────
+    let planTot=0,planDone=0;
+    assignments.forEach(({cls,subject})=>{
+      const topics=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];
+      planTot+=topics.length;
+      planDone+=topics.filter(t=>t.done).length;
+    });
+    const plannerPct=planTot?Math.round(planDone/planTot*100):0;
+
+    // ── Weekly diary consistency (how many weeks had ≥1 entry) ────
+    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>(getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[]).length>0))).length;
+
+    // ── Combined score (diary 50% + planner 50%) ──────────────────
+    const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+
+    scores.push({
+      teacher,combined,diaryPct,plannerPct,
+      daysWithEntry,totalDays,weeksActive,totalWeeks:weeks.length,
+      planDone,planTot,
+      assignments
+    });
+  });
+
+  scores.sort((a,b)=>b.combined-a.combined);
+
+  if(!scores.length){
+    cont.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No data found for this month.</div>';
+    return;
+  }
+
+  const medals=['🥇','🥈','🥉'];
+  const podColors=[['#fbbf24','rgba(251,191,36,.08)'],['#9ca3af','rgba(156,163,175,.08)'],['#d97706','rgba(217,119,6,.08)']];
+  const top3=scores.slice(0,3);
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">🏅 Teacher of the Month – ${esc(m.label)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Based on Diary (50%) + Planner (50%) performance · ${weeks.length} school weeks</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+
+  <!-- TOP 3 PODIUM -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px;">
+    ${top3.map((s,i)=>{const[col,bg]=podColors[i];return`<div style="border:2px solid ${col};border-radius:12px;padding:16px;background:${bg};text-align:center;">
+      <div style="font-size:28px;margin-bottom:4px">${medals[i]}</div>
+      <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;letter-spacing:.8px;margin-bottom:6px;">${i===0?'Teacher of the Month':i===1?'2nd Place':'3rd Place'}</div>
+      <div style="font-size:15px;font-weight:900;">${esc(s.teacher)}</div>
+      <div style="font-size:24px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
+      <div style="font-size:11px;color:var(--muted)">📔 Diary: ${s.diaryPct}% &nbsp;·&nbsp; 📅 Planner: ${s.plannerPct}%</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.daysWithEntry}/${s.totalDays} days active · ${s.weeksActive}/${s.totalWeeks} weeks</div>
+    </div>`;}).join('')}
+  </div>
+
+  <!-- FULL RANKING TABLE -->
+  <div class="report-card">
+    <div class="report-card-hd">📊 Full Ranking – All Teachers</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr>
+      <th>Rank</th><th>Teacher</th><th>Diary %</th><th>Planner %</th><th>Overall</th><th>Active Days</th><th>Active Weeks</th><th>Planner Topics</th>
+    </tr></thead><tbody>
+    ${scores.map((s,i)=>{
+      const overall=s.combined;
+      const col=overall>=70?'#22c55e':overall>=40?'#fbbf24':'#ef4444';
+      return`<tr>
+        <td style="font-size:${i<3?'16':'12'}px">${medals[i]||i+1}</td>
+        <td style="font-weight:700">${esc(s.teacher)}</td>
+        <td><span style="color:#3b82f6;font-weight:700">${s.diaryPct}%</span></td>
+        <td><span style="color:#22c55e;font-weight:700">${s.plannerPct}%</span></td>
+        <td><span style="font-size:13px;font-weight:900;color:${col}">${overall}%</span></td>
+        <td style="color:var(--muted)">${s.daysWithEntry}/${s.totalDays}</td>
+        <td style="color:var(--muted)">${s.weeksActive}/${s.totalWeeks}</td>
+        <td style="color:var(--muted)">${s.planDone}/${s.planTot}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>
+  </div>`;
+
+  cont.innerHTML=html;
 }
 
 </script>
