@@ -185,24 +185,45 @@ function fmtDate(ds){ return new Date(ds).toLocaleDateString('en-IN',{day:'numer
 function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmtDay(k){ return new Date(k+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
 
-// Get ISO week's Monday→Sunday range
+// Get school week range: Monday→Saturday (school closed Sunday)
 function getWeekRange(dateStr){
   const d = new Date(dateStr+'T00:00:00');
-  const day = d.getDay(); // 0=Sun
-  const diffToMon = (day===0)?-6:(1-day);
+  const day = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  // If Sunday, move to next Monday
+  const diffToMon = (day===0)?1:(1-day);
   const mon = new Date(d); mon.setDate(d.getDate()+diffToMon);
-  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  const sat = new Date(mon); sat.setDate(mon.getDate()+5); // Mon+5=Sat
   function fmt(dt){ return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
-  return { start: fmt(mon), end: fmt(sun) };
+  return { start: fmt(mon), end: fmt(sat) };
 }
 
-// Generate array of date strings Mon→Sun
+// Generate Mon→Sat (6 days, no Sunday)
 function getWeekDates(startStr){
   const dates=[];
   const start=new Date(startStr+'T00:00:00');
-  for(let i=0;i<7;i++){
+  for(let i=0;i<6;i++){ // 6 days: Mon-Sat
     const d=new Date(start); d.setDate(start.getDate()+i);
     dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
   }
   return dates;
+}
+
+// Get all Mon-Sat weeks in a given month
+function getWeeksInMonth(year, month){ // month 0-indexed
+  const weeks=[];
+  const firstDay=new Date(year,month,1);
+  const lastDay=new Date(year,month+1,0);
+  // Find first Monday
+  let cur=new Date(firstDay);
+  const dow=cur.getDay();
+  if(dow!==1) cur.setDate(cur.getDate()+(dow===0?1:8-dow));
+  while(cur<=lastDay){
+    const mon=new Date(cur);
+    const sat=new Date(cur); sat.setDate(cur.getDate()+5);
+    function fmt(dt){return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;}
+    weeks.push({start:fmt(mon),end:fmt(sat<=lastDay?sat:lastDay),dates:[]});
+    for(let i=0;i<6;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);if(d<=lastDay)weeks[weeks.length-1].dates.push(fmt(d));}
+    cur.setDate(cur.getDate()+7);
+  }
+  return weeks;
 }
