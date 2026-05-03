@@ -197,6 +197,41 @@ function getWeekRange(dateStr){
   return { start: fmt(mon), end: fmt(sat) };
 }
 
+// Get only FULLY COMPLETED Mon-Sat weeks in a month
+// A week is "complete" if its Saturday is before today
+function getCompletedWeeksInMonth(year, month){ // month 0-indexed
+  const today = new Date(); today.setHours(0,0,0,0);
+  const allWeeks = getWeeksInMonth(year, month);
+  // A week is complete if its last date (Saturday) < today
+  const completed = allWeeks.filter(wk => {
+    const lastDate = wk.dates[wk.dates.length - 1];
+    const sat = new Date(lastDate + 'T00:00:00');
+    return sat < today;
+  });
+  // If no week is complete yet (e.g. first day of month), use last 4 completed weeks from previous months
+  if(completed.length === 0){
+    // Walk back up to 4 weeks from today
+    const fallback = [];
+    const d = new Date(today);
+    // Go to last Saturday
+    while(d.getDay() !== 6) d.setDate(d.getDate() - 1);
+    for(let w = 0; w < 4; w++){
+      const sat = new Date(d);
+      const mon = new Date(d); mon.setDate(d.getDate() - 5);
+      function fmt(dt){ return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
+      const dates = [];
+      for(let i = 0; i < 6; i++){
+        const dd = new Date(mon); dd.setDate(mon.getDate() + i);
+        dates.push(fmt(dd));
+      }
+      fallback.unshift({ start: fmt(mon), end: fmt(sat), dates });
+      d.setDate(d.getDate() - 7);
+    }
+    return fallback;
+  }
+  return completed;
+}
+
 // Generate Mon→Sat (6 days, no Sunday)
 function getWeekDates(startStr){
   const dates=[];
