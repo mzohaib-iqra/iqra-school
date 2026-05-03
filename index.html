@@ -2206,8 +2206,12 @@ function generateTOTM(){
   }
 
   // Get all weeks in this month for diary scoring
-  const monthDate=new Date(m.yr||(new Date().getFullYear()), ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label), 1);
-  const weeks=getWeeksInMonth(monthDate.getFullYear(), monthDate.getMonth());
+  const yr=m.yr||(new Date().getFullYear());
+  const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
+  // Use only COMPLETED weeks (Saturday < today). Falls back to last 4 completed weeks if none done yet.
+  const allWeeks=getWeeksInMonth(yr, monthIdx>=0?monthIdx:new Date().getMonth());
+  const weeks=getCompletedWeeksInMonth(yr, monthIdx>=0?monthIdx:new Date().getMonth());
+  const totalWeeksInMonth=allWeeks.length;
 
   const scores=[];
 
@@ -2266,7 +2270,7 @@ function generateTOTM(){
   let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
     <div>
       <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">🏅 Teacher of the Month – ${esc(m.label)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Based on Diary (50%) + Planner (50%) performance · ${weeks.length} school weeks</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Based on Diary (50%) + Planner (50%) · ${weeks.length} completed week${weeks.length!==1?'s':''} of ${totalWeeksInMonth} in ${esc(m?.label||mk)}</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
   </div>
@@ -2279,7 +2283,7 @@ function generateTOTM(){
       <div style="font-size:15px;font-weight:900;">${esc(s.teacher)}</div>
       <div style="font-size:24px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
       <div style="font-size:11px;color:var(--muted)">📔 Diary: ${s.diaryPct}% &nbsp;·&nbsp; 📅 Planner: ${s.plannerPct}%</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.daysWithEntry}/${s.totalDays} days active · ${s.weeksActive}/${s.totalWeeks} weeks</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.daysWithEntry}/${s.totalDays} days · ${s.weeksActive}/${s.totalWeeks} completed wks</div>
     </div>`;}).join('')}
   </div>
 
@@ -2530,7 +2534,7 @@ function getTOTMScores(mk){
   const m=MONTHS.find(x=>x.key===mk);if(!m)return[];
   const yr=m.yr||(new Date().getFullYear());
   const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
-  const weeks=getWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
+  const weeks=getCompletedWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
   const savedOverrides=getN(DB,['settings','totmOverrides',mk])||{};
   const raw=[];
   getAllTeachers().forEach(teacher=>{
