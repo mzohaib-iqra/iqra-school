@@ -46,6 +46,7 @@
       <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('announcements');renderAnnList()">📢 Announce</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('toppers-admin');renderTopperAdminPanel('primary_boys')">🏅 Toppers</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('totm')">🏅 Teacher of Month</button>
       <a class="ntab parent-link" href="parent-portal.html" target="_blank">👨‍👩‍👧 Parent Portal ↗</a>
     </div>
   </div>
@@ -171,6 +172,31 @@
     <button class="wt-seg-btn" id="wks-fsc" onclick="selWk('fsc')">FSc (11 &amp; 12)</button>
   </div>
   <div id="wkPanel"></div>
+</div>
+
+<!-- TEACHER OF THE MONTH -->
+<div class="section" id="sec-totm">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:20px;font-weight:900;">🏅 Teacher of the Month</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Auto-calculated from diary activity + planner progress. Finalize to show as popup on admin login.</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="session-banner" style="margin-bottom:14px;">
+    <label style="font-size:11px;color:var(--muted);">📅 Select Month:</label>
+    <select class="report-date-inp" id="totmMonthSel" style="width:150px;"></select>
+    <button class="report-gen-btn" onclick="generateTOTMFull()">🔄 Calculate</button>
+    <span style="font-size:11px;color:var(--muted);margin-left:4px;">Scoring: Diary 50% + Planner 50%</span>
+  </div>
+
+  <!-- Current Finalized Banner -->
+  <div id="totmFinalizedBanner" style="display:none;"></div>
+
+  <!-- Results -->
+  <div id="totmFullContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Calculate.</div></div>
 </div>
 
 <!-- SETTINGS -->
@@ -323,7 +349,8 @@ function initFirebase(){
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     db=firebase.database();
     db.ref('.info/connected').on('value',s=>{setStat(s.val()?'live':'off',s.val()?'🟢 Live':'🔴 Offline');});
-    db.ref('iqra').on('value',s=>{DB=s.val()||{};fbReady=true;applySettings();renderAll();});
+    db.ref('iqra').on('value',s=>{DB=s.val()||{};fbReady=true;applySettings();renderAll();
+      if(currentTeacher) setTimeout(showTOTMLoginPopup,700);if(currentTeacher)setTimeout(showTOTMLoginPopup,700);});
   }catch(e){setStat('off','❌ '+e.message);applySettings();renderAll();}
 }
 function setStat(st,msg){document.getElementById('sdot').className='sdot '+st;document.getElementById('sstat').textContent=msg;}
@@ -368,7 +395,7 @@ function showToast(msg,type='ok'){const el=document.getElementById('toast');el.t
 // ══════════════════════════════════════════════
 //  SECTION SWITCH
 // ══════════════════════════════════════════════
-const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings','announcements','toppers-admin'];
+const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings','announcements','toppers-admin','totm'];
 function switchSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
   document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
@@ -377,6 +404,7 @@ function switchSec(id){
   if(id==='settings') renderSettings();
   if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
   if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
+  if(id==='totm'){ populateTOTMMonthSel(); renderFinalizedTOTMBanner(); }
   if(id==='report'){
     document.getElementById('reportDate').value=todayKey();
     document.getElementById('twrDate').value=todayKey();
@@ -2279,6 +2307,278 @@ function generateTOTM(){
   </div>`;
 
   cont.innerHTML=html;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  TEACHER OF THE MONTH — FULL STANDALONE SECTION
+// ══════════════════════════════════════════════════════════════
+
+function populateTOTMMonthSel(){
+  const sel=document.getElementById('totmMonthSel');
+  if(sel) sel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+}
+
+// ── Render the currently finalized TOTM banner at top ──────────
+function renderFinalizedTOTMBanner(){
+  const el=document.getElementById('totmFinalizedBanner');if(!el)return;
+  const finalized=getN(DB,['settings','finalizedTOTM'])||null;
+  if(!finalized){el.style.display='none';el.innerHTML='';return;}
+  const m=MONTHS.find(x=>x.key===finalized.monthKey);
+  el.style.display='block';
+  el.innerHTML=`<div style="background:linear-gradient(135deg,rgba(251,191,36,.15),rgba(251,191,36,.05));border:2px solid rgba(251,191,36,.4);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="font-size:32px">🏅</div>
+    <div style="flex:1;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--gold);font-weight:700;margin-bottom:2px;">Currently Finalized – ${esc(m?.label||finalized.monthKey)}</div>
+      <div style="font-size:18px;font-weight:900;">${esc(finalized.teacher)}</div>
+      <div style="font-size:12px;color:var(--muted);">Overall: <strong style="color:var(--gold)">${finalized.score}%</strong> &nbsp;·&nbsp; Diary: ${finalized.diaryPct}% &nbsp;·&nbsp; Planner: ${finalized.plannerPct}%</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Finalized on ${new Date(finalized.finalizedAt).toLocaleDateString('en-IN')} &nbsp;·&nbsp; Shown as popup on admin login</div>
+    </div>
+    <button onclick="removeFinalizedTOTM()" style="padding:6px 14px;border-radius:7px;border:none;background:rgba(239,68,68,.15);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Remove</button>
+  </div>`;
+}
+
+// ── Main calculation & render ──────────────────────────────────
+function generateTOTMFull(){
+  const mk=document.getElementById('totmMonthSel')?.value;
+  if(!mk){showToast('Select a month','info');return;}
+  const m=MONTHS.find(x=>x.key===mk);
+  const cont=document.getElementById('totmFullContent');
+
+  const teachers=getAllTeachers();
+  if(!teachers.length){
+    cont.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px;">No teachers found. Add periods in the Periods tab first.</div>';
+    return;
+  }
+
+  // Get all Mon-Sat weeks in this month
+  const yr=m.yr||(new Date().getFullYear());
+  const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
+  const weeks=getWeeksInMonth(yr, monthIdx>=0?monthIdx:new Date().getMonth());
+
+  // Get any saved manual overrides for this month
+  const savedOverrides=getN(DB,['settings','totmOverrides',mk])||{};
+
+  const rawScores=[];
+  teachers.forEach(teacher=>{
+    const assignments=getTeacherAssignments(teacher);
+    if(!assignments.length) return;
+
+    // Diary score: % days in month with at least 1 entry
+    let totalDays=0,daysWithEntry=0,totalHW=0;
+    weeks.forEach(wk=>{
+      wk.dates.forEach(dk=>{
+        totalDays++;
+        let dayHas=false;
+        assignments.forEach(({cls,subject})=>{
+          const hws=getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[];
+          totalHW+=hws.length;
+          if(hws.length)dayHas=true;
+        });
+        if(dayHas)daysWithEntry++;
+      });
+    });
+    const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
+
+    // Planner score: % topics done for this month
+    let planTot=0,planDone=0;
+    assignments.forEach(({cls,subject})=>{
+      const topics=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];
+      planTot+=topics.length;
+      planDone+=topics.filter(t=>t.done).length;
+    });
+    const plannerPct=planTot?Math.round(planDone/planTot*100):0;
+
+    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>(getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[]).length>0))).length;
+    const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+
+    rawScores.push({teacher,combined,diaryPct,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
+  });
+
+  // Apply manual overrides
+  const scores=rawScores.map(s=>{
+    const ov=savedOverrides[s.teacher];
+    if(ov){
+      return{...s,
+        combined:ov.combined!==undefined?ov.combined:s.combined,
+        diaryPct:ov.diaryPct!==undefined?ov.diaryPct:s.diaryPct,
+        plannerPct:ov.plannerPct!==undefined?ov.plannerPct:s.plannerPct,
+        manualOverride:true
+      };
+    }
+    return s;
+  }).sort((a,b)=>b.combined-a.combined);
+
+  if(!scores.length){
+    cont.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px;">No data found for this month.</div>';
+    return;
+  }
+
+  const medals=['🥇','🥈','🥉'];
+  const podColors=[['#fbbf24','rgba(251,191,36,.08)'],['#9ca3af','rgba(156,163,175,.08)'],['#d97706','rgba(217,119,6,.08)']];
+  const top3=scores.slice(0,3);
+  const finalized=getN(DB,['settings','finalizedTOTM'])||null;
+  const isFinalizedThisMonth=finalized&&finalized.monthKey===mk;
+
+  let html=`
+  <!-- TOP 3 PODIUM -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:16px;">
+    ${top3.map((s,i)=>{const[col,bg]=podColors[i];return`<div style="border:2px solid ${col};border-radius:12px;padding:16px;background:${bg};text-align:center;">
+      <div style="font-size:28px;margin-bottom:4px">${medals[i]}</div>
+      <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;letter-spacing:.8px;margin-bottom:6px">${i===0?'🏅 Teacher of the Month':i===1?'2nd Place':'3rd Place'}</div>
+      <div style="font-size:16px;font-weight:900">${esc(s.teacher)}</div>
+      ${s.manualOverride?'<div style="font-size:10px;color:var(--gold);margin-top:2px">✏️ Manually adjusted</div>':''}
+      <div style="font-size:26px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
+      <div style="font-size:11px;color:var(--muted)">📔 ${s.diaryPct}% diary &nbsp;·&nbsp; 📅 ${s.plannerPct}% planner</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.daysWithEntry}/${s.totalDays} days · ${s.weeksActive}/${s.totalWeeks} weeks · ${s.totalHW} HW</div>
+    </div>`;}).join('')}
+  </div>
+
+  <!-- FINALIZE / REMOVE BUTTON -->
+  <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    ${isFinalizedThisMonth
+      ? `<span style="font-size:12px;color:#22c55e;font-weight:600">✅ ${esc(m?.label||mk)} is finalized: <strong>${esc(finalized.teacher)}</strong></span>
+         <button onclick="removeFinalizedTOTM()" style="padding:5px 14px;border-radius:7px;border:none;background:rgba(239,68,68,.15);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Remove Finalization</button>`
+      : `<span style="font-size:12px;color:var(--muted)">Top ranked teacher: <strong style="color:var(--text)">${esc(scores[0]?.teacher||'—')}</strong></span>
+         <button onclick="finalizeTOTM('${mk}')" style="padding:5px 14px;border-radius:7px;border:none;background:var(--gold);color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🏅 Finalize as Teacher of the Month</button>`}
+    <span style="font-size:11px;color:var(--muted);margin-left:auto">Finalized teacher appears as popup on admin login until changed</span>
+  </div>
+
+  <!-- FULL RANKING + MANUAL ADJUSTMENTS -->
+  <div class="report-card">
+    <div class="report-card-hd">📊 Full Rankings &amp; Manual Adjustment</div>
+    <div style="padding:10px 13px;">
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Adjust any score below if needed (e.g. data entry error). Click 💾 to save. These overrides only apply to ${esc(m?.label||mk)}.</p>
+      ${scores.map((s,i)=>`<div style="background:var(--surf2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:16px">${medals[i]||'#'+(i+1)}</span>
+          <span style="font-size:13px;font-weight:700;flex:1">${esc(s.teacher)}</span>
+          ${s.manualOverride?'<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:rgba(251,191,36,.15);color:var(--gold)">✏️ Adjusted</span>':''}
+          <button onclick="finalizeTOTMTeacher('${mk}','${s.teacher.replace(/'/g,"\\'")}',${s.combined},${s.diaryPct},${s.plannerPct})" style="padding:3px 10px;border-radius:6px;border:none;background:var(--gold);color:#000;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🏅 Finalize This</button>
+          ${s.manualOverride?`<button onclick="clearTOTMOverride('${mk}','${s.teacher.replace(/'/g,"\\'")}','${mk}')" style="padding:3px 10px;border-radius:6px;border:none;background:rgba(239,68,68,.1);color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;">✕ Clear Adjust</button>`:''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:end;">
+          <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Diary % (auto: ${s.manualOverride?(savedOverrides[s.teacher]?.origDiary||s.diaryPct):s.diaryPct})</label>
+            <input class="ainp2" type="number" min="0" max="100" id="ov-diary-${mk}-${fbKey(s.teacher)}" value="${s.diaryPct}" style="width:100%"></div>
+          <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Planner % (auto: ${s.manualOverride?(savedOverrides[s.teacher]?.origPlanner||s.plannerPct):s.plannerPct})</label>
+            <input class="ainp2" type="number" min="0" max="100" id="ov-plan-${mk}-${fbKey(s.teacher)}" value="${s.plannerPct}" style="width:100%"></div>
+          <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Overall % (auto-calc)</label>
+            <input class="ainp2" type="number" min="0" max="100" id="ov-comb-${mk}-${fbKey(s.teacher)}" value="${s.combined}" style="width:100%"></div>
+          <button onclick="saveTOTMOverride('${mk}','${s.teacher.replace(/'/g,"\\'")}',${s.diaryPct},${s.plannerPct})" style="padding:5px 10px;border-radius:6px;border:none;background:var(--surf);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border);">💾</button>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  cont.innerHTML=html;
+}
+
+// ── Finalize TOTM ──────────────────────────────────────────────
+function finalizeTOTM(mk){
+  const scores=getTOTMScores(mk);
+  if(!scores.length){showToast('No scores to finalize','info');return;}
+  finalizeTOTMTeacher(mk, scores[0].teacher, scores[0].combined, scores[0].diaryPct, scores[0].plannerPct);
+}
+
+function finalizeTOTMTeacher(mk, teacher, score, diaryPct, plannerPct){
+  const m=MONTHS.find(x=>x.key===mk);
+  if(!confirm(`Finalize "${teacher}" as Teacher of the Month for ${m?.label||mk}?
+
+This will show as a popup on admin login until removed.`))return;
+  const entry={teacher,monthKey:mk,monthLabel:m?.label||mk,score,diaryPct,plannerPct,finalizedAt:new Date().toISOString()};
+  setN(DB,['settings','finalizedTOTM'],entry);
+  markDirty('settings/finalizedTOTM',entry);
+  renderFinalizedTOTMBanner();
+  generateTOTMFull(); // re-render to show finalized state
+  showToast('🏅 '+teacher+' finalized as Teacher of the Month!','ok');
+}
+
+function removeFinalizedTOTM(){
+  if(!confirm('Remove the finalized Teacher of the Month? The popup will no longer show on login.'))return;
+  setN(DB,['settings','finalizedTOTM'],null);
+  markDirty('settings/finalizedTOTM',null);
+  renderFinalizedTOTMBanner();
+  generateTOTMFull();
+  showToast('Teacher of the Month removed','info');
+}
+
+// ── Manual override helpers ────────────────────────────────────
+function saveTOTMOverride(mk, teacher, origDiary, origPlanner){
+  const tk=fbKey(teacher);
+  const newDiary=parseFloat(document.getElementById('ov-diary-'+mk+'-'+tk)?.value)||0;
+  const newPlan=parseFloat(document.getElementById('ov-plan-'+mk+'-'+tk)?.value)||0;
+  const newComb=Math.round(newDiary*0.5+newPlan*0.5);
+  const overrides=getN(DB,['settings','totmOverrides',mk])||{};
+  overrides[teacher]={diaryPct:newDiary,plannerPct:newPlan,combined:newComb,origDiary,origPlanner};
+  setN(DB,['settings','totmOverrides',mk],overrides);
+  markDirty('settings/totmOverrides/'+mk,overrides);
+  generateTOTMFull();
+  showToast('Override saved for '+teacher,'ok');
+}
+
+function clearTOTMOverride(mk, teacher){
+  const overrides=getN(DB,['settings','totmOverrides',mk])||{};
+  delete overrides[teacher];
+  setN(DB,['settings','totmOverrides',mk],overrides);
+  markDirty('settings/totmOverrides/'+mk,Object.keys(overrides).length?overrides:null);
+  generateTOTMFull();
+  showToast('Override cleared – using auto calculation','info');
+}
+
+function getTOTMScores(mk){
+  // Re-runs calculation for given month (used by finalizeTOTM)
+  const m=MONTHS.find(x=>x.key===mk);if(!m)return[];
+  const yr=m.yr||(new Date().getFullYear());
+  const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
+  const weeks=getWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
+  const savedOverrides=getN(DB,['settings','totmOverrides',mk])||{};
+  const raw=[];
+  getAllTeachers().forEach(teacher=>{
+    const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
+    let totalDays=0,daysWithEntry=0;
+    weeks.forEach(wk=>wk.dates.forEach(dk=>{totalDays++;if(assignments.some(({cls,subject})=>(getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[]).length>0))daysWithEntry++;}));
+    const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
+    let planTot=0,planDone=0;
+    assignments.forEach(({cls,subject})=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];planTot+=t.length;planDone+=t.filter(x=>x.done).length;});
+    const plannerPct=planTot?Math.round(planDone/planTot*100):0;
+    const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    const ov=savedOverrides[teacher];
+    raw.push(ov?{teacher,combined:ov.combined,diaryPct:ov.diaryPct,plannerPct:ov.plannerPct}:{teacher,combined,diaryPct,plannerPct});
+  });
+  return raw.sort((a,b)=>b.combined-a.combined);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ADMIN LOGIN POPUP — FINALIZED TOTM
+// ══════════════════════════════════════════════════════════════
+function showTOTMLoginPopup(){
+  const finalized=getN(DB,['settings','finalizedTOTM'])||null;
+  if(!finalized)return;
+  // Only show once per session
+  if(sessionStorage.getItem('totm_popup_shown'))return;
+  sessionStorage.setItem('totm_popup_shown','1');
+
+  const overlay=document.createElement('div');
+  overlay.id='totmLoginPopup';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(13,17,23,.88);z-index:600;display:flex;align-items:center;justify-content:center;animation:fi .25s ease;';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);border:2px solid rgba(251,191,36,.5);border-radius:18px;padding:32px 28px;width:100%;max-width:420px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5);position:relative;">
+      <div style="font-size:52px;margin-bottom:8px;">🏅</div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(251,191,36,.7);font-weight:700;margin-bottom:8px;">Teacher of the Month</div>
+      <div style="font-size:26px;font-weight:900;color:#fbbf24;font-family:Playfair Display,serif;margin-bottom:4px;">${esc(finalized.monthLabel)}</div>
+      <div style="width:64px;height:2px;background:linear-gradient(90deg,transparent,#fbbf24,transparent);margin:10px auto 14px;"></div>
+      <div style="font-size:28px;font-weight:900;color:#fff;font-family:Playfair Display,serif;margin-bottom:4px;">${esc(finalized.teacher)}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px;">Overall Score</div>
+      <div style="font-size:52px;font-weight:900;color:#fbbf24;font-family:Playfair Display,serif;line-height:1;margin-bottom:8px;">${finalized.score}%</div>
+      <div style="display:flex;justify-content:center;gap:16px;margin-bottom:18px;font-size:12px;color:rgba(255,255,255,.55);">
+        <span>📔 Diary: <strong style="color:#60a5fa">${finalized.diaryPct}%</strong></span>
+        <span>📅 Planner: <strong style="color:#34d399">${finalized.plannerPct}%</strong></span>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:16px;">Finalized on ${new Date(finalized.finalizedAt).toLocaleDateString('en-IN')}</div>
+      <button onclick="document.getElementById('totmLoginPopup').remove()" style="padding:10px 28px;border-radius:100px;border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.1);color:#fbbf24;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Continue to Dashboard →</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
 </script>
