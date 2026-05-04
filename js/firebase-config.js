@@ -25,29 +25,17 @@ apiKey: "AIzaSyBiDDwQY5VPHLEXp2h4wO79potOs9L9A54",
 const TEACHER_ACCOUNTS = [
   {
     username:      "admin",
-    password:      "iqra00admin",              // local UI login password
-    firebaseEmail: "admin@iqra-school.edu",   // Firebase Auth email
-    name:          "Muhammad Zohaib (Principal)",
-    classes:       [1,2,3,4,5,6,7,8,9,10,11,12,104,105,106,107,108,109,110,111,112],
-    role:          "admin"
-  },
-  {
-    username:      "teacher1",
-    password:      "malett",
-    firebaseEmail: "teacher1@iqra-school.edu",
-    name:          "Teacher – Classes 1–5",
-    classes:       [1,2,3,4,5,104,105],
-    role:          "teacher"
-  },
-  {
-    username:      "teacher2",
-    password:      "malett",
-    firebaseEmail: "teacher2@iqra-school.edu",
-    name:          "Teacher – Classes 6–10",
-    classes:       [6,7,8,9,10,106,107,108,109,110],
-    role:          "teacher"
+    password:      "iqra@admin",          // local UI password
+    firebaseEmail: "admin@iqra-school.edu",    // ← must match Firebase Auth
+    firebasePass:  "iqra00admin",           // ← must match Firebase Auth
+    ...
   }
 ];
+
+const PARENT_PORTAL_AUTH = {
+  firebaseEmail: "parents@iqra-school.edu",   // ← must match Firebase Auth
+  firebasePass:  "iqra-parents-2025"          // ← must match Firebase Auth
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  PARENT PORTAL — shared read-only Firebase account
