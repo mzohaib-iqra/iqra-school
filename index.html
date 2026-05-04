@@ -333,6 +333,8 @@ function afterLogin(){
   document.getElementById('tchip').style.display='flex';
   document.getElementById('tname').textContent=currentTeacher.name;
   if(currentTeacher.role==='admin') document.querySelectorAll('.admin-only').forEach(e=>e.style.display='');
+  // Clear session popup guard so popup shows fresh for every login
+  sessionStorage.removeItem('totm_popup_shown');
   initFirebase();
 }
 function doLogout(){sessionStorage.removeItem('iqra_t');location.reload();}
@@ -2046,7 +2048,7 @@ function getAllTeachers(){
   getClassIds().forEach(cls=>{
     getSubs(cls).forEach(sub=>{
       const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
-      periods.forEach(p=>{ if(p.teacher) teachers.add(p.teacher); });
+      periods.forEach(p=>{ if(p.teacher&&p.teacher.trim()) teachers.add(p.teacher.trim()); });
     });
   });
   // Also include from TEACHER_ACCOUNTS
@@ -2061,8 +2063,8 @@ function getTeacherAssignments(teacherName){
     getSubs(cls).forEach(sub=>{
       const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
       periods.forEach(p=>{
-        if(p.teacher===teacherName){
-          assignments.push({cls,clsName:CLASSES[cls]?.name||'Class '+cls,subject:sub,period:p.period});
+        if(p.teacher&&teacherName&&p.teacher.trim().toLowerCase()===teacherName.trim().toLowerCase()){
+          assignments.push({cls,clsName:CLASSES[cls]?.name||'Class '+cls,subject:sub,period:p.period,teacherStored:p.teacher});
         }
       });
     });
@@ -2243,7 +2245,7 @@ function generateTOTM(){
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
 
     // ── Weekly diary consistency (how many weeks had ≥1 entry) ────
-    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>(getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[]).length>0))).length;
+    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>(getN(DB,['diary','c'+String(cls),dk,fbKey(subject)])||[]).length>0))).length;
 
     // ── Combined score (diary 50% + planner 50%) ──────────────────
     const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
@@ -2375,7 +2377,7 @@ function generateTOTMFull(){
         totalDays++;
         let dayHas=false;
         assignments.forEach(({cls,subject})=>{
-          const hws=getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[];
+          const hws=getN(DB,['diary','c'+String(cls),dk,fbKey(subject)])||[];
           totalHW+=hws.length;
           if(hws.length)dayHas=true;
         });
@@ -2393,7 +2395,7 @@ function generateTOTMFull(){
     });
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
 
-    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>(getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[]).length>0))).length;
+    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>(getN(DB,['diary','c'+String(cls),dk,fbKey(subject)])||[]).length>0))).length;
     const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
 
     rawScores.push({teacher,combined,diaryPct,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
@@ -2540,7 +2542,7 @@ function getTOTMScores(mk){
   getAllTeachers().forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
     let totalDays=0,daysWithEntry=0;
-    weeks.forEach(wk=>wk.dates.forEach(dk=>{totalDays++;if(assignments.some(({cls,subject})=>(getN(DB,['diary','c'+cls,dk,fbKey(subject)])||[]).length>0))daysWithEntry++;}));
+    weeks.forEach(wk=>wk.dates.forEach(dk=>{totalDays++;if(assignments.some(({cls,subject})=>(getN(DB,['diary','c'+String(cls),dk,fbKey(subject)])||[]).length>0))daysWithEntry++;}));
     const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
     let planTot=0,planDone=0;
     assignments.forEach(({cls,subject})=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];planTot+=t.length;planDone+=t.filter(x=>x.done).length;});
