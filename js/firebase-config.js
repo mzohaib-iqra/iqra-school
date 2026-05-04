@@ -25,7 +25,7 @@ const FIREBASE_CONFIG = {
 const TEACHER_ACCOUNTS = [
   {
     username:      "admin",
-    password:      "iqra@admin",              // local UI login password
+    password:      "iqra00admin",              // local UI login password
     firebaseEmail: "admin@iqra-school.edu",   // Firebase Auth email
     name:          "Muhammad Zohaib (Principal)",
     classes:       [1,2,3,4,5,6,7,8,9,10,11,12,104,105,106,107,108,109,110,111,112],
@@ -33,7 +33,7 @@ const TEACHER_ACCOUNTS = [
   },
   {
     username:      "teacher1",
-    password:      "teacher@1234",
+    password:      "malett",
     firebaseEmail: "teacher1@iqra-school.edu",
     name:          "Teacher – Classes 1–5",
     classes:       [1,2,3,4,5,104,105],
@@ -41,7 +41,7 @@ const TEACHER_ACCOUNTS = [
   },
   {
     username:      "teacher2",
-    password:      "teacher@5678",
+    password:      "malett",
     firebaseEmail: "teacher2@iqra-school.edu",
     name:          "Teacher – Classes 6–10",
     classes:       [6,7,8,9,10,106,107,108,109,110],
