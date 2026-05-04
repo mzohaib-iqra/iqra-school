@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/admin.css">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/data.js"></script>
 </head>
@@ -337,7 +338,11 @@ function afterLogin(){
   sessionStorage.removeItem('totm_popup_shown');
   initFirebase();
 }
-function doLogout(){sessionStorage.removeItem('iqra_t');location.reload();}
+function doLogout(){
+  sessionStorage.removeItem('iqra_t');
+  try{ if(firebase.apps.length) firebase.auth().signOut(); }catch(e){}
+  location.reload();
+}
 document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 (()=>{const s=sessionStorage.getItem('iqra_t');if(s){try{currentTeacher=JSON.parse(s);afterLogin();}catch(e){sessionStorage.removeItem('iqra_t');}}})();
 function canEdit(cls){return currentTeacher&&(currentTeacher.role==='admin'||currentTeacher.classes.includes(+cls));}
@@ -346,13 +351,43 @@ function canEdit(cls){return currentTeacher&&(currentTeacher.role==='admin'||cur
 //  FIREBASE
 // ══════════════════════════════════════════════
 function initFirebase(){
-  if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){setStat('off','⚠ Edit js/firebase-config.js');DB={};applySettings();renderAll();return;}
+  if(FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){
+    setStat('off','⚠ Edit js/firebase-config.js first');
+    DB={};applySettings();renderAll();return;
+  }
   try{
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     db=firebase.database();
-    db.ref('.info/connected').on('value',s=>{setStat(s.val()?'live':'off',s.val()?'🟢 Live':'🔴 Offline');});
-    db.ref('iqra').on('value',s=>{DB=s.val()||{};fbReady=true;applySettings();renderAll();
-      if(currentTeacher) setTimeout(showTOTMLoginPopup,700);if(currentTeacher)setTimeout(showTOTMLoginPopup,700);});
+    const auth=firebase.auth();
+    const t=currentTeacher;
+    if(!t||!t.firebaseEmail){
+      setStat('off','❌ No Firebase email configured in firebase-config.js');return;
+    }
+    // Get Firebase password from localStorage (set once per device, never in code)
+    const fbPassKey='iqra_fbp_'+btoa(t.firebaseEmail);
+    let fbPass=localStorage.getItem(fbPassKey);
+    if(!fbPass){
+      fbPass=prompt('🔐 First-time setup for '+t.name+'\nEnter Firebase Auth password for '+t.firebaseEmail+':\n(This is stored only on this device)');
+      if(!fbPass){setStat('off','❌ Firebase password required');return;}
+      localStorage.setItem(fbPassKey, fbPass);
+    }
+    setStat('saving','🔐 Authenticating…');
+    auth.signInWithEmailAndPassword(t.firebaseEmail, fbPass)
+      .then(()=>{
+        db.ref('.info/connected').on('value',s=>{
+          setStat(s.val()?'live':'off',s.val()?'🟢 Live – secured':'🔴 Offline');
+        });
+        db.ref('iqra').on('value',s=>{
+          DB=s.val()||{};fbReady=true;applySettings();renderAll();
+          if(currentTeacher) setTimeout(showTOTMLoginPopup,700);
+        });
+      })
+      .catch(e=>{
+        // Wrong password saved — clear it and ask again next time
+        localStorage.removeItem(fbPassKey);
+        setStat('off','❌ Firebase auth failed');
+        showToast('Wrong Firebase password — cleared. Login again to re-enter.','err');
+      });
   }catch(e){setStat('off','❌ '+e.message);applySettings();renderAll();}
 }
 function setStat(st,msg){document.getElementById('sdot').className='sdot '+st;document.getElementById('sstat').textContent=msg;}
