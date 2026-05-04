@@ -32,21 +32,22 @@ const TEACHER_ACCOUNTS = [
     role:          "admin"
   },
   {
-    username:      "teacher1",
-    password:      "teacher@1234",
+    username:      "iqrabs",
+    password:      "male12",
     firebaseEmail: "teacher1@iqra-school.edu",
     name:          "Teacher – Classes 1–5",
-    classes:       [1,2,3,4,5,104,105],
+    classes:       [1,2,3,4,5,6,7,8,9,10,11,12,108,109,110,111,112],
     role:          "teacher"
   },
   {
-    username:      "teacher2",
-    password:      "teacher@5678",
+    username:      "iqrags",
+    password:      "gs1",
     firebaseEmail: "teacher2@iqra-school.edu",
     name:          "Teacher – Classes 6–10",
-    classes:       [6,7,8,9,10,106,107,108,109,110],
+    classes:       [104,105,106,107,108,109,110,111,112],
     role:          "teacher"
   }
+
 ];
 
 // ═══════════════════════════════════════════════════════════════
