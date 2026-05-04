@@ -53,6 +53,4 @@ const TEACHER_ACCOUNTS = [
 //  PARENT PORTAL — shared read-only Firebase account
 //  Only the email is here; password is stored locally on device
 // ═══════════════════════════════════════════════════════════════
-const PARENT_PORTAL_AUTH = {
-  firebaseEmail: "parents@iqra-school.edu"
-};
+
