@@ -32,7 +32,7 @@ const TEACHER_ACCOUNTS = [
     role:          "admin"
   },
   {
-    username:      "iqrabs",
+    username:      "iqra",
     password:      "male12",
     firebaseEmail: "teacher1@iqra-school.edu",
     name:          "Teacher – Classes 1–5",
