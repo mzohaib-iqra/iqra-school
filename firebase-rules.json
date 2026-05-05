@@ -1,8 +1,0 @@
-{
-  "rules": {
-    "iqra": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    }
-  }
-}
