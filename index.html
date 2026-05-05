@@ -186,11 +186,25 @@
   </div>
 
   <!-- Controls -->
-  <div class="session-banner" style="margin-bottom:14px;">
-    <label style="font-size:11px;color:var(--muted);">📅 Select Month:</label>
-    <select class="report-date-inp" id="totmMonthSel" style="width:150px;"></select>
-    <button class="report-gen-btn" onclick="generateTOTMFull()">🔄 Calculate</button>
-    <span style="font-size:11px;color:var(--muted);margin-left:4px;">Scoring: Diary 50% + Planner 50%</span>
+  <div class="session-banner" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <label style="font-size:11px;color:var(--muted);">📅 Month:</label>
+      <select class="report-date-inp" id="totmMonthSel" style="width:140px;" onchange="buildTOTMWeekCheckboxes()"></select>
+    </div>
+    <div style="flex:1;min-width:100%;"></div>
+    <!-- Manual week selection -->
+    <div style="width:100%;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">📆 Select Weeks to Include in Diary Score:</div>
+      <div id="totmWeekCheckboxes" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--muted);font-style:italic;">Select a month first…</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-sm btn-add" onclick="selectAllTOTMWeeks(true)" style="font-size:11px;">✅ Select All</button>
+        <button class="btn-sm" style="background:var(--surf2);color:var(--muted);" onclick="selectAllTOTMWeeks(false)">☐ Deselect All</button>
+        <button class="report-gen-btn" onclick="generateTOTMFull()">🔄 Calculate</button>
+        <span style="font-size:11px;color:var(--muted);">Scoring: Diary 50% + Planner 50%</span>
+      </div>
+    </div>
   </div>
 
   <!-- Current Finalized Banner -->
@@ -2363,7 +2377,11 @@ function generateTOTM(){
 
 function populateTOTMMonthSel(){
   const sel=document.getElementById('totmMonthSel');
-  if(sel) sel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+  if(sel){
+    sel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+    // Auto-build week checkboxes for first month
+    setTimeout(buildTOTMWeekCheckboxes,50);
+  }
 }
 
 // ── Render the currently finalized TOTM banner at top ──────────
@@ -2403,7 +2421,8 @@ function generateTOTMFull(){
   const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
   const safeMonthIdx=monthIdx>=0?monthIdx:new Date().getMonth();
   const allWeeks=getWeeksInMonth(yr,safeMonthIdx);
-  const weeks=getCompletedWeeksInMonth(yr,safeMonthIdx);
+  // Use manually selected weeks (checkboxes) — fallback to all weeks
+  const weeks=getSelectedTOTMWeeks(mk);
   const totalWeeksInMonth=allWeeks.length;
 
   // Get any saved manual overrides for this month
@@ -2657,6 +2676,58 @@ function showTOTMLoginPopup(){
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+
+
+// ══════════════════════════════════════════════
+//  TOTM MANUAL WEEK SELECTION
+// ══════════════════════════════════════════════
+function buildTOTMWeekCheckboxes(){
+  const mk=document.getElementById('totmMonthSel')?.value;
+  const el=document.getElementById('totmWeekCheckboxes');
+  if(!mk||!el){return;}
+
+  const m=MONTHS.find(x=>x.key===mk);
+  const yr=m?.yr||(new Date().getFullYear());
+  const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m?.label||'');
+  const safeIdx=monthIdx>=0?monthIdx:new Date().getMonth();
+  const allWeeks=getWeeksInMonth(yr,safeIdx);
+
+  if(!allWeeks.length){
+    el.innerHTML='<span style="font-size:11px;color:var(--muted);font-style:italic;">No weeks found for this month.</span>';
+    return;
+  }
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  el.innerHTML=allWeeks.map((wk,i)=>{
+    const sat=new Date(wk.dates[wk.dates.length-1]+'T00:00:00');
+    const completed=sat<today;
+    const label=`Week ${i+1}: ${wk.start.slice(5)} → ${wk.end.slice(5)} (${wk.dates.length} days)`;
+    return `<label style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:${completed?'var(--surf2)':'var(--surf)'};cursor:pointer;font-size:12px;font-weight:500;">
+      <input type="checkbox" id="totm-wk-${i}" value="${i}" ${completed?'checked':''} style="width:14px;height:14px;cursor:pointer;">
+      ${label} ${completed?'<span style="font-size:10px;color:#22c55e;margin-left:3px;">✓ done</span>':'<span style="font-size:10px;color:var(--gold);margin-left:3px;">⏳ pending</span>'}
+    </label>`;
+  }).join('');
+}
+
+function selectAllTOTMWeeks(checked){
+  document.querySelectorAll('[id^="totm-wk-"]').forEach(cb=>cb.checked=checked);
+}
+
+function getSelectedTOTMWeeks(mk){
+  const m=MONTHS.find(x=>x.key===mk);
+  const yr=m?.yr||(new Date().getFullYear());
+  const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m?.label||'');
+  const safeIdx=monthIdx>=0?monthIdx:new Date().getMonth();
+  const allWeeks=getWeeksInMonth(yr,safeIdx);
+  // Return only the checked weeks
+  const selected=[];
+  allWeeks.forEach((wk,i)=>{
+    const cb=document.getElementById('totm-wk-'+i);
+    if(cb&&cb.checked) selected.push(wk);
+  });
+  // If nothing selected, fall back to all weeks
+  return selected.length>0?selected:allWeeks;
 }
 
 </script>

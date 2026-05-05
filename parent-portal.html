@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="css/portal.css">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/data.js"></script>
 </head>
@@ -185,58 +184,37 @@ function initFirebase(){
   try{
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     const fbdb=firebase.database();
-    const auth=firebase.auth();
-    // Sign in with shared parent read-only account
-    // Password stored in localStorage (never in code)
-    const fbPassKey='iqra_fbp_'+btoa(PARENT_PORTAL_AUTH.firebaseEmail);
-    let fbPass=localStorage.getItem(fbPassKey);
-    if(!fbPass){
-      fbPass=prompt('🔐 First-time setup\nEnter the parent portal Firebase password\n(Ask your school administrator for this password)');
-      if(!fbPass){
-        document.getElementById('syncMsg').textContent='⚠ Password required to load data';
-        return;
+    fbdb.ref('.info/connected').on('value',s=>{
+      const live=s.val();
+      document.getElementById('syncMsg').textContent=live?'🟢 Live data — updates automatically':'🔴 Reconnecting…';
+      document.getElementById('liveDot').style.background=live?'#10b981':'#ef4444';
+    });
+    fbdb.ref('iqra').on('value',s=>{
+      DB=s.val()||{};
+      if(DB.settings){
+        if(DB.settings.terms) TERMS=DB.settings.terms;
+        if(DB.settings.months&&DB.settings.months.length) MONTHS=DB.settings.months;
+        if(!MONTHS||!MONTHS.length){
+          MONTHS=DB.settings.plannerYear&&DB.settings.plannerYear.start
+            ? generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS)
+            : DEFAULT_SETTINGS.months;
+        }
+        if(DB.settings.classes) CLASSES=DB.settings.classes;
+        if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
       }
-      localStorage.setItem(fbPassKey,fbPass);
-    }
-    auth.signInWithEmailAndPassword(PARENT_PORTAL_AUTH.firebaseEmail, fbPass)
-      .then(()=>{
-        fbdb.ref('.info/connected').on('value',s=>{
-          const live=s.val();
-          document.getElementById('syncMsg').textContent=live?'🟢 Live data — updates automatically':'🔴 Reconnecting…';
-          document.getElementById('liveDot').style.background=live?'#10b981':'#ef4444';
-        });
-        fbdb.ref('iqra').on('value',s=>{
-          DB=s.val()||{};
-          if(DB.settings){
-            if(DB.settings.terms) TERMS=DB.settings.terms;
-            if(DB.settings.months&&DB.settings.months.length) MONTHS=DB.settings.months;
-            if(!MONTHS||!MONTHS.length){
-              MONTHS=DB.settings.plannerYear&&DB.settings.plannerYear.start
-                ? generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS)
-                : DEFAULT_SETTINGS.months;
-            }
-            if(DB.settings.classes) CLASSES=DB.settings.classes;
-            if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
-          }
-          applyBranding();populateSelects();renderTermDates();
-          if(curCls) loadClass(curCls);
-          if(curResCls) loadResults(curResCls,curResTermId);
-          if(curDiaryCls) loadDiary(curDiaryCls);
-          if(document.getElementById('tab-boards').classList.contains('active')) renderBrdContent(curBrd);
-          if(document.getElementById('tab-weekly').classList.contains('active')) renderWeekly(curWkSec);
-          if(document.getElementById('tab-toppers').classList.contains('active')) renderToppers();
-          if(document.getElementById('tab-school-toppers').classList.contains('active')) renderSchoolToppers('all');
-          renderAnnouncementBanner();
-          applyPortalAppearance();
-          applyHeaderBanner();
-          setTimeout(renderPopupAnnouncements,800);
-        });
-      })
-      .catch(e=>{
-        localStorage.removeItem('iqra_fbp_'+btoa(PARENT_PORTAL_AUTH.firebaseEmail));
-        document.getElementById('syncMsg').textContent='❌ Wrong password — reload page to try again';
-        document.getElementById('liveDot').style.cssText='background:#ef4444;animation:none';
-      });
+      applyBranding();populateSelects();renderTermDates();
+      if(curCls) loadClass(curCls);
+      if(curResCls) loadResults(curResCls,curResTermId);
+      if(curDiaryCls) loadDiary(curDiaryCls);
+      if(document.getElementById('tab-boards').classList.contains('active')) renderBrdContent(curBrd);
+      if(document.getElementById('tab-weekly').classList.contains('active')) renderWeekly(curWkSec);
+      if(document.getElementById('tab-toppers').classList.contains('active')) renderToppers();
+      if(document.getElementById('tab-school-toppers').classList.contains('active')) renderSchoolToppers('all');
+      renderAnnouncementBanner();
+      applyPortalAppearance();
+      applyHeaderBanner();
+      setTimeout(renderPopupAnnouncements,800);
+    });
   }catch(e){document.getElementById('syncMsg').textContent='❌ Error: '+e.message;}
 }
 
