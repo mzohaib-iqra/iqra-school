@@ -189,7 +189,7 @@
   <div class="session-banner" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <label style="font-size:11px;color:var(--muted);">📅 Month:</label>
-      <select class="report-date-inp" id="totmMonthSel" style="width:140px;" onchange="buildTOTMWeekCheckboxes()"></select>
+      <select class="report-date-inp" id="totmMonthSel" style="width:140px;" onchange="buildTOTMWeekCheckboxes();loadAttendanceForMonth();"></select>
     </div>
     <div style="flex:1;min-width:100%;"></div>
     <!-- Manual week selection -->
@@ -204,6 +204,31 @@
         <button class="report-gen-btn" onclick="generateTOTMFull()">🔄 Calculate</button>
         <span style="font-size:11px;color:var(--muted);">Scoring: Diary 50% + Planner 50%</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Teacher Attendance Input -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-head">
+      <div class="card-title">📅 Teacher Attendance – Monthly</div>
+      <span style="font-size:11px;color:var(--muted)">Enter attendance for the selected month. Used in TOTM scoring (10% weight).</span>
+    </div>
+    <div style="padding:12px 14px;">
+      <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Total Working Days</label>
+          <input class="ainp2" type="number" id="att-total" placeholder="e.g. 24" min="1" max="31" style="width:100px;" oninput="renderAttendanceRows()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">School Vacations / Holidays</label>
+          <input class="ainp2" type="number" id="att-vacations" placeholder="e.g. 6" min="0" max="31" style="width:100px;" oninput="renderAttendanceRows()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">&nbsp;</label>
+          <button class="btn-sm btn-add" onclick="saveAttendance()">💾 Save Attendance</button>
+        </div>
+      </div>
+      <div id="attendanceRows" style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto;"></div>
     </div>
   </div>
 
@@ -455,7 +480,7 @@ function switchSec(id){
   if(id==='settings') renderSettings();
   if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
   if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
-  if(id==='totm'){ populateTOTMMonthSel(); renderFinalizedTOTMBanner(); }
+  if(id==='totm'){ populateTOTMMonthSel(); renderFinalizedTOTMBanner(); setTimeout(renderAttendanceRows,100); }
   if(id==='report'){
     document.getElementById('reportDate').value=todayKey();
     document.getElementById('twrDate').value=todayKey();
@@ -2295,15 +2320,22 @@ function generateTOTM(){
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
 
     // ── Weekly diary consistency (how many weeks had ≥1 entry) ────
-    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>{
-      const clsKey='c'+String(cls),subKey=fbKey(subject);
-      let h=getN(DB,['diary',clsKey,dk,subKey])||[];
-      if(!h.length)h=getN(DB,['diary',clsKey,dk,subject])||[];
-      return h.length>0;
-    }))).length;
+    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>
+      teacherClasses.some(cls=>{
+        const dayData=getN(DB,['diary','c'+cls,dk])||{};
+        return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
+      })
+    )).length;
 
     // ── Combined score (diary 50% + planner 50%) ──────────────────
-    const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    // Attendance scoring (if data available): 10% weight
+    const attPct=getAttendancePct(teacher,mk);
+    let combined;
+    if(attPct!==null){
+      combined=Math.round(diaryPct*0.4+plannerPct*0.4+attPct*0.2);
+    } else {
+      combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    }
 
     scores.push({
       teacher,combined,diaryPct,plannerPct,
@@ -2348,7 +2380,7 @@ function generateTOTM(){
   <div class="report-card">
     <div class="report-card-hd">📊 Full Ranking – All Teachers</div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr>
-      <th>Rank</th><th>Teacher</th><th>Diary %</th><th>Planner %</th><th>Overall</th><th>Active Days</th><th>Active Weeks</th><th>Planner Topics</th>
+      <th>Rank</th><th>Teacher</th><th>Diary %</th><th>Planner %</th><th>Overall</th><th>Diary Days</th><th>Active Weeks</th><th>Planner Topics</th><th>Attendance</th>
     </tr></thead><tbody>
     ${scores.map((s,i)=>{
       const overall=s.combined;
@@ -2362,6 +2394,8 @@ function generateTOTM(){
         <td style="color:var(--muted)">${s.daysWithEntry}/${s.totalDays}</td>
         <td style="color:var(--muted)">${s.weeksActive}/${s.totalWeeks}</td>
         <td style="color:var(--muted)">${s.planDone}/${s.planTot}</td>
+        <td>${(()=>{const a=getAttendancePct(s.teacher,mk);return a!==null?`<span style="font-weight:700;color:${a>=90?'#22c55e':a>=75?'#fbbf24':'#ef4444'}">${a}%</span>`:'<span style="color:var(--muted)">—</span>';})()}</td>
+        <td>${(()=>{const a=getAttendancePct(s.teacher,mk);return a!==null?`<span style="font-weight:700;color:${a>=90?'#22c55e':a>=75?'#fbbf24':'#ef4444'}">${a}%</span>`:'<span style="color:var(--muted);font-style:italic">—</span>';})()}</td>
       </tr>`;
     }).join('')}
     </tbody></table></div>
@@ -2379,9 +2413,21 @@ function populateTOTMMonthSel(){
   const sel=document.getElementById('totmMonthSel');
   if(sel){
     sel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
-    // Auto-build week checkboxes for first month
-    setTimeout(buildTOTMWeekCheckboxes,50);
+    setTimeout(()=>{
+      buildTOTMWeekCheckboxes();
+      loadAttendanceForMonth();
+    },50);
   }
+}
+
+function loadAttendanceForMonth(){
+  const mk=document.getElementById('totmMonthSel')?.value;if(!mk)return;
+  const saved=getN(DB,['settings','attendance',mk])||{};
+  const totEl=document.getElementById('att-total');
+  const vacEl=document.getElementById('att-vacations');
+  if(totEl) totEl.value=saved.totalDays||'';
+  if(vacEl) vacEl.value=saved.vacations||'';
+  renderAttendanceRows();
 }
 
 // ── Render the currently finalized TOTM banner at top ──────────
@@ -2433,33 +2479,30 @@ function generateTOTMFull(){
     const assignments=getTeacherAssignments(teacher);
     if(!assignments.length) return;
 
-    // Diary score: % days in month (completed weeks) with at least 1 HW entry
+    // Diary score: % of selected week-days where teacher entered ANY homework
+    // Strategy: get all classes this teacher teaches, then scan ALL diary entries
+    // for those classes on each date — no subject-key matching needed
+    const teacherClasses=[...new Set(assignments.map(a=>String(a.cls)))];
     let totalDays=0,daysWithEntry=0,totalHW=0;
     weeks.forEach(wk=>{
       wk.dates.forEach(dk=>{
         totalDays++;
         let dayHas=false;
-        assignments.forEach(({cls,subject})=>{
-          const clsKey='c'+String(cls);
-          const subKey=fbKey(subject);
-          // Try fbKey version first, then raw subject name as key
-          let hws=getN(DB,['diary',clsKey,dk,subKey])||[];
-          if(!hws.length) hws=getN(DB,['diary',clsKey,dk,subject])||[];
-          // Also scan all entries for this class/date if above fails
-          if(!hws.length){
-            const dayData=getN(DB,['diary',clsKey,dk])||{};
-            // Check if any key loosely matches this subject
-            const matchKey=Object.keys(dayData).find(k=>k.toLowerCase()===subKey.toLowerCase()||k===subject);
-            if(matchKey) hws=dayData[matchKey]||[];
-          }
-          totalHW+=hws.length;
-          if(hws.length)dayHas=true;
+        teacherClasses.forEach(cls=>{
+          const dayData=getN(DB,['diary','c'+cls,dk])||{};
+          // Count ANY homework entry in this class on this date
+          Object.values(dayData).forEach(hwArr=>{
+            if(Array.isArray(hwArr)&&hwArr.length){
+              totalHW+=hwArr.length;
+              dayHas=true;
+            }
+          });
         });
         if(dayHas)daysWithEntry++;
       });
     });
     const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
-    console.log(`TOTM Diary [${teacher}]: ${daysWithEntry}/${totalDays} days, ${weeks.length} completed weeks, HW=${totalHW}, diary%=${diaryPct}`);
+    console.log(`TOTM Diary [${teacher}]: ${daysWithEntry}/${totalDays} days, ${weeks.length} wks, HW=${totalHW}, diary%=${diaryPct}`);
 
     // Planner score: % topics done for this month
     let planTot=0,planDone=0;
@@ -2470,13 +2513,20 @@ function generateTOTMFull(){
     });
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
 
-    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>assignments.some(({cls,subject})=>{
-      const clsKey='c'+String(cls),subKey=fbKey(subject);
-      let h=getN(DB,['diary',clsKey,dk,subKey])||[];
-      if(!h.length)h=getN(DB,['diary',clsKey,dk,subject])||[];
-      return h.length>0;
-    }))).length;
-    const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>
+      teacherClasses.some(cls=>{
+        const dayData=getN(DB,['diary','c'+cls,dk])||{};
+        return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
+      })
+    )).length;
+    // Attendance scoring (if data available): 10% weight
+    const attPct=getAttendancePct(teacher,mk);
+    let combined;
+    if(attPct!==null){
+      combined=Math.round(diaryPct*0.4+plannerPct*0.4+attPct*0.2);
+    } else {
+      combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    }
 
     rawScores.push({teacher,combined,diaryPct,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
   });
@@ -2515,7 +2565,7 @@ function generateTOTMFull(){
       <div style="font-size:16px;font-weight:900">${esc(s.teacher)}</div>
       ${s.manualOverride?'<div style="font-size:10px;color:var(--gold);margin-top:2px">✏️ Manually adjusted</div>':''}
       <div style="font-size:26px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
-      <div style="font-size:11px;color:var(--muted)">📔 ${s.diaryPct}% diary &nbsp;·&nbsp; 📅 ${s.plannerPct}% planner</div>
+      <div style="font-size:11px;color:var(--muted)">📔 ${s.diaryPct}% diary &nbsp;·&nbsp; 📅 ${s.plannerPct}% planner${getAttendancePct(s.teacher,mk)!==null?' &nbsp;·&nbsp; 🗓️ '+getAttendancePct(s.teacher,mk)+'% att':''}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.daysWithEntry}/${s.totalDays} days · ${s.weeksActive}/${s.totalWeeks} weeks · ${s.totalHW} HW</div>
     </div>`;}).join('')}
   </div>
@@ -2622,23 +2672,27 @@ function getTOTMScores(mk){
   getAllTeachers().forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
     let totalDays=0,daysWithEntry=0;
+    const tClasses2=[...new Set(assignments.map(a=>String(a.cls)))];
     weeks.forEach(wk=>wk.dates.forEach(dk=>{
       totalDays++;
-      const hasEntry=assignments.some(({cls,subject})=>{
-        const clsKey='c'+String(cls),subKey=fbKey(subject);
-        let hws=getN(DB,['diary',clsKey,dk,subKey])||[];
-        if(!hws.length) hws=getN(DB,['diary',clsKey,dk,subject])||[];
-        if(!hws.length){const dayData=getN(DB,['diary',clsKey,dk])||{};const mk2=Object.keys(dayData).find(k=>k.toLowerCase()===subKey.toLowerCase()||k===subject);if(mk2)hws=dayData[mk2]||[];}
-        return hws.length>0;
+      const hasEntry=tClasses2.some(cls=>{
+        const dayData=getN(DB,['diary','c'+cls,dk])||{};
+        return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
       });
       if(hasEntry)daysWithEntry++;
     }));
     const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
-    console.log(`TOTM Diary [${teacher}]: ${daysWithEntry}/${totalDays} days, ${weeks.length} completed weeks, HW=${totalHW}, diary%=${diaryPct}`);
     let planTot=0,planDone=0;
     assignments.forEach(({cls,subject})=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];planTot+=t.length;planDone+=t.filter(x=>x.done).length;});
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
-    const combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    // Attendance scoring (if data available): 10% weight
+    const attPct=getAttendancePct(teacher,mk);
+    let combined;
+    if(attPct!==null){
+      combined=Math.round(diaryPct*0.4+plannerPct*0.4+attPct*0.2);
+    } else {
+      combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+    }
     const ov=savedOverrides[teacher];
     raw.push(ov?{teacher,combined:ov.combined,diaryPct:ov.diaryPct,plannerPct:ov.plannerPct}:{teacher,combined,diaryPct,plannerPct});
   });
@@ -2728,6 +2782,81 @@ function getSelectedTOTMWeeks(mk){
   });
   // If nothing selected, fall back to all weeks
   return selected.length>0?selected:allWeeks;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  TEACHER ATTENDANCE
+// ══════════════════════════════════════════════════════════════
+function renderAttendanceRows(){
+  const el=document.getElementById('attendanceRows');if(!el)return;
+  const mk=document.getElementById('totmMonthSel')?.value;
+  const teachers=getAllTeachers();
+  if(!teachers.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic;">No teachers found. Add periods first.</div>';return;}
+  const saved=getN(DB,['settings','attendance',mk])||{};
+  const total=parseInt(document.getElementById('att-total')?.value)||saved.totalDays||0;
+  const vac=parseInt(document.getElementById('att-vacations')?.value)||saved.vacations||0;
+  const effectiveDays=Math.max(0,total-vac);
+  el.innerHTML=`
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 10px;background:var(--surf2);border-radius:7px;border:1px solid var(--border);">
+      Effective school days: <strong style="color:var(--text)">${total}</strong> total − <strong style="color:var(--t1)">${vac}</strong> vacations = <strong style="color:var(--t3)">${effectiveDays}</strong> days
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;padding:5px 10px;background:var(--surf2);border-radius:7px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">
+      <div>Teacher</div><div>Present Days</div><div>Absent Days</div><div>Attendance %</div>
+    </div>
+    ${teachers.map(t=>{
+      const tSaved=saved.teachers?.[fbKey(t)]||{};
+      const present=tSaved.present!==undefined?tSaved.present:effectiveDays;
+      const absent=effectiveDays-present;
+      const pct=effectiveDays?Math.round(present/effectiveDays*100):100;
+      const col=pct>=90?'#22c55e':pct>=75?'#fbbf24':'#ef4444';
+      return`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:7px 10px;background:var(--surf);border:1px solid var(--border);border-radius:7px;align-items:center;">
+        <div style="font-size:12px;font-weight:600;">${esc(t)}</div>
+        <div><input class="ainp2" type="number" min="0" max="${effectiveDays}" id="att-p-${fbKey(t)}" value="${present}" style="width:65px;" oninput="updateAbsent('${fbKey(t)}',${effectiveDays})"></div>
+        <div id="att-abs-${fbKey(t)}" style="font-size:12px;font-weight:600;color:${absent>0?'#ef4444':'#22c55e'}">${absent} day${absent!==1?'s':''}</div>
+        <div style="font-size:13px;font-weight:800;color:${col}">${pct}%</div>
+      </div>`;
+    }).join('')}`;
+}
+
+function updateAbsent(tk, effectiveDays){
+  const inp=document.getElementById('att-p-'+tk);
+  const absEl=document.getElementById('att-abs-'+tk);
+  if(!inp||!absEl)return;
+  const present=Math.min(parseInt(inp.value)||0,effectiveDays);
+  inp.value=present;
+  const absent=effectiveDays-present;
+  absEl.textContent=absent+' day'+(absent!==1?'s':'');
+  absEl.style.color=absent>0?'#ef4444':'#22c55e';
+}
+
+function saveAttendance(){
+  const mk=document.getElementById('totmMonthSel')?.value;
+  if(!mk){showToast('Select a month first','info');return;}
+  const teachers=getAllTeachers();
+  const total=parseInt(document.getElementById('att-total')?.value)||0;
+  const vac=parseInt(document.getElementById('att-vacations')?.value)||0;
+  const effectiveDays=Math.max(0,total-vac);
+  const teacherData={};
+  teachers.forEach(t=>{
+    const tk=fbKey(t);
+    const present=parseInt(document.getElementById('att-p-'+tk)?.value);
+    if(!isNaN(present)) teacherData[tk]={present:Math.min(present,effectiveDays),name:t};
+  });
+  const attData={totalDays:total,vacations:vac,effectiveDays,teachers:teacherData};
+  setN(DB,['settings','attendance',mk],attData);
+  markDirty('settings/attendance/'+mk,attData);
+  showToast('✅ Attendance saved for '+( MONTHS.find(m=>m.key===mk)?.label||mk),'ok');
+}
+
+function getAttendancePct(teacher, mk){
+  const saved=getN(DB,['settings','attendance',mk])||{};
+  const tk=fbKey(teacher);
+  const effectiveDays=saved.effectiveDays||0;
+  if(!effectiveDays) return null; // no attendance data
+  const tData=saved.teachers?.[tk];
+  if(!tData) return null;
+  return Math.round(tData.present/effectiveDays*100);
 }
 
 </script>
