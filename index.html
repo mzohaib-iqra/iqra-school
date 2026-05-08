@@ -121,16 +121,27 @@
     <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate.</div></div>
   </div>
   <div class="inner-panel" id="rp-teacherwise">
-    <div class="report-controls">
-      <label style="font-size:11px;color:var(--muted)">📅 Any date in the week:</label>
-      <input class="report-date-inp" type="date" id="twrDate" value="">
+    <div class="report-controls" style="flex-wrap:wrap;gap:8px;">
+      <!-- Mode toggle -->
+      <div class="inner-tabs" style="margin-bottom:0;">
+        <button class="itab active" id="twMode-week" onclick="selTWMode('week',this)">📅 Weekly</button>
+        <button class="itab" id="twMode-month" onclick="selTWMode('month',this)">📆 Monthly (for TOTM)</button>
+      </div>
+      <div id="twWeekControls" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--muted)">Date in week:</label>
+        <input class="report-date-inp" type="date" id="twrDate" value="">
+      </div>
+      <div id="twMonthControls" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--muted)">Month:</label>
+        <select class="report-date-inp" id="twrMonth" style="width:140px;"></select>
+      </div>
       <select class="report-date-inp" id="twrTeacher" style="width:180px;">
         <option value="">All Teachers</option>
       </select>
-      <button class="report-gen-btn" onclick="generateTeacherReport()">👤 Generate</button>
+      <button class="report-gen-btn" id="twGenBtn" onclick="generateTeacherReport()">👤 Generate</button>
       <button class="print-btn" onclick="window.print()">🖨️ Print</button>
     </div>
-    <div id="teacherReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate.</div></div>
+    <div id="teacherReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select options and click Generate.</div></div>
   </div>
   <div class="inner-panel" id="rp-totm">
     <div class="report-controls">
@@ -2148,6 +2159,7 @@ function getTeacherAssignments(teacherName){
 
 function populateTeacherSel(){
   const sel=document.getElementById('twrTeacher');if(!sel)return;
+  populateTWRMonthSel();
   const teachers=getAllTeachers();
   sel.innerHTML='<option value="">All Teachers</option>'+teachers.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
 }
@@ -2321,8 +2333,9 @@ function generateTOTM(){
 
     // ── Weekly diary consistency (how many weeks had ≥1 entry) ────
     const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>
-      teacherClasses.some(cls=>{
-        const dayData=getN(DB,['diary','c'+cls,dk])||{};
+      teacherClasses.some(clsKey=>{
+        const dayData=(diaryRoot[clsKey]||{})[dk];
+        if(!dayData)return false;
         return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
       })
     )).length;
@@ -2479,18 +2492,22 @@ function generateTOTMFull(){
     const assignments=getTeacherAssignments(teacher);
     if(!assignments.length) return;
 
-    // Diary score: % of selected week-days where teacher entered ANY homework
-    // Strategy: get all classes this teacher teaches, then scan ALL diary entries
-    // for those classes on each date — no subject-key matching needed
-    const teacherClasses=[...new Set(assignments.map(a=>String(a.cls)))];
+    // Diary score: scan DB.diary DIRECTLY for all classes this teacher teaches
+    // This avoids any key-matching issues entirely
+    const teacherClasses=[...new Set(assignments.map(a=>'c'+String(a.cls)))];
     let totalDays=0,daysWithEntry=0,totalHW=0;
+    const diaryRoot=DB.diary||{};
     weeks.forEach(wk=>{
       wk.dates.forEach(dk=>{
         totalDays++;
         let dayHas=false;
-        teacherClasses.forEach(cls=>{
-          const dayData=getN(DB,['diary','c'+cls,dk])||{};
-          // Count ANY homework entry in this class on this date
+        teacherClasses.forEach(clsKey=>{
+          // Direct property access - no getN needed
+          const classData=diaryRoot[clsKey];
+          if(!classData) return;
+          const dayData=classData[dk];
+          if(!dayData) return;
+          // Any entry in any subject for this class on this date
           Object.values(dayData).forEach(hwArr=>{
             if(Array.isArray(hwArr)&&hwArr.length){
               totalHW+=hwArr.length;
@@ -2502,7 +2519,7 @@ function generateTOTMFull(){
       });
     });
     const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
-    console.log(`TOTM Diary [${teacher}]: ${daysWithEntry}/${totalDays} days, ${weeks.length} wks, HW=${totalHW}, diary%=${diaryPct}`);
+    console.log(`TOTM [${teacher}] classes:${teacherClasses.join(',')} days:${daysWithEntry}/${totalDays} HW:${totalHW} diary%:${diaryPct}`);
 
     // Planner score: % topics done for this month
     let planTot=0,planDone=0;
@@ -2514,8 +2531,9 @@ function generateTOTMFull(){
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
 
     const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>
-      teacherClasses.some(cls=>{
-        const dayData=getN(DB,['diary','c'+cls,dk])||{};
+      teacherClasses.some(clsKey=>{
+        const dayData=(diaryRoot[clsKey]||{})[dk];
+        if(!dayData)return false;
         return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
       })
     )).length;
@@ -2672,11 +2690,13 @@ function getTOTMScores(mk){
   getAllTeachers().forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
     let totalDays=0,daysWithEntry=0;
-    const tClasses2=[...new Set(assignments.map(a=>String(a.cls)))];
+    const tClasses2=[...new Set(assignments.map(a=>'c'+String(a.cls)))];
+    const diaryRoot2=DB.diary||{};
     weeks.forEach(wk=>wk.dates.forEach(dk=>{
       totalDays++;
-      const hasEntry=tClasses2.some(cls=>{
-        const dayData=getN(DB,['diary','c'+cls,dk])||{};
+      const hasEntry=tClasses2.some(clsKey=>{
+        const dayData=(diaryRoot2[clsKey]||{})[dk];
+        if(!dayData)return false;
         return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
       });
       if(hasEntry)daysWithEntry++;
@@ -2857,6 +2877,200 @@ function getAttendancePct(teacher, mk){
   const tData=saved.teachers?.[tk];
   if(!tData) return null;
   return Math.round(tData.present/effectiveDays*100);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  TEACHER REPORT MODE TOGGLE
+// ══════════════════════════════════════════════════════════════
+function selTWMode(mode, btn){
+  document.querySelectorAll('#rp-teacherwise .itab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('twWeekControls').style.display=mode==='week'?'flex':'none';
+  document.getElementById('twMonthControls').style.display=mode==='month'?'flex':'none';
+}
+
+function populateTWRMonthSel(){
+  const sel=document.getElementById('twrMonth');
+  if(sel) sel.innerHTML=MONTHS.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MONTHLY TEACHER DIARY REPORT
+// ══════════════════════════════════════════════════════════════
+function generateTeacherReport(){
+  const mode=document.getElementById('twMode-month')?.classList.contains('active')?'month':'week';
+  if(mode==='month') generateMonthlyTeacherReport();
+  else generateWeeklyTeacherReport();
+}
+
+function generateMonthlyTeacherReport(){
+  const mk=document.getElementById('twrMonth')?.value;
+  if(!mk){showToast('Select a month','info');return;}
+  const filterTeacher=document.getElementById('twrTeacher')?.value;
+  const m=MONTHS.find(x=>x.key===mk);
+  const yr=m?.yr||(new Date().getFullYear());
+  const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m?.label||'');
+  const allWeeks=getWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
+  const cont=document.getElementById('teacherReportContent');
+  const teachers=filterTeacher?[filterTeacher]:getAllTeachers();
+  const diaryRoot=DB.diary||{};
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📆 Monthly Diary Report – ${esc(m?.label||mk)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${allWeeks.length} weeks · ${allWeeks.reduce((a,w)=>a+w.dates.length,0)} school days</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+  </div>`;
+
+  // Summary table at top
+  const summaryRows=[];
+  teachers.forEach(teacher=>{
+    const assignments=getTeacherAssignments(teacher);
+    if(!assignments.length)return;
+    const teacherClsKeys=[...new Set(assignments.map(a=>'c'+String(a.cls)))];
+    let totalDays=0,activeDays=0,totalHW=0;
+    allWeeks.forEach(wk=>wk.dates.forEach(dk=>{
+      totalDays++;
+      let dayHas=false;
+      teacherClsKeys.forEach(clsKey=>{
+        const dayData=(diaryRoot[clsKey]||{})[dk];
+        if(!dayData)return;
+        Object.values(dayData).forEach(hwArr=>{if(Array.isArray(hwArr)&&hwArr.length){totalHW+=hwArr.length;dayHas=true;}});
+      });
+      if(dayHas)activeDays++;
+    }));
+    const pct=totalDays?Math.round(activeDays/totalDays*100):0;
+    summaryRows.push({teacher,activeDays,totalDays,totalHW,pct,assignments,teacherClsKeys});
+  });
+  summaryRows.sort((a,b)=>b.pct-a.pct);
+
+  // Summary cards
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:14px;">
+    ${summaryRows.map((s,i)=>{
+      const col=s.pct>=70?'#22c55e':s.pct>=40?'#fbbf24':'#ef4444';
+      return`<div style="background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);padding:12px;border-left:4px solid ${col};">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${i===0?'🥇 ':''}${esc(s.teacher)}</div>
+        <div style="font-size:24px;font-weight:900;color:${col}">${s.pct}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;">${s.activeDays}/${s.totalDays} days active · ${s.totalHW} HW entries</div>
+        <div style="height:4px;background:var(--border);border-radius:100px;margin-top:7px;overflow:hidden;">
+          <div style="width:${s.pct}%;height:100%;background:${col};border-radius:100px;"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // Detailed weekly breakdown per teacher
+  summaryRows.forEach(s=>{
+    const col=s.pct>=70?'#22c55e':s.pct>=40?'#fbbf24':'#ef4444';
+    html+=`<div class="report-card" style="margin-bottom:12px;">
+      <div class="report-card-hd">
+        <span>👤 ${esc(s.teacher)}</span>
+        <span class="report-stat ${s.pct>=70?'stat-good':s.pct>=40?'stat-warn':'stat-bad'}">${s.pct}% · ${s.activeDays}/${s.totalDays} days</span>
+      </div>
+      <div style="padding:4px 0;">
+        ${allWeeks.map((wk,wi)=>{
+          let wkActive=0,wkHW=0;
+          wk.dates.forEach(dk=>{
+            let dayHas=false;
+            s.teacherClsKeys.forEach(clsKey=>{
+              const dayData=(diaryRoot[clsKey]||{})[dk];
+              if(!dayData)return;
+              Object.values(dayData).forEach(hwArr=>{if(Array.isArray(hwArr)&&hwArr.length){wkHW+=hwArr.length;dayHas=true;}});
+            });
+            if(dayHas)wkActive++;
+          });
+          const wkPct=wk.dates.length?Math.round(wkActive/wk.dates.length*100):0;
+          const wkCol=wkPct>=70?'#22c55e':wkPct>=40?'#fbbf24':'#ef4444';
+          return`<div style="border-bottom:1px solid var(--border);padding:8px 13px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:700;color:var(--muted);">Week ${wi+1} (${wk.start.slice(5)} – ${wk.end.slice(5)})</span>
+              <span style="font-size:11px;font-weight:700;color:${wkCol}">${wkPct}% · ${wkActive}/${wk.dates.length} days · ${wkHW} HW</span>
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              ${wk.dates.map((dk,di)=>{
+                let dayHas=false,dayHW=0;
+                s.teacherClsKeys.forEach(clsKey=>{
+                  const dayData=(diaryRoot[clsKey]||{})[dk];
+                  if(!dayData)return;
+                  Object.values(dayData).forEach(hwArr=>{if(Array.isArray(hwArr)&&hwArr.length){dayHW+=hwArr.length;dayHas=true;}});
+                });
+                return`<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 7px;border-radius:7px;background:${dayHas?'rgba(34,197,94,.1)':'rgba(239,68,68,.07)'};border:1px solid ${dayHas?'rgba(34,197,94,.3)':'rgba(239,68,68,.2)'};">
+                  <span style="font-size:10px;color:var(--muted)">${dayNames[di]||''}</span>
+                  <span style="font-size:14px">${dayHas?'✅':'❌'}</span>
+                  <span style="font-size:10px;font-weight:700;color:${dayHas?'#22c55e':'#ef4444'}">${dayHW>0?dayHW+'hw':''}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  cont.innerHTML=html;
+}
+
+function generateWeeklyTeacherReport(){
+  const dateVal=document.getElementById('twrDate')?.value||todayKey();
+  const filterTeacher=document.getElementById('twrTeacher')?.value;
+  const {start,end}=getWeekRange(dateVal);
+  const dates=getWeekDates(start);
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cont=document.getElementById('teacherReportContent');
+  const teachers=filterTeacher?[filterTeacher]:getAllTeachers();
+  if(!teachers.length){cont.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No teachers found.</div>';return;}
+  const diaryRoot=DB.diary||{};
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div><div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">👤 Weekly Teacher Report</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtDate(start)} – ${fmtDate(end)}</div></div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button></div>`;
+
+  teachers.forEach(teacher=>{
+    const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
+    const teacherClsKeys=[...new Set(assignments.map(a=>'c'+String(a.cls)))];
+    let totalHW=0,daysWithHW=0;
+    const diaryRows=dates.map((dk,di)=>{
+      const dayHW=[];
+      let dayHas=false;
+      teacherClsKeys.forEach(clsKey=>{
+        const dayData=(diaryRoot[clsKey]||{})[dk];if(!dayData)return;
+        Object.entries(dayData).forEach(([sub,hwArr])=>{
+          if(Array.isArray(hwArr)&&hwArr.length){dayHW.push({clsKey,sub,hws:hwArr});totalHW+=hwArr.length;dayHas=true;}
+        });
+      });
+      if(dayHas)daysWithHW++;
+      return{date:dk,day:dayNames[di],dayHW,dayHas};
+    });
+    const diaryScore=dates.length?Math.round(daysWithHW/dates.length*100):0;
+    let planTot=0,planDone=0;
+    assignments.forEach(({cls,subject})=>{MONTHS.forEach(m=>{const t=getN(DB,['planner',m.key,'c'+cls,fbKey(subject)])||[];planTot+=t.length;planDone+=t.filter(x=>x.done).length;});});
+    const plannerScore=planTot?Math.round(planDone/planTot*100):0;
+    const overall=Math.round(diaryScore*0.5+plannerScore*0.5);
+    const statCls=overall>=70?'stat-good':overall>=40?'stat-warn':'stat-bad';
+
+    html+=`<div class="report-card" style="margin-bottom:12px;">
+      <div class="report-card-hd"><span style="font-size:14px;">👤 ${esc(teacher)}</span>
+        <span class="report-stat ${statCls}">Overall ${overall}%</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:100px;background:rgba(59,130,246,.12);color:#3b82f6">📔 ${diaryScore}%</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:100px;background:rgba(34,197,94,.12);color:#22c55e">📅 ${plannerScore}%</span>
+      </div>
+      <div style="padding:8px 13px;border-bottom:1px solid var(--border);">
+        ${assignments.map(a=>`<span style="font-size:11px;padding:2px 9px;border-radius:100px;background:var(--surf2);border:1px solid var(--border);margin:2px;">${esc(a.clsName)}·${esc(a.subject)} (P${a.period||'?'})</span>`).join('')}
+      </div>
+      <div style="padding:8px 13px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:7px;">📔 Diary – ${totalHW} HW · ${daysWithHW}/${dates.length} days</div>
+        ${diaryRows.map(row=>`<div class="day-row">
+          <div class="day-label"><strong>${row.day}</strong><br><span style="font-size:10px">${row.date.slice(5)}</span></div>
+          <div class="day-content">${row.dayHW.length?row.dayHW.map(d=>`<div style="margin-bottom:3px;"><span style="font-size:10px;color:var(--muted)">${esc(d.clsKey)}·${esc(d.sub)}:</span> ${d.hws.map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}</div>`).join(''):'<span class="no-hw-tag">No entries</span>'}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  cont.innerHTML=html;
 }
 
 </script>
