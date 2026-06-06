@@ -44,7 +44,7 @@ const TEACHER_ACCOUNTS = [
     password:      "gs1",
     firebaseEmail: "teacher2@iqra-school.edu",
     name:          "Teacher – Classes 6–10",
-    classes:       [104,105,106,107,108,109,110,111,112],
+    classes:       [101,102,103,104,105,106,107,108,109,110,111,112],
     role:          "teacher"
   }
 
