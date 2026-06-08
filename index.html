@@ -42,6 +42,7 @@
       <button class="ntab"           onclick="switchSec('timetable')">🕐 Periods</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('report')">📔 Diary Report</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('planner-report')">📊 Planner Report</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('class-tests')">📝 Class Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
@@ -89,12 +90,20 @@
 
 <!-- PERIODS / TIMETABLE -->
 <div class="section" id="sec-timetable">
-  <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Add teacher name and period number for each subject. This links to the Daily Diary and appears in Parent Portal.</p>
-  <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span style="font-size:11px;color:var(--muted);">📂 <strong>Bulk Import Timetable from CSV/Excel:</strong></span>
-    <span style="font-size:10px;color:var(--muted);">Format: Class, Subject, Teacher Name, Period Number</span>
+  <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Add teacher name and period number for each subject. Links to Diary Report and Parent Portal.</p>
+  <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span style="font-size:11px;color:var(--muted);font-weight:600;">📂 CSV Import:</span>
+    <span style="font-size:10px;color:var(--muted);">Class, Subject, Teacher Name, Period No, Section (boys/girls)</span>
     <label class="btn-sm btn-add" style="cursor:pointer;">Upload CSV<input type="file" accept=".csv,.txt" style="display:none" onchange="importTimetableCSV(this)"></label>
-    <button class="btn-sm" style="background:rgba(59,130,246,.15);color:#3b82f6;" onclick="downloadTimetableTemplate()">📥 Download Template</button>
+    <button class="btn-sm" style="background:rgba(59,130,246,.15);color:#3b82f6;" onclick="downloadTimetableTemplate()">📥 Template</button>
+  </div>
+  <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius);padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:11px;color:#ef4444;font-weight:600;">🗑 Reset Periods:</span>
+    <select class="ainp2" id="resetPeriodClass" style="width:160px;">
+      <option value="all">All Classes</option>
+    </select>
+    <button class="btn-sm btn-del" onclick="resetPeriods()">🗑 Reset Selected</button>
+    <span style="font-size:10px;color:var(--muted);">Clears all period assignments. Cannot be undone.</span>
   </div>
   <div class="ctabs" id="ttTabs"></div>
   <div id="ttPanels"></div>
@@ -164,6 +173,19 @@
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
   </div>
   <div id="plannerReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Generate Report.</div></div>
+</div>
+
+<!-- CLASS TESTS -->
+<div class="section" id="sec-class-tests">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+    <div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📝 Class Tests</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Weekly and Monthly test results per class. % auto-calculated from Obtained ÷ Total.</div>
+    </div>
+  </div>
+  <!-- Class tabs -->
+  <div class="ctabs" id="ctestTabs"></div>
+  <div id="ctestPanels"></div>
 </div>
 
 <!-- BOARDS -->
@@ -444,6 +466,7 @@ function setStat(st,msg){document.getElementById('sdot').className='sdot '+st;do
 function applySettings(){
   if(DB.settings){
     SETTINGS=Object.assign({},DEFAULT_SETTINGS,DB.settings);
+    if(DB.settings.classOrder) SETTINGS.classOrder=DB.settings.classOrder;
     if(DB.settings.terms)  TERMS=DB.settings.terms;
     // Use stored months from Firebase — do NOT auto-regenerate on load.
     // Months are only regenerated when admin explicitly saves Settings with a new planner year.
@@ -482,16 +505,18 @@ function showToast(msg,type='ok'){const el=document.getElementById('toast');el.t
 // ══════════════════════════════════════════════
 //  SECTION SWITCH
 // ══════════════════════════════════════════════
-const SECS=['marks','students','planner','diary','timetable','report','planner-report','boards','weekly','settings','announcements','toppers-admin','totm'];
+const SECS=['marks','students','planner','diary','timetable','report','planner-report','class-tests','boards','weekly','settings','announcements','toppers-admin','totm'];
 function switchSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
   document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
+  if(id==='class-tests'){ renderClassTestsTabs(); }
   if(id==='boards') renderBrdPanel('9');
   if(id==='weekly') renderWkPanel('matric');
   if(id==='settings') renderSettings();
   if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
   if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
   if(id==='totm'){ populateTOTMMonthSel(); renderFinalizedTOTMBanner(); setTimeout(renderAttendanceRows,100); }
+  if(id==='timetable'){ setTimeout(populateResetPeriodSel,50); }
   if(id==='report'){
     document.getElementById('reportDate').value=todayKey();
     document.getElementById('twrDate').value=todayKey();
@@ -796,7 +821,9 @@ function renderSubjCols(mk,cls,tc,editable){
   subs.forEach(sub=>{
     const sk=fbKey(sub),topics=getN(DB,['planner',mk,'c'+cls,sk])||[],sd=topics.filter(t=>t.done).length;
     const col=document.createElement('div');col.className='subj-col';
-    col.innerHTML=`<div class="subj-col-hd">${esc(sub)}<span class="sc">${sd}/${topics.length}</span></div>
+    const _prd=getN(DB,['timetable','c'+cls,sk])||[];
+    const _hint=_prd.length?'👤'+_prd.map(p=>p.teacher.split(' ').pop()).join('/'):'';
+    col.innerHTML=`<div class="subj-col-hd">${esc(sub)}<span style="font-size:9px;color:var(--muted);margin-left:3px;">${_hint}</span><span class="sc">${sd}/${topics.length}</span></div>
       <div class="subj-col-body">${topics.map((t,i)=>`<div class="topic-row">
         <div class="tck${t.done?' on':''}" onclick="${editable?`togT('${mk}',${cls},'${sk}',${i})`:''}"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.7 7L7.5 2" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div style="flex:1;min-width:0;"><div class="ttxt${t.done?' dn':''}">${esc(t.text)}</div></div>
@@ -938,6 +965,10 @@ function generateReport(){
         const sk=fbKey(sub);
         const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
         dayData.subs[sub]=hws;
+        // Get teacher hint for this subject
+        const _periods=getN(DB,['timetable','c'+cls,sk])||[];
+        dayData.teachers=dayData.teachers||{};
+        if(_periods.length) dayData.teachers[sub]=_periods.map(p=>p.teacher).join('/');
         if(hws.length){classDone++;dayHasAny=true;}
         classTotal++;
       });
@@ -958,7 +989,7 @@ function generateReport(){
           <div class="day-content">
             ${day.hasAny?subs.filter(s=>day.subs[s].length>0).map(s=>`
               <div style="margin-bottom:4px;">
-                <span style="font-size:10px;color:var(--muted);font-weight:600">${s}:</span>
+                <span style="font-size:10px;color:var(--muted);font-weight:600">${s}:</span>${day.teachers?.[s]?`<span style="font-size:9px;color:var(--muted);margin-left:3px;">👤${esc(day.teachers[s])}</span>`:''}
                 ${day.subs[s].map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}
               </div>`).join('')
               :`<span class="no-hw-tag">No diary entries</span>`}
@@ -1592,10 +1623,11 @@ function generatePlannerReport(){
 //  TIMETABLE CSV IMPORT
 // ══════════════════════════════════════════════
 function downloadTimetableTemplate(){
-  const rows=['Class,Subject,Teacher Name,Period Number'];
+  const rows=['Class,Subject,Teacher Name,Period Number,Section (boys/girls)'];
   getClassIds().forEach(cls=>{
+    const sec=CLASSES[cls]?.section||'boys';
     getSubs(cls).forEach(sub=>{
-      rows.push(`${CLASSES[cls]?.name||'Class '+cls},${sub},,`);
+      rows.push(`${CLASSES[cls]?.name||'Class '+cls},${sub},,1,${sec}`);
     });
   });
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
@@ -1612,21 +1644,31 @@ function importTimetableCSV(inp){
       if(li===0&&(line.toLowerCase().includes('class')||line.toLowerCase().includes('subject')))return;
       const cols=line.split(/[,;\t]+/).map(c=>c.trim().replace(/^"|"$/g,''));
       if(cols.length<3)return;
-      const [clsRaw,subRaw,teacher,periodRaw]=cols;
+      const [clsRaw,subRaw,teacher,periodRaw,sectionRaw]=cols;
       if(!teacher)return;
-      // Find matching class
+      const sectionFilter=sectionRaw?.toLowerCase().trim()||'';
+      // Find matching class - filter by section if provided
       const cls=getClassIds().find(c=>{
         const cn=CLASSES[c]?.name||'Class '+c;
-        return cn.toLowerCase()===clsRaw.toLowerCase()||String(c)===clsRaw.trim();
+        const sec=CLASSES[c]?.section||'boys';
+        const clsMatch=cn.toLowerCase()===clsRaw.toLowerCase()||
+          String(c)===clsRaw.trim()||
+          cn.toLowerCase().includes(clsRaw.toLowerCase())||
+          clsRaw.toLowerCase().includes('class '+(c>100?c-100:c));
+        if(!clsMatch)return false;
+        // If section specified, filter by it
+        if(sectionFilter==='girls'||sectionFilter==='female') return sec==='girls';
+        if(sectionFilter==='boys'||sectionFilter==='male') return sec==='boys';
+        return true;
       });
       if(!cls){errors.push(`Row ${li+1}: class "${clsRaw}" not found`);return;}
-      // Find matching subject (case-insensitive partial)
-      const sub=getSubs(cls).find(s=>s.toLowerCase()===subRaw.toLowerCase()||s.toLowerCase().includes(subRaw.toLowerCase())||subRaw.toLowerCase().includes(s.toLowerCase()));
-      if(!sub){errors.push(`Row ${li+1}: subject "${subRaw}" not found in ${CLASSES[cls]?.name}`);return;}
+      const sub=getSubs(cls).find(s=>s.toLowerCase()===subRaw.toLowerCase()||
+        s.toLowerCase().includes(subRaw.toLowerCase())||
+        subRaw.toLowerCase().includes(s.toLowerCase()));
+      if(!sub){errors.push(`Row ${li+1}: subject "${subRaw}" not in ${CLASSES[cls]?.name}`);return;}
       const sk=fbKey(sub);
       const periods=getN(DB,['timetable','c'+cls,sk])||[];
       const period=parseInt(periodRaw)||periods.length+1;
-      // Avoid duplicate teacher+period
       if(!periods.find(p=>p.teacher===teacher&&p.period===period)){
         periods.push({teacher,period,subject:sub});
         setN(DB,['timetable','c'+cls,sk],periods);
@@ -1704,18 +1746,23 @@ function deleteAnn(i){
 //  CLASS ORDER (drag-free up/down buttons)
 // ══════════════════════════════════════════════
 function moveClass(cls, direction){
-  const order=getOrderedClassIds().map(Number);
-  const i=order.indexOf(cls);
+  const order=getClassIds().map(Number);
+  const i=order.indexOf(Number(cls));
   if(i<0)return;
   const newI=i+direction;
   if(newI<0||newI>=order.length)return;
   [order[i],order[newI]]=[order[newI],order[i]];
+  SETTINGS.classOrder=order;
   setN(DB,['settings','classOrder'],order);
   markDirty('settings/classOrder',order);
-  SETTINGS.classOrder=order;
   renderClassOrderPanel();
-  // rebuild tabs in other sections
-  renderMarksTabs();renderStudentsTabs();renderDiaryTabs();renderTimetableTabs();
+  // Rebuild ALL tab sections so order is reflected everywhere immediately
+  renderMarksTabs();renderMarksPanels();
+  renderStudentsTabs();renderStudentsPanels();
+  renderDiaryTabs();renderDiaryPanels();
+  renderTimetableTabs();renderTimetablePanels();
+  renderMNav();renderPlannerPanels();
+  showToast('Class order updated','ok');
 }
 
 function renderClassOrderPanel(){
@@ -2341,14 +2388,18 @@ function generateTOTM(){
     )).length;
 
     // ── Combined score (diary 50% + planner 50%) ──────────────────
-    // Attendance scoring (if data available): 10% weight
+    // Use manual diary % if set, else auto-calculated
+    const manualDiary=getManualDiaryPct(teacher,mk);
+    const finalDiaryPct=manualDiary!==null?manualDiary:diaryPct;
+    // Attendance (if entered): 20% weight; else 50/50
     const attPct=getAttendancePct(teacher,mk);
     let combined;
     if(attPct!==null){
-      combined=Math.round(diaryPct*0.4+plannerPct*0.4+attPct*0.2);
+      combined=Math.round(finalDiaryPct*0.4+plannerPct*0.4+attPct*0.2);
     } else {
-      combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+      combined=Math.round(finalDiaryPct*0.5+plannerPct*0.5);
     }
+    const usedDiaryPct=finalDiaryPct; // for display
 
     scores.push({
       teacher,combined,diaryPct,plannerPct,
@@ -2537,16 +2588,20 @@ function generateTOTMFull(){
         return Object.values(dayData).some(v=>Array.isArray(v)&&v.length>0);
       })
     )).length;
-    // Attendance scoring (if data available): 10% weight
+    // Use manual diary % if set, else auto-calculated
+    const manualDiary=getManualDiaryPct(teacher,mk);
+    const finalDiaryPct=manualDiary!==null?manualDiary:diaryPct;
+    // Attendance (if entered): 20% weight; else 50/50
     const attPct=getAttendancePct(teacher,mk);
     let combined;
     if(attPct!==null){
-      combined=Math.round(diaryPct*0.4+plannerPct*0.4+attPct*0.2);
+      combined=Math.round(finalDiaryPct*0.4+plannerPct*0.4+attPct*0.2);
     } else {
-      combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+      combined=Math.round(finalDiaryPct*0.5+plannerPct*0.5);
     }
+    const usedDiaryPct=finalDiaryPct; // for display
 
-    rawScores.push({teacher,combined,diaryPct,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
+    rawScores.push({teacher,combined,diaryPct:usedDiaryPct,diaryAuto:diaryPct,diaryManual:manualDiary!==null,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
   });
 
   // Apply manual overrides
@@ -2583,7 +2638,7 @@ function generateTOTMFull(){
       <div style="font-size:16px;font-weight:900">${esc(s.teacher)}</div>
       ${s.manualOverride?'<div style="font-size:10px;color:var(--gold);margin-top:2px">✏️ Manually adjusted</div>':''}
       <div style="font-size:26px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
-      <div style="font-size:11px;color:var(--muted)">📔 ${s.diaryPct}% diary &nbsp;·&nbsp; 📅 ${s.plannerPct}% planner${getAttendancePct(s.teacher,mk)!==null?' &nbsp;·&nbsp; 🗓️ '+getAttendancePct(s.teacher,mk)+'% att':''}</div>
+      <div style="font-size:11px;color:var(--muted)">📔 ${s.diaryPct}%${s.diaryManual?' <span style=\"font-size:9px;color:var(--gold)\">✏manual</span>':''} &nbsp;·&nbsp; 📅 ${s.plannerPct}% &nbsp;·&nbsp; ${getAttendancePct(s.teacher,mk)!==null?'🗓️ '+getAttendancePct(s.teacher,mk)+'% att':''}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.daysWithEntry}/${s.totalDays} days · ${s.weeksActive}/${s.totalWeeks} weeks · ${s.totalHW} HW</div>
     </div>`;}).join('')}
   </div>
@@ -2705,14 +2760,18 @@ function getTOTMScores(mk){
     let planTot=0,planDone=0;
     assignments.forEach(({cls,subject})=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];planTot+=t.length;planDone+=t.filter(x=>x.done).length;});
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
-    // Attendance scoring (if data available): 10% weight
+    // Use manual diary % if set, else auto-calculated
+    const manualDiary=getManualDiaryPct(teacher,mk);
+    const finalDiaryPct=manualDiary!==null?manualDiary:diaryPct;
+    // Attendance (if entered): 20% weight; else 50/50
     const attPct=getAttendancePct(teacher,mk);
     let combined;
     if(attPct!==null){
-      combined=Math.round(diaryPct*0.4+plannerPct*0.4+attPct*0.2);
+      combined=Math.round(finalDiaryPct*0.4+plannerPct*0.4+attPct*0.2);
     } else {
-      combined=Math.round(diaryPct*0.5+plannerPct*0.5);
+      combined=Math.round(finalDiaryPct*0.5+plannerPct*0.5);
     }
+    const usedDiaryPct=finalDiaryPct; // for display
     const ov=savedOverrides[teacher];
     raw.push(ov?{teacher,combined:ov.combined,diaryPct:ov.diaryPct,plannerPct:ov.plannerPct}:{teacher,combined,diaryPct,plannerPct});
   });
@@ -2821,20 +2880,26 @@ function renderAttendanceRows(){
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 10px;background:var(--surf2);border-radius:7px;border:1px solid var(--border);">
       Effective school days: <strong style="color:var(--text)">${total}</strong> total − <strong style="color:var(--t1)">${vac}</strong> vacations = <strong style="color:var(--t3)">${effectiveDays}</strong> days
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;padding:5px 10px;background:var(--surf2);border-radius:7px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">
-      <div>Teacher</div><div>Present Days</div><div>Absent Days</div><div>Attendance %</div>
+    <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;padding:5px 10px;background:var(--surf2);border-radius:7px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">
+      <div>Teacher</div><div>Present Days</div><div>Absent</div><div>Attendance %</div><div>📔 Diary % <span style="font-size:9px;color:var(--gold)">(manual)</span></div>
     </div>
     ${teachers.map(t=>{
-      const tSaved=saved.teachers?.[fbKey(t)]||{};
+      const tk=fbKey(t);
+      const tSaved=saved.teachers?.[tk]||{};
       const present=tSaved.present!==undefined?tSaved.present:effectiveDays;
       const absent=effectiveDays-present;
-      const pct=effectiveDays?Math.round(present/effectiveDays*100):100;
-      const col=pct>=90?'#22c55e':pct>=75?'#fbbf24':'#ef4444';
-      return`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:7px 10px;background:var(--surf);border:1px solid var(--border);border-radius:7px;align-items:center;">
+      const attPct=effectiveDays?Math.round(present/effectiveDays*100):100;
+      const attCol=attPct>=90?'#22c55e':attPct>=75?'#fbbf24':'#ef4444';
+      const savedDiaryPct=tSaved.diaryPct!==undefined?tSaved.diaryPct:'';
+      return`<div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:4px;padding:7px 10px;background:var(--surf);border:1px solid var(--border);border-radius:7px;align-items:center;">
         <div style="font-size:12px;font-weight:600;">${esc(t)}</div>
-        <div><input class="ainp2" type="number" min="0" max="${effectiveDays}" id="att-p-${fbKey(t)}" value="${present}" style="width:65px;" oninput="updateAbsent('${fbKey(t)}',${effectiveDays})"></div>
-        <div id="att-abs-${fbKey(t)}" style="font-size:12px;font-weight:600;color:${absent>0?'#ef4444':'#22c55e'}">${absent} day${absent!==1?'s':''}</div>
-        <div style="font-size:13px;font-weight:800;color:${col}">${pct}%</div>
+        <div><input class="ainp2" type="number" min="0" max="${effectiveDays}" id="att-p-${tk}" value="${present}" style="width:65px;" oninput="updateAbsent('${tk}',${effectiveDays})"></div>
+        <div id="att-abs-${tk}" style="font-size:12px;font-weight:600;color:${absent>0?'#ef4444':'#22c55e'}">${absent}d</div>
+        <div style="font-size:13px;font-weight:800;color:${attCol}">${attPct}%</div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input class="ainp2" type="number" min="0" max="100" id="att-diary-${tk}" value="${savedDiaryPct}" placeholder="0-100" style="width:65px;" title="Enter diary % manually">
+          <span style="font-size:11px;color:var(--muted)">%</span>
+        </div>
       </div>`;
     }).join('')}`;
 }
@@ -2861,7 +2926,11 @@ function saveAttendance(){
   teachers.forEach(t=>{
     const tk=fbKey(t);
     const present=parseInt(document.getElementById('att-p-'+tk)?.value);
-    if(!isNaN(present)) teacherData[tk]={present:Math.min(present,effectiveDays),name:t};
+    const diaryPctVal=document.getElementById('att-diary-'+tk)?.value;
+    const diaryPct=diaryPctVal!==''&&!isNaN(parseInt(diaryPctVal))?parseInt(diaryPctVal):undefined;
+    const entry={present:Math.min(isNaN(present)?effectiveDays:present,effectiveDays),name:t};
+    if(diaryPct!==undefined) entry.diaryPct=diaryPct;
+    teacherData[tk]=entry;
   });
   const attData={totalDays:total,vacations:vac,effectiveDays,teachers:teacherData};
   setN(DB,['settings','attendance',mk],attData);
@@ -2873,10 +2942,18 @@ function getAttendancePct(teacher, mk){
   const saved=getN(DB,['settings','attendance',mk])||{};
   const tk=fbKey(teacher);
   const effectiveDays=saved.effectiveDays||0;
-  if(!effectiveDays) return null; // no attendance data
+  if(!effectiveDays) return null;
   const tData=saved.teachers?.[tk];
   if(!tData) return null;
   return Math.round(tData.present/effectiveDays*100);
+}
+
+function getManualDiaryPct(teacher, mk){
+  // Returns manually entered diary % if set, otherwise null
+  const saved=getN(DB,['settings','attendance',mk])||{};
+  const tData=saved.teachers?.[fbKey(teacher)];
+  if(!tData||tData.diaryPct===undefined) return null;
+  return tData.diaryPct;
 }
 
 
@@ -3071,6 +3148,251 @@ function generateWeeklyTeacherReport(){
     </div>`;
   });
   cont.innerHTML=html;
+}
+
+
+// ══════════════════════════════════════════════
+//  RESET PERIODS
+// ══════════════════════════════════════════════
+function populateResetPeriodSel(){
+  const sel=document.getElementById('resetPeriodClass');if(!sel)return;
+  sel.innerHTML='<option value="all">All Classes</option>'+
+    getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');
+}
+
+function resetPeriods(){
+  const val=document.getElementById('resetPeriodClass')?.value;
+  const label=val==='all'?'ALL classes':CLASSES[val]?.name||'Class '+val;
+  if(!confirm(`⚠️ Reset all period assignments for ${label}?\n\nThis permanently removes all teacher-subject-period links. Cannot be undone.`))return;
+  const classesToReset=val==='all'?getClassIds():[+val];
+  const promises=[];
+  classesToReset.forEach(cls=>{
+    getSubs(cls).forEach(sub=>{
+      const sk=fbKey(sub);
+      setN(DB,['timetable','c'+cls,sk],null);
+      if(db&&fbReady) promises.push(db.ref(`iqra/timetable/c${cls}/${sk}`).remove());
+    });
+    // Also clear the entire class timetable node
+    if(DB.timetable) delete DB.timetable['c'+cls];
+    if(db&&fbReady) promises.push(db.ref(`iqra/timetable/c${cls}`).remove());
+  });
+  Promise.all(promises).then(()=>{
+    showToast(`✅ Periods reset for ${label}`,'ok');
+    renderTimetablePanels();
+  }).catch(e=>showToast('Error: '+e.message,'err'));
+  renderTimetablePanels();
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  CLASS TESTS (Weekly + Monthly)
+// ══════════════════════════════════════════════════════════════
+function renderClassTestsTabs(){
+  buildClassTabs('ctestTabs','ctpanel',null);
+  const cont=document.getElementById('ctestPanels');cont.innerHTML='';
+  getClassIds().forEach((cls,i)=>{
+    const panel=document.createElement('div');
+    panel.className='cpanel ctpanel'+(i===0?' active':'');
+    panel.dataset.c=cls;
+    panel.innerHTML=`
+      <div class="inner-tabs" style="margin-bottom:10px;">
+        <button class="itab active" onclick="selCTInner(${cls},'weekly',this)">📅 Weekly Tests</button>
+        <button class="itab" onclick="selCTInner(${cls},'monthly',this)">📆 Monthly Tests</button>
+      </div>
+      <div class="inner-panel active" id="ct-weekly-${cls}"></div>
+      <div class="inner-panel" id="ct-monthly-${cls}"></div>`;
+    cont.appendChild(panel);
+    renderClassTestPanel(cls,'weekly');
+    renderClassTestPanel(cls,'monthly');
+  });
+}
+
+function selCTInner(cls,tab,btn){
+  const p=document.querySelector(`.ctpanel[data-c="${cls}"]`);if(!p)return;
+  p.querySelectorAll('.itab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  p.querySelectorAll('.inner-panel').forEach(x=>x.classList.remove('active'));
+  document.getElementById(`ct-${tab}-${cls}`).classList.add('active');
+}
+
+function getClassTests(cls,type){ return getN(DB,['classTests',type,'c'+cls])||[]; }
+function saveClassTests(cls,type){
+  const tests=getClassTests(cls,type);
+  markDirty(`classTests/${type}/c${cls}`,tests.length?tests:null);
+}
+
+function renderClassTestPanel(cls,type){
+  const editable=canEdit(cls);
+  const el=document.getElementById(`ct-${type}-${cls}`);if(!el)return;
+  const tests=getClassTests(cls,type);
+  const students=getN(DB,['students','c'+cls])||[];
+  const label=type==='weekly'?'Weekly':'Monthly';
+
+  el.innerHTML=`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+      ${editable?`<button class="btn-sm btn-add" onclick="addClassTest(${cls},'${type}')">+ New ${label} Test</button>`:''}
+      ${students.length?'':' <span style="font-size:11px;color:var(--muted)">Add students in Students tab first for name list.</span>'}
+    </div>
+    <div id="ct-list-${type}-${cls}"></div>`;
+  renderClassTestList(cls,type);
+}
+
+function renderClassTestList(cls,type){
+  const el=document.getElementById(`ct-list-${type}-${cls}`);if(!el)return;
+  const editable=canEdit(cls);
+  const tests=getClassTests(cls,type);
+  const students=getN(DB,['students','c'+cls])||[];
+  if(!tests.length){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">No tests yet. Click "+ New Test" above.</div>';
+    return;
+  }
+  el.innerHTML=tests.map((test,ti)=>{
+    const total=test.totalMarks||100;
+    const medals=['🥇','🥈','🥉'];
+    // Sort students by obtained for ranking
+    const ranked=[...(test.results||[])].sort((a,b)=>b.obtained-a.obtained);
+    return`<div class="report-card" style="margin-bottom:12px;">
+      <div class="report-card-hd" style="flex-wrap:wrap;gap:6px;">
+        <span style="font-size:14px;font-weight:900;">${esc(test.name||'Test '+(ti+1))}</span>
+        <span style="font-size:11px;color:var(--muted);">${esc(test.date||'')} · ${esc(test.subject||'')}</span>
+        <div style="display:flex;align-items:center;gap:5px;margin-left:auto;">
+          <label style="font-size:10px;color:var(--muted);">Total Marks:</label>
+          <input class="ainp2" type="number" min="1" value="${total}" id="ct-total-${type}-${cls}-${ti}" style="width:65px;" ${editable?`onchange="updateTestTotal(${cls},'${type}',${ti},this.value)"`:' disabled'}>
+          ${editable?`<button class="btn-sm btn-del" onclick="deleteClassTest(${cls},'${type}',${ti})">✕ Delete</button>`:''}
+        </div>
+      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Rank</th><th>Student</th>${students.length?'':'<th>Name</th>'}<th>Obtained / ${total}</th><th>%</th><th>Grade</th></tr></thead>
+        <tbody>
+          ${students.length
+            ? students.map((stu,si)=>{
+                const res=(test.results||[]).find(r=>r.si===si)||{si,obtained:''};
+                const pctVal=res.obtained!==''?parseFloat(((res.obtained/total)*100).toFixed(1)):null;
+                const g=grade(pctVal);
+                return`<tr>
+                  <td>${pctVal!==null?(ranked.findIndex(r=>r.si===si)+1||'—'):'—'}</td>
+                  <td style="font-weight:600">${esc(stu.name)}</td>
+                  <td><input class="ainp2" type="number" min="0" max="${total}" value="${res.obtained!==''?res.obtained:''}" placeholder="Obt" style="width:65px;" ${editable?`onchange="updateTestResult(${cls},'${type}',${ti},${si},this.value)"`:' disabled'}></td>
+                  <td style="font-weight:700;color:${pctVal!==null?g.c:'var(--muted)'}">${pctVal!==null?pctVal+'%':'—'}</td>
+                  <td>${pctVal!==null?`<span class="gbadge" style="background:${g.c}22;color:${g.c}">${g.l}</span>`:'—'}</td>
+                </tr>`;
+              }).join('')
+            : (test.results||[]).map((r,ri)=>`<tr>
+                <td>${ri+1}</td>
+                <td><input class="ainp2" value="${esc(r.name||'')}" style="width:130px;" ${editable?`onchange="updateTestResultName(${cls},'${type}',${ti},${ri},this.value)"`:' disabled'}></td>
+                <td><input class="ainp2" type="number" min="0" max="${total}" value="${r.obtained!==''?r.obtained:''}" placeholder="Obt" style="width:65px;" ${editable?`onchange="updateTestResultByIdx(${cls},'${type}',${ti},${ri},this.value)"`:' disabled'}></td>
+                <td style="font-weight:700;color:${r.obtained!==''?grade(parseFloat(((r.obtained/total)*100).toFixed(1))).c:'var(--muted)'}">${r.obtained!==''?parseFloat(((r.obtained/total)*100).toFixed(1))+'%':'—'}</td>
+                <td>${r.obtained!==''?`<span class="gbadge" style="background:${grade(parseFloat(((r.obtained/total)*100).toFixed(1))).c}22;color:${grade(parseFloat(((r.obtained/total)*100).toFixed(1))).c}">${grade(parseFloat(((r.obtained/total)*100).toFixed(1))).l}</span>`:'—'}</td>
+                ${editable?`<td><button class="btn-sm btn-del" onclick="deleteTestResultRow(${cls},'${type}',${ti},${ri})">✕</button></td>`:''}
+              </tr>`).join('')
+          }
+          ${!students.length&&editable?`<tr><td colspan="6" style="padding:8px;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <input class="ainp2" id="ct-newname-${type}-${cls}-${ti}" placeholder="Student name" style="flex:1;min-width:120px;">
+            <button class="addbtn2" onclick="addTestResultRow(${cls},'${type}',${ti})">+ Add Student</button>
+            <label class="btn-sm btn-add" style="cursor:pointer;">📂 CSV<input type="file" accept=".csv,.txt" style="display:none" onchange="importTestStudents(${cls},'${type}',${ti},this)"></label>
+          </div></td></tr>`:''}
+        </tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+
+function addClassTest(cls,type){
+  if(!canEdit(cls))return;
+  const name=prompt(`Test name (e.g. "Week 1 Test" or "April Test"):`);
+  if(!name)return;
+  const subject=prompt('Subject:');
+  const date=prompt('Date (YYYY-MM-DD):',todayKey());
+  const tests=getClassTests(cls,type);
+  tests.push({name,subject:subject||'',date:date||todayKey(),totalMarks:100,results:[]});
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function deleteClassTest(cls,type,ti){
+  if(!confirm('Delete this test?'))return;
+  const tests=getClassTests(cls,type);
+  tests.splice(ti,1);
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function updateTestTotal(cls,type,ti,val){
+  const tests=getClassTests(cls,type);
+  if(tests[ti])tests[ti].totalMarks=parseFloat(val)||100;
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function updateTestResult(cls,type,ti,si,val){
+  const tests=getClassTests(cls,type);if(!tests[ti])return;
+  tests[ti].results=tests[ti].results||[];
+  let r=tests[ti].results.find(x=>x.si===si);
+  if(!r){r={si,obtained:''};tests[ti].results.push(r);}
+  r.obtained=val===''?'':parseFloat(val)||0;
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function updateTestResultByIdx(cls,type,ti,ri,val){
+  const tests=getClassTests(cls,type);if(!tests[ti])return;
+  if(tests[ti].results[ri])tests[ti].results[ri].obtained=val===''?'':parseFloat(val)||0;
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function updateTestResultName(cls,type,ti,ri,val){
+  const tests=getClassTests(cls,type);if(!tests[ti])return;
+  if(tests[ti].results[ri])tests[ti].results[ri].name=val;
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+}
+
+function addTestResultRow(cls,type,ti){
+  const nameInp=document.getElementById(`ct-newname-${type}-${cls}-${ti}`);
+  const name=nameInp?.value.trim()||'Student';
+  const tests=getClassTests(cls,type);if(!tests[ti])return;
+  tests[ti].results=tests[ti].results||[];
+  tests[ti].results.push({name,obtained:''});
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function deleteTestResultRow(cls,type,ti,ri){
+  const tests=getClassTests(cls,type);if(!tests[ti])return;
+  tests[ti].results.splice(ri,1);
+  setN(DB,['classTests',type,'c'+cls],tests);
+  saveClassTests(cls,type);
+  renderClassTestList(cls,type);
+}
+
+function importTestStudents(cls,type,ti,inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+    const tests=getClassTests(cls,type);if(!tests[ti])return;
+    tests[ti].results=tests[ti].results||[];
+    let added=0;
+    lines.forEach((line,li)=>{
+      if(li===0&&line.toLowerCase().includes('name'))return;
+      const cols=line.split(/[,;\t]+/).map(c=>c.trim().replace(/^"|"$/g,''));
+      if(!cols[0])return;
+      tests[ti].results.push({name:cols[0],obtained:cols[1]!==undefined?parseFloat(cols[1])||'':''});
+      added++;
+    });
+    setN(DB,['classTests',type,'c'+cls],tests);
+    saveClassTests(cls,type);
+    renderClassTestList(cls,type);
+    showToast(`Imported ${added} students`,'ok');
+  };
+  reader.readAsText(file);inp.value='';
 }
 
 </script>
