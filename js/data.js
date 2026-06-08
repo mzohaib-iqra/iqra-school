@@ -87,7 +87,19 @@ let MONTHS    = SETTINGS.months;
 let CLASSES   = SETTINGS.classes;
 let SCHOOL    = SETTINGS.school;
 
-function getClassIds(){ return Object.keys(CLASSES).map(Number).sort((a,b)=>a-b); }
+function getClassIds(){
+  const all=Object.keys(CLASSES).map(Number);
+  // If classOrder is set in SETTINGS, use it; otherwise sort Boys(1-99) then Girls(100+)
+  const order=(SETTINGS.classOrder||[]).map(Number).filter(id=>all.includes(id));
+  const rest=all.filter(id=>!order.includes(id))
+    .sort((a,b)=>{
+      // Boys first (1-99), then Girls (100+), each sorted numerically
+      const aG=a>=100,bG=b>=100;
+      if(aG!==bG) return aG?1:-1;
+      return a-b;
+    });
+  return [...order,...rest];
+}
 function getSubs(cls){ return CLASSES[cls]?.subjects || []; }
 function getClassTM(cls){ return parseFloat(CLASSES[cls]?.totalMarks || SETTINGS.totalMarks || 100); }
 // Get total marks for a specific subject in a class (falls back to class total)
@@ -100,12 +112,7 @@ function getSubjectTM(cls, sub){
 function hasPerSubjectMarks(cls){ return !!(CLASSES[cls]?.subjectMarks); }
 
 // ── Class ordering ────────────────────────────────────────────
-function getOrderedClassIds(){
-  const all=getClassIds();
-  const order=(SETTINGS.classOrder||[]).map(Number).filter(id=>all.includes(id));
-  const rest=all.filter(id=>!order.includes(id));
-  return [...order,...rest];
-}
+function getOrderedClassIds(){ return getClassIds(); } // alias
 
 // ── School level groupings ────────────────────────────────────
 function getSchoolLevel(cls){
