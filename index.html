@@ -2401,9 +2401,9 @@ function generateTOTM(){
   // Get all weeks in this month for diary scoring
   const yr=m.yr||(new Date().getFullYear());
   const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
-  // Use only COMPLETED weeks (Saturday < today). Falls back to last 4 completed weeks if none done yet.
+  // Use all weeks in selected month — including partial weeks — so mid-month data always shows
   const allWeeks=getWeeksInMonth(yr, monthIdx>=0?monthIdx:new Date().getMonth());
-  const weeks=getCompletedWeeksInMonth(yr, monthIdx>=0?monthIdx:new Date().getMonth());
+  const weeks=allWeeks;
   const totalWeeksInMonth=allWeeks.length;
 
   const scores=[];
@@ -2619,7 +2619,7 @@ function generateTOTMFull(){
     const attPct=getAttendancePct(teacher,mk);
     const combined=calcTOTMScore(plannerPct,finalDiaryPct,attPct);
 
-    rawScores.push({teacher,combined,diaryPct:usedDiaryPct,diaryAuto:diaryPct,diaryManual:manualDiary!==null,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
+    rawScores.push({teacher,combined,diaryPct:finalDiaryPct,diaryAuto:diaryPct,diaryManual:manualDiary!==null,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
   });
 
   // Apply manual overrides
@@ -2758,7 +2758,7 @@ function getTOTMScores(mk){
   const m=MONTHS.find(x=>x.key===mk);if(!m)return[];
   const yr=m.yr||(new Date().getFullYear());
   const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m.label);
-  const weeks=getCompletedWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
+  const weeks=getWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
   const savedOverrides=getN(DB,['settings','totmOverrides',mk])||{};
   const raw=[];
   getAllTeachers().forEach(teacher=>{

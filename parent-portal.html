@@ -200,6 +200,7 @@ function initFirebase(){
             : DEFAULT_SETTINGS.months;
         }
         if(DB.settings.classes) CLASSES=DB.settings.classes;
+        if(DB.settings.classOrder) SETTINGS.classOrder=DB.settings.classOrder;
         if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
       }
       applyBranding();populateSelects();renderTermDates();
