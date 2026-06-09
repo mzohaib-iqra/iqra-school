@@ -3031,7 +3031,15 @@ function generateMonthlyTeacherReport(){
   const m=MONTHS.find(x=>x.key===mk);
   const yr=m?.yr||(new Date().getFullYear());
   const monthIdx=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(m?.label||'');
-  const allWeeks=getWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
+  // Use getWeeksInMonth to identify the weeks, but then use getWeekDates() on each
+  // week's start to get the FULL unclipped Mon-Sat 6-date sequence — exactly the
+  // same keys used when diary entries are saved via the weekly diary entry UI.
+  const rawWeeks=getWeeksInMonth(yr,monthIdx>=0?monthIdx:0);
+  const allWeeks=rawWeeks.map(wk=>({
+    start:wk.start,
+    end:wk.end,
+    dates:getWeekDates(wk.start)   // full 6-day Mon-Sat, never clipped
+  }));
   const cont=document.getElementById('teacherReportContent');
   const teachers=filterTeacher?[filterTeacher]:getAllTeachers();
   const diaryRoot=DB.diary||{};
