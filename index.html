@@ -2241,22 +2241,29 @@ function generateTeacherReport(){
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
   </div>`;
 
+  const diaryRoot=DB.diary||{};
+
   teachers.forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);
-    if(!assignments.length) return; // skip teachers with no periods assigned
+    if(!assignments.length) return;
 
     // ── DIARY SECTION ──────────────────────────────────────────────
-    let totalHW=0, daysWithHW=0;
+    const subjectMapLegacy=buildTeacherSubjectMap(assignments);
+    let weekTotalSubjectsL=0,weekTotalSubmittedL=0,weekTotalHWL=0;
     const diaryRows=dates.map((dk,di)=>{
-      const dayHW=[];
+      const r=scanDiaryDay(subjectMapLegacy,diaryRoot,dk);
+      weekTotalSubjectsL+=r.totalSubjects;
+      weekTotalSubmittedL+=r.submitted;
+      weekTotalHWL+=r.hwCount;
+      // Per-subject detail for display
+      const dayDetail=[];
       assignments.forEach(({cls,clsName,subject})=>{
         const sk=fbKey(subject);
-        const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
-        if(hws.length) dayHW.push({clsName,subject,hws});
-        totalHW+=hws.length;
+        const hwArr=getN(DB,['diary','c'+cls,dk,sk])||[];
+        dayDetail.push({clsName,subject,submitted:hwArr.length>0,hws:hwArr});
       });
-      if(dayHW.length) daysWithHW++;
-      return{date:dk,day:dayNames[di],dayHW};
+      const dayPct=r.totalSubjects?Math.round(r.submitted/r.totalSubjects*100):0;
+      return{date:dk,day:dayNames[di],dayPct,submitted:r.submitted,total:r.totalSubjects,hwCount:r.hwCount,dayDetail};
     });
 
     // ── PLANNER SECTION ─────────────────────────────────────────────
@@ -2277,9 +2284,9 @@ function generateTeacherReport(){
       if(totalTopics>0) plannerRows.push({clsName,subject,totalTopics,doneTopics,pct:Math.round(doneTopics/totalTopics*100)});
     });
 
-    const diaryScore=dates.length>0?Math.round(daysWithHW/dates.length*100):0;
+    const diaryScore=weekTotalSubjectsL?Math.round(weekTotalSubmittedL/weekTotalSubjectsL*100):0;
     const plannerScore=plannerRows.length?Math.round(plannerRows.reduce((a,r)=>a+r.pct,0)/plannerRows.length):0;
-    const overall=Math.round((diaryScore+plannerScore)/2);
+    const overall=calcTOTMScore(plannerScore,diaryScore,null);
     const statCls=overall>=70?'stat-good':overall>=40?'stat-warn':'stat-bad';
 
     html+=`<div class="report-card" style="margin-bottom:14px;">
@@ -2287,7 +2294,7 @@ function generateTeacherReport(){
         <span style="font-size:16px;">👤</span>
         <span style="font-size:14px;font-weight:900;flex:1;">${esc(teacher)}</span>
         <span class="report-stat ${statCls}">Overall ${overall}%</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:100px;background:rgba(59,130,246,.12);color:#3b82f6;">Diary ${diaryScore}%</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:100px;background:rgba(59,130,246,.12);color:#3b82f6;">Diary ${diaryScore}% (${weekTotalSubmittedL}/${weekTotalSubjectsL})</span>
         <span style="font-size:11px;padding:3px 10px;border-radius:100px;background:rgba(34,197,94,.12);color:#22c55e;">Planner ${plannerScore}%</span>
       </div>
 
@@ -2299,15 +2306,26 @@ function generateTeacherReport(){
       </div>
 
       <div style="padding:10px 13px;border-bottom:1px solid var(--border);">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;">📔 This Week's Diary (${totalHW} homework entries · ${daysWithHW}/${dates.length} days)</div>
-        ${diaryRows.map(row=>`<div class="day-row">
-          <div class="day-label"><strong>${row.day}</strong><br><span style="font-size:10px">${row.date.slice(5)}</span></div>
-          <div class="day-content">
-            ${row.dayHW.length
-              ? row.dayHW.map(d=>`<div style="margin-bottom:4px;"><span style="font-size:10px;color:var(--muted);font-weight:600">${esc(d.clsName)} – ${esc(d.subject)}:</span> ${d.hws.map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}</div>`).join('')
-              : '<span class="no-hw-tag">No entries</span>'}
-          </div>
-        </div>`).join('')}
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;">📔 This Week's Diary (${weekTotalHWL} HW · ${weekTotalSubmittedL}/${weekTotalSubjectsL} subjects · ${diaryScore}%)</div>
+        ${diaryRows.map(row=>{
+          const dayCol=row.submitted===row.total&&row.total>0?'#22c55e':row.submitted>0?'#fbbf24':'#ef4444';
+          return`<div class="day-row">
+            <div class="day-label">
+              <strong>${row.day}</strong><br>
+              <span style="font-size:10px">${row.date.slice(5)}</span><br>
+              <span style="font-size:11px;font-weight:900;color:${dayCol}">${row.dayPct}%</span><br>
+              <span style="font-size:10px;color:var(--muted)">${row.submitted}/${row.total}</span>
+            </div>
+            <div class="day-content">
+              ${row.dayDetail.map(d=>`
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">
+                  <span style="font-size:13px">${d.submitted?'✅':'❌'}</span>
+                  <span style="font-size:10px;color:var(--muted);font-weight:600">${esc(d.clsName)} – ${esc(d.subject)}:</span>
+                  ${d.submitted?d.hws.map(h=>`<span class="hw-tag">${esc(h)}</span>`).join(''):'<span style="font-size:10px;color:#ef4444;font-style:italic">missing</span>'}
+                </div>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
       </div>
 
       ${plannerRows.length?`<div style="padding:10px 13px;">
@@ -2368,22 +2386,29 @@ function buildTeacherSubjectMap(assignments){
 }
 
 /**
- * Scan a single diary date for a teacher's own subjects only.
- * Returns { hasEntry: bool, hwCount: int }
+ * Scan a single diary date for a teacher's own subjects.
+ * Returns:
+ *   totalSubjects  — how many subject-slots the teacher has on this date
+ *   submitted      — how many of those subjects have a diary entry
+ *   hwCount        — total homework items (for display)
+ *   hasEntry       — true if at least one subject was submitted (convenience flag)
+ * NOTE: every (class × subject) pair counts as one subject-slot.
  */
 function scanDiaryDay(teacherSubjectMap,diaryRoot,dateKey){
-  let hasEntry=false,hwCount=0;
+  let totalSubjects=0,submitted=0,hwCount=0;
   Object.entries(teacherSubjectMap).forEach(([clsKey,subjectKeys])=>{
     const classData=diaryRoot[clsKey];
-    if(!classData)return;
-    const dayData=classData[dateKey];
-    if(!dayData)return;
+    const dayData=classData?.[dateKey];
     subjectKeys.forEach(sk=>{
-      const hwArr=dayData[sk];
-      if(Array.isArray(hwArr)&&hwArr.length){hwCount+=hwArr.length;hasEntry=true;}
+      totalSubjects++;
+      const hwArr=dayData?.[sk];
+      if(Array.isArray(hwArr)&&hwArr.length){
+        submitted++;
+        hwCount+=hwArr.length;
+      }
     });
   });
-  return{hasEntry,hwCount};
+  return{totalSubjects,submitted,hwCount,hasEntry:submitted>0};
 }
 
 function generateTOTM(){
@@ -2413,19 +2438,25 @@ function generateTOTM(){
     const assignments=getTeacherAssignments(teacher);
     if(!assignments.length) return;
 
-    // ── Subject-filtered diary score ──────────────────────────────
+    // ── Subject-level diary score ─────────────────────────────────
+    // totalSubjects = sum of all subject-slots across all days
+    // totalSubmitted = how many of those had a diary entry
     const subjectMap=buildTeacherSubjectMap(assignments);
-    let totalDays=0,daysWithEntry=0,totalHW=0;
+    let totalSubjects=0,totalSubmitted=0,totalHW=0;
+    let daysWithEntry=0,totalDays=0; // kept for display
     weeks.forEach(wk=>{
       wk.dates.forEach(dk=>{
         totalDays++;
-        const{hasEntry,hwCount}=scanDiaryDay(subjectMap,diaryRoot,dk);
-        if(hasEntry)daysWithEntry++;
-        totalHW+=hwCount;
+        const r=scanDiaryDay(subjectMap,diaryRoot,dk);
+        totalSubjects+=r.totalSubjects;
+        totalSubmitted+=r.submitted;
+        totalHW+=r.hwCount;
+        if(r.hasEntry)daysWithEntry++;
       });
     });
-    const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
-    console.log(`TOTM Diary [${teacher}]: ${daysWithEntry}/${totalDays} days, ${weeks.length} completed weeks, HW=${totalHW}, diary%=${diaryPct}`);
+    // Diary % = (subjects submitted ÷ subjects assigned) × 100
+    const diaryPct=totalSubjects?Math.round(totalSubmitted/totalSubjects*100):0;
+    console.log(`TOTM Diary [${teacher}]: ${totalSubmitted}/${totalSubjects} subject-slots, HW=${totalHW}, diary%=${diaryPct}`);
 
     // ── Planner score: selected month only ────────────────────────
     let planTot=0,planDone=0;
@@ -2436,7 +2467,7 @@ function generateTOTM(){
     });
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
 
-    // ── Active weeks (subject-filtered) ───────────────────────────
+    // ── Active weeks (at least one subject submitted) ─────────────
     const weeksActive=weeks.filter(wk=>wk.dates.some(dk=>scanDiaryDay(subjectMap,diaryRoot,dk).hasEntry)).length;
 
     // ── Final score: Planner 40% + Diary 30% + Attendance 30% ────
@@ -2447,9 +2478,8 @@ function generateTOTM(){
 
     scores.push({
       teacher,combined,diaryPct:finalDiaryPct,plannerPct,
-      daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,
-      planDone,planTot,
-      assignments
+      daysWithEntry,totalDays,totalSubjects,totalSubmitted,totalHW,
+      weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments
     });
   });
 
@@ -2480,7 +2510,7 @@ function generateTOTM(){
       <div style="font-size:15px;font-weight:900;">${esc(s.teacher)}</div>
       <div style="font-size:24px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
       <div style="font-size:11px;color:var(--muted)">📔 Diary: ${s.diaryPct}% &nbsp;·&nbsp; 📅 Planner: ${s.plannerPct}%</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.daysWithEntry}/${s.totalDays} days · ${s.weeksActive}/${s.totalWeeks} completed wks</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.totalSubmitted}/${s.totalSubjects} subject-slots · ${s.weeksActive}/${s.totalWeeks} completed wks</div>
     </div>`;}).join('')}
   </div>
 
@@ -2488,7 +2518,7 @@ function generateTOTM(){
   <div class="report-card">
     <div class="report-card-hd">📊 Full Ranking – All Teachers</div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr>
-      <th>Rank</th><th>Teacher</th><th>Diary %</th><th>Planner %</th><th>Attendance %</th><th>Final Score</th><th>Diary Days</th><th>Active Weeks</th><th>Planner Topics</th>
+      <th>Rank</th><th>Teacher</th><th>Diary %</th><th>Planner %</th><th>Attendance %</th><th>Final Score</th><th>Diary Subjects</th><th>Active Weeks</th><th>Planner Topics</th>
     </tr></thead><tbody>
     ${scores.map((s,i)=>{
       const overall=s.combined;
@@ -2501,7 +2531,7 @@ function generateTOTM(){
         <td><span style="color:#22c55e;font-weight:700">${s.plannerPct}%</span></td>
         <td>${attCell}</td>
         <td><span style="font-size:13px;font-weight:900;color:${col}">${overall}%</span></td>
-        <td style="color:var(--muted)">${s.daysWithEntry}/${s.totalDays}</td>
+        <td style="color:var(--muted)">${s.totalSubmitted}/${s.totalSubjects} subjects</td>
         <td style="color:var(--muted)">${s.weeksActive}/${s.totalWeeks}</td>
         <td style="color:var(--muted)">${s.planDone}/${s.planTot}</td>
       </tr>`;
@@ -2587,20 +2617,24 @@ function generateTOTMFull(){
     const assignments=getTeacherAssignments(teacher);
     if(!assignments.length) return;
 
-    // Diary score: subject-filtered scan — only this teacher's own subjects
+    // Diary score: subject-level counting — submitted subjects ÷ total subject-slots
     const subjectMap=buildTeacherSubjectMap(assignments);
-    let totalDays=0,daysWithEntry=0,totalHW=0;
+    let totalSubjects=0,totalSubmitted=0,totalHW=0;
+    let daysWithEntry=0,totalDays=0;
     const diaryRoot=DB.diary||{};
     weeks.forEach(wk=>{
       wk.dates.forEach(dk=>{
         totalDays++;
-        const{hasEntry,hwCount}=scanDiaryDay(subjectMap,diaryRoot,dk);
-        if(hasEntry)daysWithEntry++;
-        totalHW+=hwCount;
+        const r=scanDiaryDay(subjectMap,diaryRoot,dk);
+        totalSubjects+=r.totalSubjects;
+        totalSubmitted+=r.submitted;
+        totalHW+=r.hwCount;
+        if(r.hasEntry)daysWithEntry++;
       });
     });
-    const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
-    console.log(`TOTM [${teacher}] days:${daysWithEntry}/${totalDays} HW:${totalHW} diary%:${diaryPct}`);
+    // Diary % = (subjects with diary submitted ÷ total subject-slots) × 100
+    const diaryPct=totalSubjects?Math.round(totalSubmitted/totalSubjects*100):0;
+    console.log(`TOTM [${teacher}] subjects:${totalSubmitted}/${totalSubjects} HW:${totalHW} diary%:${diaryPct}`);
 
     // Planner score: % topics done for this month
     let planTot=0,planDone=0;
@@ -2619,7 +2653,7 @@ function generateTOTMFull(){
     const attPct=getAttendancePct(teacher,mk);
     const combined=calcTOTMScore(plannerPct,finalDiaryPct,attPct);
 
-    rawScores.push({teacher,combined,diaryPct:finalDiaryPct,diaryAuto:diaryPct,diaryManual:manualDiary!==null,plannerPct,daysWithEntry,totalDays,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
+    rawScores.push({teacher,combined,diaryPct:finalDiaryPct,diaryAuto:diaryPct,diaryManual:manualDiary!==null,plannerPct,daysWithEntry,totalDays,totalSubjects,totalSubmitted,totalHW,weeksActive,totalWeeks:weeks.length,planDone,planTot,assignments});
   });
 
   // Apply manual overrides
@@ -2657,7 +2691,7 @@ function generateTOTMFull(){
       ${s.manualOverride?'<div style="font-size:10px;color:var(--gold);margin-top:2px">✏️ Manually adjusted</div>':''}
       <div style="font-size:26px;font-weight:900;color:${col};margin:6px 0">${s.combined}%</div>
       <div style="font-size:11px;color:var(--muted)">📔 ${s.diaryPct}%${s.diaryManual?' <span style=\"font-size:9px;color:var(--gold)\">✏manual</span>':''} &nbsp;·&nbsp; 📅 ${s.plannerPct}% &nbsp;·&nbsp; ${getAttendancePct(s.teacher,mk)!==null?'🗓️ '+getAttendancePct(s.teacher,mk)+'% att':''}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.daysWithEntry}/${s.totalDays} days · ${s.weeksActive}/${s.totalWeeks} weeks · ${s.totalHW} HW</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.totalSubmitted}/${s.totalSubjects} subject-slots · ${s.weeksActive}/${s.totalWeeks} weeks · ${s.totalHW} HW</div>
     </div>`;}).join('')}
   </div>
 
@@ -2763,14 +2797,15 @@ function getTOTMScores(mk){
   const raw=[];
   getAllTeachers().forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
-    let totalDays=0,daysWithEntry=0;
+    let totalSubjects=0,totalSubmitted=0;
     const subjectMap2=buildTeacherSubjectMap(assignments);
     const diaryRoot2=DB.diary||{};
     weeks.forEach(wk=>wk.dates.forEach(dk=>{
-      totalDays++;
-      if(scanDiaryDay(subjectMap2,diaryRoot2,dk).hasEntry)daysWithEntry++;
+      const r=scanDiaryDay(subjectMap2,diaryRoot2,dk);
+      totalSubjects+=r.totalSubjects;
+      totalSubmitted+=r.submitted;
     }));
-    const diaryPct=totalDays?Math.round(daysWithEntry/totalDays*100):0;
+    const diaryPct=totalSubjects?Math.round(totalSubmitted/totalSubjects*100):0;
     let planTot=0,planDone=0;
     assignments.forEach(({cls,subject})=>{const t=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];planTot+=t.length;planDone+=t.filter(x=>x.done).length;});
     const plannerPct=planTot?Math.round(planDone/planTot*100):0;
@@ -3016,15 +3051,16 @@ function generateMonthlyTeacherReport(){
     const assignments=getTeacherAssignments(teacher);
     if(!assignments.length)return;
     const subjectMap=buildTeacherSubjectMap(assignments);
-    let totalDays=0,activeDays=0,totalHW=0;
+    let totalSubjects=0,totalSubmitted=0,totalHW=0;
     allWeeks.forEach(wk=>wk.dates.forEach(dk=>{
-      totalDays++;
-      const{hasEntry,hwCount}=scanDiaryDay(subjectMap,diaryRoot,dk);
-      if(hasEntry)activeDays++;
-      totalHW+=hwCount;
+      const r=scanDiaryDay(subjectMap,diaryRoot,dk);
+      totalSubjects+=r.totalSubjects;
+      totalSubmitted+=r.submitted;
+      totalHW+=r.hwCount;
     }));
-    const pct=totalDays?Math.round(activeDays/totalDays*100):0;
-    summaryRows.push({teacher,activeDays,totalDays,totalHW,pct,assignments,subjectMap});
+    // Diary % = (submitted subject-slots ÷ total subject-slots) × 100
+    const pct=totalSubjects?Math.round(totalSubmitted/totalSubjects*100):0;
+    summaryRows.push({teacher,totalSubmitted,totalSubjects,totalHW,pct,assignments,subjectMap});
   });
   summaryRows.sort((a,b)=>b.pct-a.pct);
 
@@ -3035,7 +3071,7 @@ function generateMonthlyTeacherReport(){
       return`<div style="background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);padding:12px;border-left:4px solid ${col};">
         <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${i===0?'🥇 ':''}${esc(s.teacher)}</div>
         <div style="font-size:24px;font-weight:900;color:${col}">${s.pct}%</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;">${s.activeDays}/${s.totalDays} days active · ${s.totalHW} HW entries</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;">${s.totalSubmitted}/${s.totalSubjects} subject-slots · ${s.totalHW} HW entries</div>
         <div style="height:4px;background:var(--border);border-radius:100px;margin-top:7px;overflow:hidden;">
           <div style="width:${s.pct}%;height:100%;background:${col};border-radius:100px;"></div>
         </div>
@@ -3049,30 +3085,34 @@ function generateMonthlyTeacherReport(){
     html+=`<div class="report-card" style="margin-bottom:12px;">
       <div class="report-card-hd">
         <span>👤 ${esc(s.teacher)}</span>
-        <span class="report-stat ${s.pct>=70?'stat-good':s.pct>=40?'stat-warn':'stat-bad'}">${s.pct}% · ${s.activeDays}/${s.totalDays} days</span>
+        <span class="report-stat ${s.pct>=70?'stat-good':s.pct>=40?'stat-warn':'stat-bad'}">${s.pct}% · ${s.totalSubmitted}/${s.totalSubjects} subjects</span>
       </div>
       <div style="padding:4px 0;">
         ${allWeeks.map((wk,wi)=>{
-          let wkActive=0,wkHW=0;
+          let wkSubjects=0,wkSubmitted=0,wkHW=0;
           wk.dates.forEach(dk=>{
-            const{hasEntry,hwCount}=scanDiaryDay(s.subjectMap,diaryRoot,dk);
-            if(hasEntry)wkActive++;
-            wkHW+=hwCount;
+            const r=scanDiaryDay(s.subjectMap,diaryRoot,dk);
+            wkSubjects+=r.totalSubjects;
+            wkSubmitted+=r.submitted;
+            wkHW+=r.hwCount;
           });
-          const wkPct=wk.dates.length?Math.round(wkActive/wk.dates.length*100):0;
+          const wkPct=wkSubjects?Math.round(wkSubmitted/wkSubjects*100):0;
           const wkCol=wkPct>=70?'#22c55e':wkPct>=40?'#fbbf24':'#ef4444';
           return`<div style="border-bottom:1px solid var(--border);padding:8px 13px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
               <span style="font-size:11px;font-weight:700;color:var(--muted);">Week ${wi+1} (${wk.start.slice(5)} – ${wk.end.slice(5)})</span>
-              <span style="font-size:11px;font-weight:700;color:${wkCol}">${wkPct}% · ${wkActive}/${wk.dates.length} days · ${wkHW} HW</span>
+              <span style="font-size:11px;font-weight:700;color:${wkCol}">${wkPct}% · ${wkSubmitted}/${wkSubjects} subject-slots · ${wkHW} HW</span>
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
               ${wk.dates.map((dk,di)=>{
-                const{hasEntry:dayHas,hwCount:dayHW}=scanDiaryDay(s.subjectMap,diaryRoot,dk);
-                return`<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 7px;border-radius:7px;background:${dayHas?'rgba(34,197,94,.1)':'rgba(239,68,68,.07)'};border:1px solid ${dayHas?'rgba(34,197,94,.3)':'rgba(239,68,68,.2)'};">
+                const r=scanDiaryDay(s.subjectMap,diaryRoot,dk);
+                const dayPct=r.totalSubjects?Math.round(r.submitted/r.totalSubjects*100):0;
+                const dayCol=r.submitted===r.totalSubjects&&r.totalSubjects>0?'#22c55e':r.submitted>0?'#fbbf24':'#ef4444';
+                return`<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 7px;border-radius:7px;background:${r.submitted>0?'rgba(34,197,94,.1)':'rgba(239,68,68,.07)'};border:1px solid ${r.submitted>0?'rgba(34,197,94,.3)':'rgba(239,68,68,.2)'};">
                   <span style="font-size:10px;color:var(--muted)">${dayNames[di]||''}</span>
-                  <span style="font-size:14px">${dayHas?'✅':'❌'}</span>
-                  <span style="font-size:10px;font-weight:700;color:${dayHas?'#22c55e':'#ef4444'}">${dayHW>0?dayHW+'hw':''}</span>
+                  <span style="font-size:13px;font-weight:900;color:${dayCol}">${dayPct}%</span>
+                  <span style="font-size:10px;color:var(--muted)">${r.submitted}/${r.totalSubjects}</span>
+                  <span style="font-size:10px;font-weight:700;color:${dayCol}">${r.hwCount>0?r.hwCount+'hw':''}</span>
                 </div>`;
               }).join('')}
             </div>
@@ -3104,21 +3144,27 @@ function generateWeeklyTeacherReport(){
   teachers.forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
     const subjectMap=buildTeacherSubjectMap(assignments);
-    let totalHW=0,daysWithHW=0;
+    let weekTotalSubjects=0,weekTotalSubmitted=0,weekTotalHW=0;
     const diaryRows=dates.map((dk,di)=>{
-      const dayHW=[];
+      const r=scanDiaryDay(subjectMap,diaryRoot,dk);
+      weekTotalSubjects+=r.totalSubjects;
+      weekTotalSubmitted+=r.submitted;
+      weekTotalHW+=r.hwCount;
+      // Collect detail per subject for display
+      const dayDetail=[];
       Object.entries(subjectMap).forEach(([clsKey,subjectKeys])=>{
-        const dayData=(diaryRoot[clsKey]||{})[dk];if(!dayData)return;
+        const dayData=(diaryRoot[clsKey]||{})[dk];
         subjectKeys.forEach(sk=>{
-          const hwArr=dayData[sk];
-          if(Array.isArray(hwArr)&&hwArr.length){dayHW.push({clsKey,sub:sk,hws:hwArr});totalHW+=hwArr.length;}
+          const hwArr=dayData?.[sk];
+          const submitted=Array.isArray(hwArr)&&hwArr.length>0;
+          dayDetail.push({clsKey,sk,submitted,hws:submitted?hwArr:[]});
         });
       });
-      const dayHas=dayHW.length>0;
-      if(dayHas)daysWithHW++;
-      return{date:dk,day:dayNames[di],dayHW,dayHas};
+      const dayPct=r.totalSubjects?Math.round(r.submitted/r.totalSubjects*100):0;
+      return{date:dk,day:dayNames[di],dayPct,submitted:r.submitted,total:r.totalSubjects,hwCount:r.hwCount,dayDetail};
     });
-    const diaryScore=dates.length?Math.round(daysWithHW/dates.length*100):0;
+    // Weekly % = total submitted ÷ total subject-slots × 100
+    const diaryScore=weekTotalSubjects?Math.round(weekTotalSubmitted/weekTotalSubjects*100):0;
     // Planner: use only the month that contains this week's start date (Bug #5 fix)
     const weekMonthKey=MONTHS.find(m=>{
       const d=new Date(start+'T00:00:00');
@@ -3137,18 +3183,33 @@ function generateWeeklyTeacherReport(){
     html+=`<div class="report-card" style="margin-bottom:12px;">
       <div class="report-card-hd"><span style="font-size:14px;">👤 ${esc(teacher)}</span>
         <span class="report-stat ${statCls}">Overall ${overall}%</span>
-        <span style="font-size:11px;padding:3px 9px;border-radius:100px;background:rgba(59,130,246,.12);color:#3b82f6">📔 ${diaryScore}%</span>
-        <span style="font-size:11px;padding:3px 9px;border-radius:100px;background:rgba(34,197,94,.12);color:#22c55e">📅 ${plannerScore}%</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:100px;background:rgba(59,130,246,.12);color:#3b82f6">📔 Diary ${diaryScore}% (${weekTotalSubmitted}/${weekTotalSubjects} subjects)</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:100px;background:rgba(34,197,94,.12);color:#22c55e">📅 Planner ${plannerScore}%</span>
       </div>
       <div style="padding:8px 13px;border-bottom:1px solid var(--border);">
         ${assignments.map(a=>`<span style="font-size:11px;padding:2px 9px;border-radius:100px;background:var(--surf2);border:1px solid var(--border);margin:2px;">${esc(a.clsName)}·${esc(a.subject)} (P${a.period||'?'})</span>`).join('')}
       </div>
       <div style="padding:8px 13px;">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:7px;">📔 Diary – ${totalHW} HW · ${daysWithHW}/${dates.length} days</div>
-        ${diaryRows.map(row=>`<div class="day-row">
-          <div class="day-label"><strong>${row.day}</strong><br><span style="font-size:10px">${row.date.slice(5)}</span></div>
-          <div class="day-content">${row.dayHW.length?row.dayHW.map(d=>`<div style="margin-bottom:3px;"><span style="font-size:10px;color:var(--muted)">${esc(d.clsKey)}·${esc(d.sub)}:</span> ${d.hws.map(h=>`<span class="hw-tag">${esc(h)}</span>`).join('')}</div>`).join(''):'<span class="no-hw-tag">No entries</span>'}</div>
-        </div>`).join('')}
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:7px;">📔 Diary – ${weekTotalHW} HW entries · Weekly ${diaryScore}%</div>
+        ${diaryRows.map(row=>{
+          const dayCol=row.submitted===row.total&&row.total>0?'#22c55e':row.submitted>0?'#fbbf24':'#ef4444';
+          return`<div class="day-row">
+            <div class="day-label">
+              <strong>${row.day}</strong><br>
+              <span style="font-size:10px">${row.date.slice(5)}</span><br>
+              <span style="font-size:11px;font-weight:900;color:${dayCol}">${row.dayPct}%</span><br>
+              <span style="font-size:10px;color:var(--muted)">${row.submitted}/${row.total}</span>
+            </div>
+            <div class="day-content">
+              ${row.dayDetail.length?row.dayDetail.map(d=>`
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+                  <span style="font-size:13px">${d.submitted?'✅':'❌'}</span>
+                  <span style="font-size:10px;color:var(--muted);font-weight:600">${esc(d.clsKey)}·${esc(d.sk)}:</span>
+                  ${d.submitted?d.hws.map(h=>`<span class="hw-tag">${esc(h)}</span>`).join(''):'<span style="font-size:10px;color:#ef4444;font-style:italic">missing</span>'}
+                </div>`).join(''):'<span class="no-hw-tag">No subjects assigned</span>'}
+            </div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   });
