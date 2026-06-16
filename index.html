@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="js/data.js"></script>
 </head>
 <body>
@@ -126,6 +127,7 @@
       </select>
       <button class="report-gen-btn" onclick="generateReport()">📋 Generate</button>
       <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      <button class="pdf-btn" onclick="downloadClasswiseDiaryPDF()">⬇️ PDF</button>
     </div>
     <div id="reportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a date and click Generate.</div></div>
   </div>
@@ -149,6 +151,7 @@
       </select>
       <button class="report-gen-btn" id="twGenBtn" onclick="generateTeacherReport()">👤 Generate</button>
       <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      <button class="pdf-btn" onclick="downloadDiaryReportPDF()">⬇️ PDF</button>
     </div>
     <div id="teacherReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select options and click Generate.</div></div>
   </div>
@@ -158,6 +161,7 @@
       <select class="report-date-inp" id="totmMonth" style="width:140px;"></select>
       <button class="report-gen-btn" onclick="generateTOTM()">🏅 Calculate</button>
       <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      <button class="pdf-btn" onclick="downloadTOTMReportPDF()">⬇️ PDF</button>
     </div>
     <div id="totmContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Calculate.</div></div>
   </div>
@@ -169,8 +173,10 @@
     <label style="font-size:11px;color:var(--muted)">📅 Select Month:</label>
     <select class="report-date-inp" id="prMonth" style="width:130px;"></select>
     <select class="report-date-inp" id="prClass" style="width:130px;"><option value="">All Classes</option></select>
+    <select class="report-date-inp" id="prTeacher" style="width:170px;"><option value="">All Teachers</option></select>
     <button class="report-gen-btn" onclick="generatePlannerReport()">📊 Generate Report</button>
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <button class="pdf-btn" onclick="downloadPlannerReportPDF()">⬇️ PDF</button>
   </div>
   <div id="plannerReportContent"><div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">Select a month and click Generate Report.</div></div>
 </div>
@@ -216,9 +222,8 @@
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">Auto-calculated from diary activity + planner progress. Finalize to show as popup on admin login.</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <button class="pdf-btn" onclick="downloadTOTMFullPDF()">⬇️ PDF</button>
   </div>
-
-  <!-- Controls -->
   <div class="session-banner" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <label style="font-size:11px;color:var(--muted);">📅 Month:</label>
@@ -516,7 +521,7 @@ function switchSec(id){
   if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
   if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
   if(id==='totm'){ populateTOTMMonthSel(); renderFinalizedTOTMBanner(); setTimeout(renderAttendanceRows,100); }
-  if(id==='timetable'){ setTimeout(populateResetPeriodSel,50); }
+  if(id==='planner-report') populatePlannerReportSelects();
   if(id==='report'){
     document.getElementById('reportDate').value=todayKey();
     document.getElementById('twrDate').value=todayKey();
@@ -1045,7 +1050,7 @@ function renderBrdPanel(cls){
       </div>`}).join('')}
     </div>`;
   }
-  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div><button class="print-btn" onclick="window.print()">🖨️ Print</button></div>
+  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div><button class="print-btn" onclick="window.print()">🖨️ Print</button><button class="pdf-btn" onclick="downloadBoardsPDF()">⬇️ PDF</button></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
     <tbody>${s.map((r,i)=>`<tr><td><input class="ainp2" value="${esc(r.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td><td><input class="ainp2" value="${esc(r.father||'')}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:120px;"></td><td><input class="ainp2" type="number" value="${r.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td><td><input class="ainp2" type="number" value="${r.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td><td><input class="ainp2" type="number" value="${r.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:65px;"></td><td style="font-weight:700;color:#22c55e">${r.total?((r.obtained/r.total)*100).toFixed(1)+'%':'—'}</td><td><button class="btn-sm btn-del" onclick="delBrd('${cls}',${i})">✕</button></td></tr>`).join('')}
     </tbody></table></div>
@@ -1554,24 +1559,123 @@ function disablePerSubjectMarks(cls){
 function populatePlannerReportSelects(){
   const mSel=document.getElementById('prMonth');
   const cSel=document.getElementById('prClass');
+  const tSel=document.getElementById('prTeacher');
   if(mSel){mSel.innerHTML=MONTHS.map((m,i)=>`<option value="${m.key}">${m.label} ${m.yr}</option>`).join('');}
   if(cSel){cSel.innerHTML='<option value="">All Classes</option>'+getClassIds().map(c=>`<option value="${c}">${CLASSES[c]?.name||'Class '+c}</option>`).join('');}
+  if(tSel){
+    const teachers=getAllTeachers();
+    tSel.innerHTML='<option value="">All Teachers</option>'+teachers.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  }
+  // When class changes, filter teacher list to only teachers in that class
+  if(cSel&&tSel){
+    cSel.onchange=()=>{
+      const cls=cSel.value;
+      const allTeachers=getAllTeachers();
+      if(!cls){
+        tSel.innerHTML='<option value="">All Teachers</option>'+allTeachers.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+        return;
+      }
+      // Filter to teachers who teach in the selected class
+      const clsTeachers=new Set();
+      getSubs(+cls).forEach(sub=>{
+        const periods=getN(DB,['timetable','c'+cls,fbKey(sub)])||[];
+        periods.forEach(p=>{if(p.teacher)clsTeachers.add(p.teacher);});
+      });
+      tSel.innerHTML='<option value="">All Teachers</option>'+[...clsTeachers].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+    };
+  }
 }
 
 function generatePlannerReport(){
   const mk=document.getElementById('prMonth')?.value;
   const filterCls=document.getElementById('prClass')?.value;
+  const filterTeacher=document.getElementById('prTeacher')?.value;
   if(!mk){showToast('Select a month','info');return;}
   const m=MONTHS.find(x=>x.key===mk);
   const classIds=filterCls?[+filterCls]:getClassIds();
   const cont=document.getElementById('plannerReportContent');
 
+  // If teacher selected → teacher-wise planner report
+  if(filterTeacher){
+    const assignments=getTeacherAssignments(filterTeacher);
+    // Filter to selected class if set
+    const filtered=filterCls?assignments.filter(a=>String(a.cls)===String(filterCls)):assignments;
+
+    let totalTopics=0,doneTopics=0;
+    const subjectRows=[];
+    filtered.forEach(({cls,clsName,subject})=>{
+      const topics=getN(DB,['planner',mk,'c'+cls,fbKey(subject)])||[];
+      const done=topics.filter(t=>t.done).length;
+      totalTopics+=topics.length;doneTopics+=done;
+      subjectRows.push({cls,clsName,subject,topics,done,pct:topics.length?Math.round(done/topics.length*100):0});
+    });
+    const overallPct=totalTopics?Math.round(doneTopics/totalTopics*100):0;
+    const statCls=overallPct>=70?'stat-good':overallPct>=40?'stat-warn':'stat-bad';
+
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📊 Planner Report · ${esc(filterTeacher)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(m.label)} ${m.yr} · ${TLbl[m.term]} · Generated ${new Date().toLocaleDateString('en-IN')}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        <button class="pdf-btn" onclick="downloadPlannerReportPDF()">⬇️ PDF</button>
+      </div>
+    </div>`;
+
+    // Teacher summary card
+    html+=`<div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div style="font-size:36px;">👤</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:900;">${esc(filterTeacher)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${filtered.length} subject-class assignment${filtered.length!==1?'s':''} · ${totalTopics} total topics</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:32px;font-weight:900;font-family:Playfair Display,serif;">${overallPct}%</div>
+        <span class="report-stat ${statCls}">${doneTopics}/${totalTopics} done</span>
+      </div>
+    </div>`;
+
+    // Progress bar
+    html+=`<div style="height:10px;background:var(--border);border-radius:100px;overflow:hidden;margin-bottom:18px;"><div style="width:${overallPct}%;height:100%;background:${overallPct>=70?'#22c55e':overallPct>=40?'#fbbf24':'#ef4444'};border-radius:100px;transition:width .4s;"></div></div>`;
+
+    // Subject breakdown table
+    if(subjectRows.length){
+      html+=`<div class="report-card"><div class="report-card-hd">📚 Subject-wise Breakdown</div>
+        <div style="overflow-x:auto;"><table class="tbl"><thead><tr>
+          <th>Class</th><th>Subject</th><th>Topics Planned</th><th>Done</th><th>Pending</th><th>Progress</th>
+        </tr></thead><tbody>`;
+      subjectRows.forEach(r=>{
+        const pend=r.topics.length-r.done;
+        const sc=r.pct>=70?'stat-good':r.pct>=40?'stat-warn':'stat-bad';
+        html+=`<tr>
+          <td style="font-weight:600">${esc(r.clsName)}</td>
+          <td style="font-weight:600">${esc(r.subject)}</td>
+          <td>${r.topics.length?r.topics.map(t=>`<span style="display:inline-block;margin:1px 2px;padding:1px 7px;border-radius:100px;font-size:10px;background:${t.done?'rgba(34,197,94,.15)':'var(--surf2)'};border:1px solid ${t.done?'rgba(34,197,94,.4)':'var(--border)'};">${esc(t.text)}</span>`).join(''):'<span style="color:var(--muted);font-size:11px;font-style:italic">Not added</span>'}</td>
+          <td style="font-weight:700;color:#22c55e">${r.done}</td>
+          <td style="color:${pend?'#ef4444':'#22c55e'}">${pend}</td>
+          <td style="min-width:110px;"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--border);border-radius:100px;overflow:hidden;"><div style="width:${r.pct}%;height:100%;background:${r.pct>=70?'#22c55e':r.pct>=40?'#fbbf24':'#ef4444'};border-radius:100px;"></div></div><span class="report-stat ${sc}" style="font-size:9px;padding:1px 6px">${r.pct}%</span></div></td>
+        </tr>`;
+      });
+      html+=`</tbody></table></div></div>`;
+    } else {
+      html+=`<div style="text-align:center;padding:30px;color:var(--muted)">No planner assignments found for ${esc(filterTeacher)} in ${esc(m.label)}.</div>`;
+    }
+
+    cont.innerHTML=html;
+    return;
+  }
+
+  // ── CLASS-WISE VIEW (no teacher filter) ──────────────────────────
   let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
     <div>
       <div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">📊 Planner Report · ${esc(m.label)} ${m.yr}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">${TLbl[m.term]} · Generated ${new Date().toLocaleDateString('en-IN')}</div>
     </div>
-    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <div style="display:flex;gap:8px;">
+      <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      <button class="pdf-btn" onclick="downloadPlannerReportPDF()">⬇️ PDF</button>
+    </div>
   </div>`;
 
   // Summary row
@@ -2239,9 +2343,8 @@ function generateTeacherReport(){
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtDate(start)} – ${fmtDate(end)} (Mon–Sat)</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <button class="pdf-btn" onclick="downloadPDF('teacherReportContent','Weekly-Diary-Report.pdf','Weekly Diary Report')">⬇️ PDF</button>
   </div>`;
-
-  const diaryRoot=DB.diary||{};
 
   teachers.forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);
@@ -2500,6 +2603,7 @@ function generateTOTM(){
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">Planner (40%) + Diary (30%) + Attendance (30%) · ${weeks.length} completed week${weeks.length!==1?'s':''} of ${totalWeeksInMonth} in ${esc(m?.label||mk)}</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <button class="pdf-btn" onclick="downloadTOTMReportPDF()">⬇️ PDF</button>
   </div>
 
   <!-- TOP 3 PODIUM -->
@@ -3051,6 +3155,7 @@ function generateMonthlyTeacherReport(){
       <div style="font-size:11px;color:var(--muted);margin-top:2px;">${allWeeks.length} weeks · ${allWeeks.reduce((a,w)=>a+w.dates.length,0)} school days</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <button class="pdf-btn" onclick="downloadDiaryReportPDF()">⬇️ PDF</button>
   </div>`;
 
   // Summary table at top
@@ -3147,7 +3252,8 @@ function generateWeeklyTeacherReport(){
   let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
     <div><div style="font-family:Playfair Display,serif;font-size:18px;font-weight:900;">👤 Weekly Teacher Report</div>
     <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtDate(start)} – ${fmtDate(end)}</div></div>
-    <button class="print-btn" onclick="window.print()">🖨️ Print</button></div>`;
+    <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+    <button class="pdf-btn" onclick="downloadDiaryReportPDF()">⬇️ PDF</button></div>`;
 
   teachers.forEach(teacher=>{
     const assignments=getTeacherAssignments(teacher);if(!assignments.length)return;
@@ -3467,6 +3573,54 @@ function importTestStudents(cls,type,ti,inp){
     showToast(`Imported ${added} students`,'ok');
   };
   reader.readAsText(file);inp.value='';
+}
+
+// ══════════════════════════════════════════════
+//  PDF DOWNLOAD — universal helper
+// ══════════════════════════════════════════════
+function downloadPDF(contentId, filename, title){
+  const source = document.getElementById(contentId);
+  if(!source || source.innerHTML.trim()===''){
+    showToast('Generate the report first, then download PDF','info');
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;color:#000;font-family:DM Sans,Arial,sans-serif;font-size:12px;padding:24px 30px;';
+  const hdr = document.createElement('div');
+  hdr.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #1F3A8A;padding-bottom:10px;margin-bottom:16px;"><div><div style="font-family:Playfair Display,serif;font-size:20px;font-weight:900;color:#1F3A8A;">'+esc(document.getElementById('hTitle')?.textContent||'IQRA School')+'</div><div style="font-size:10px;color:#555;margin-top:2px;">'+esc(document.getElementById('hSub')?.textContent||'')+'</div></div><div style="text-align:right;font-size:10px;color:#555;"><div style="font-weight:700;color:#1F3A8A;font-size:13px;">'+esc(title)+'</div><div>Generated: '+new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</div></div></div>';
+  wrap.appendChild(hdr);
+  const content = source.cloneNode(true);
+  content.querySelectorAll('.print-btn,.pdf-btn,.report-gen-btn,button').forEach(b=>b.remove());
+  const pdfStyle = document.createElement('style');
+  pdfStyle.textContent = '*{color:#000!important;background:#fff!important;border-color:#ddd!important;}.report-card{border:1px solid #ccc!important;border-radius:8px!important;margin-bottom:12px!important;page-break-inside:avoid!important;}.report-card-hd{background:#f0f4ff!important;color:#1F3A8A!important;padding:8px 13px!important;font-weight:700!important;}.stat-good{color:#166534!important;background:#dcfce7!important;}.stat-warn{color:#854d0e!important;background:#fef9c3!important;}.stat-bad{color:#991b1b!important;background:#fee2e2!important;}table{border-collapse:collapse!important;width:100%!important;}th{background:#f0f4ff!important;color:#1F3A8A!important;font-size:9px!important;padding:5px 8px!important;border:1px solid #ccc!important;}td{padding:4px 8px!important;border:1px solid #eee!important;font-size:11px!important;}.hw-tag{background:#e0e7ff!important;color:#1F3A8A!important;border-radius:4px!important;padding:1px 5px!important;font-size:9px!important;display:inline-block!important;margin:1px!important;}.day-row{display:flex!important;gap:8px!important;border-bottom:1px solid #eee!important;padding:5px 0!important;}.day-label{min-width:60px!important;font-weight:700!important;font-size:11px!important;}.day-content{flex:1!important;font-size:11px!important;}';
+  wrap.appendChild(pdfStyle);
+  wrap.appendChild(content);
+  document.body.appendChild(wrap);
+  const opt={margin:[10,10,12,10],filename:filename,image:{type:'jpeg',quality:0.97},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+  showToast('Preparing PDF\u2026','info');
+  html2pdf().set(opt).from(wrap).save().then(()=>{document.body.removeChild(wrap);showToast('PDF downloaded \u2713','ok');}).catch(err=>{document.body.removeChild(wrap);console.error('PDF error:',err);showToast('PDF failed \u2014 try Print instead','err');});
+}
+function downloadDiaryReportPDF(){
+  const isMonth=document.getElementById('twMode-month')?.classList.contains('active');
+  const label=isMonth?(document.getElementById('twrMonth')?.selectedOptions[0]?.text||'Monthly'):(document.getElementById('twrDate')?.value||'Weekly');
+  downloadPDF('teacherReportContent','Diary-Report-'+label+'.pdf','Diary Report \u00b7 '+label);
+}
+function downloadClasswiseDiaryPDF(){
+  const date=document.getElementById('reportDate')?.value||'';
+  downloadPDF('reportContent','Classwise-Diary-'+date+'.pdf','Class-wise Diary Report \u00b7 '+date);
+}
+function downloadTOTMReportPDF(){
+  const month=document.getElementById('totmMonth')?.selectedOptions[0]?.text||'';
+  downloadPDF('totmContent','TOTM-'+month+'.pdf','Teacher of the Month \u00b7 '+month);
+}
+function downloadTOTMFullPDF(){
+  const month=document.getElementById('totmMonthSel')?.selectedOptions[0]?.text||'';
+  downloadPDF('totmFullContent','TOTM-Full-'+month+'.pdf','Teacher of the Month \u00b7 '+month);
+}
+function downloadPlannerReportPDF(){
+  const month=document.getElementById('prMonth')?.selectedOptions[0]?.text||'';
+  const teacher=document.getElementById('prTeacher')?.value||'All Teachers';
+  downloadPDF('plannerReportContent','Planner-Report-'+month+'.pdf','Planner Report \u00b7 '+month+' \u00b7 '+teacher);
 }
 
 </script>
