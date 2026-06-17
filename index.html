@@ -40,12 +40,12 @@
       <button class="ntab"           onclick="switchSec('students')">👥 Students</button>
       <button class="ntab"           onclick="switchSec('planner')">📅 Planner</button>
       <button class="ntab"           onclick="switchSec('diary')">📔 Diary</button>
-      <button class="ntab"           onclick="switchSec('timetable')">🕐 Periods</button>
+      <button class="ntab admin-only" style="display:none" onclick="switchSec('timetable')">🕐 Periods</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('report')">📔 Diary Report</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('planner-report')">📊 Planner Report</button>
-      <button class="ntab admin-only" style="display:none" onclick="switchSec('class-tests')">📝 Class Tests</button>
+      <button class="ntab teacher-visible" style="display:none" onclick="switchSec('class-tests')">📝 Class Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('boards')">🏆 Boards</button>
-      <button class="ntab admin-only" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
+      <button class="ntab teacher-visible" style="display:none" onclick="switchSec('weekly')">📝 Weekly Tests</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('settings')">⚙️ Settings</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('announcements');renderAnnList()">📢 Announce</button>
       <button class="ntab admin-only" style="display:none" onclick="switchSec('toppers-admin');renderTopperAdminPanel('primary_boys')">🏅 Toppers</button>
@@ -410,7 +410,13 @@ function afterLogin(){
   document.getElementById('loginOverlay').style.display='none';
   document.getElementById('tchip').style.display='flex';
   document.getElementById('tname').textContent=currentTeacher.name;
-  if(currentTeacher.role==='admin') document.querySelectorAll('.admin-only').forEach(e=>e.style.display='');
+  if(currentTeacher.role==='admin'){
+    document.querySelectorAll('.admin-only').forEach(e=>e.style.display='');
+    document.querySelectorAll('.teacher-visible').forEach(e=>e.style.display='');
+  } else {
+    // Teachers get Weekly Tests and Class Tests but NOT Periods or admin sections
+    document.querySelectorAll('.teacher-visible').forEach(e=>e.style.display='');
+  }
   // Clear session popup guard so popup shows fresh for every login
   sessionStorage.removeItem('totm_popup_shown');
   initFirebase();
