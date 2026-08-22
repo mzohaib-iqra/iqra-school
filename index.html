@@ -1051,23 +1051,163 @@ function renderBrdPanel(cls){
         <div style="font-size:22px;margin-bottom:2px">${medals[i]}</div>
         <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:700;margin-bottom:2px">${i===0?'1st':i===1?'2nd':'3rd'} Position</div>
         <div style="font-size:13px;font-weight:700;">${esc(r.name)}</div>
+        ${r.rollNo?`<div style="font-size:10px;color:var(--muted)">Roll# ${esc(r.rollNo)}</div>`:''}
         <div style="font-size:10px;color:var(--muted)">S/O ${esc(r.father||'')}</div>
         <div style="font-size:20px;font-weight:900;color:${col};margin-top:3px">${p}%</div>
-      </div>`}).join('')}
+      </div>`;}).join('')}
     </div>`;
   }
-  document.getElementById('brdPanel').innerHTML=podHtml+`<div class="card"><div class="card-head"><div class="card-title">Class ${cls} · Board Results (${s.length} students)</div><button class="print-btn" onclick="window.print()">🖨️ Print</button><button class="pdf-btn" onclick="downloadBoardsPDF()">⬇️ PDF</button></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th></tr></thead>
-    <tbody>${s.map((r,i)=>`<tr><td><input class="ainp2" value="${esc(r.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td><td><input class="ainp2" value="${esc(r.father||'')}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:120px;"></td><td><input class="ainp2" type="number" value="${r.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td><td><input class="ainp2" type="number" value="${r.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td><td><input class="ainp2" type="number" value="${r.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:65px;"></td><td style="font-weight:700;color:#22c55e">${r.total?((r.obtained/r.total)*100).toFixed(1)+'%':'—'}</td><td><button class="btn-sm btn-del" onclick="delBrd('${cls}',${i})">✕</button></td></tr>`).join('')}
-    </tbody></table></div>
-    <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;">
-      <input class="ainp2" id="bn-${cls}" placeholder="Student Name" style="flex:2;min-width:110px;"><input class="ainp2" id="bf-${cls}" placeholder="Father" style="flex:2;min-width:110px;"><input class="ainp2" id="by-${cls}" type="number" placeholder="Year" style="width:65px;" value="${new Date().getFullYear()}"><input class="ainp2" id="bt-${cls}" type="number" placeholder="Total" style="width:60px;"><input class="ainp2" id="bo-${cls}" type="number" placeholder="Obtained" style="width:70px;"><button class="addbtn2" onclick="addBrd('${cls}')">+ Add</button>
-    </div></div>`;
+
+  // Excel import area
+  const importHtml=`<div style="background:rgba(59,130,246,.06);border:1px dashed rgba(59,130,246,.35);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:20px;">📥</span>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:12px;font-weight:700;color:#3b82f6;">Import from Excel / CSV</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;">Required columns: <b>Name, RollNo, Father, Year, Total, Obtained</b> (header row required)</div>
+    </div>
+    <label style="padding:5px 14px;border-radius:6px;background:#3b82f6;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">
+      📂 Choose File
+      <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importBrdExcel(this,'${cls}')">
+    </label>
+    <a href="#" onclick="downloadBrdTemplate('${cls}');return false;" style="font-size:11px;color:#3b82f6;text-decoration:underline;">⬇ Download Template</a>
+  </div>`;
+
+  document.getElementById('brdPanel').innerHTML=podHtml+importHtml+`<div class="card"><div class="card-head">
+    <div class="card-title">Class ${cls} · Board Results (${s.length} students)</div>
+    <div style="display:flex;gap:6px;">
+      <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      <button class="pdf-btn" onclick="downloadBoardsPDF()">⬇️ PDF</button>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr>
+    <th>#</th><th>Student Name</th><th>Board Roll No</th><th>Father</th><th>Year</th><th>Total</th><th>Obtained</th><th>%</th><th></th>
+  </tr></thead>
+  <tbody>${s.map((r,i)=>`<tr>
+    <td style="color:var(--muted);font-size:11px">${i+1}</td>
+    <td><input class="ainp2" value="${esc(r.name)}" onchange="updBrd('${cls}',${i},'name',this.value)" style="width:130px;"></td>
+    <td><input class="ainp2" value="${esc(r.rollNo||'')}" onchange="updBrd('${cls}',${i},'rollNo',this.value)" style="width:90px;" placeholder="e.g. 123456"></td>
+    <td><input class="ainp2" value="${esc(r.father||'')}" onchange="updBrd('${cls}',${i},'father',this.value)" style="width:110px;"></td>
+    <td><input class="ainp2" type="number" value="${r.year||''}" onchange="updBrd('${cls}',${i},'year',this.value)" style="width:62px;"></td>
+    <td><input class="ainp2" type="number" value="${r.total||''}" onchange="updBrd('${cls}',${i},'total',parseFloat(this.value))" style="width:60px;"></td>
+    <td><input class="ainp2" type="number" value="${r.obtained||''}" onchange="updBrd('${cls}',${i},'obtained',parseFloat(this.value))" style="width:65px;"></td>
+    <td style="font-weight:700;color:#22c55e">${r.total?((r.obtained/r.total)*100).toFixed(1)+'%':'—'}</td>
+    <td><button class="btn-sm btn-del" onclick="delBrd('${cls}',${i})">✕</button></td>
+  </tr>`).join('')}
+  </tbody></table></div>
+  <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+    <span style="font-size:11px;font-weight:700;color:var(--muted);width:100%;margin-bottom:3px;">➕ Add Student Manually</span>
+    <input class="ainp2" id="bn-${cls}"    placeholder="Student Name *" style="flex:2;min-width:110px;">
+    <input class="ainp2" id="broll-${cls}" placeholder="Board Roll No"  style="width:100px;">
+    <input class="ainp2" id="bf-${cls}"    placeholder="Father Name"    style="flex:2;min-width:100px;">
+    <input class="ainp2" id="by-${cls}" type="number" placeholder="Year" style="width:65px;" value="${new Date().getFullYear()}">
+    <input class="ainp2" id="bt-${cls}" type="number" placeholder="Total Marks" style="width:75px;">
+    <input class="ainp2" id="bo-${cls}" type="number" placeholder="Obtained"    style="width:75px;">
+    <button class="addbtn2" onclick="addBrd('${cls}')">+ Add</button>
+  </div></div>`;
 }
 function saveBrd(cls){const s=getN(DB,['boards','c'+cls])||[];markDirty('boards/c'+cls,s.length?s:null);renderBrdPanel(cls);}
-function addBrd(cls){const name=document.getElementById('bn-'+cls).value.trim();if(!name)return;const s=getN(DB,['boards','c'+cls])||[];s.push({name,father:document.getElementById('bf-'+cls).value.trim(),year:parseInt(document.getElementById('by-'+cls).value)||new Date().getFullYear(),total:parseFloat(document.getElementById('bt-'+cls).value)||0,obtained:parseFloat(document.getElementById('bo-'+cls).value)||0});setN(DB,['boards','c'+cls],s);saveBrd(cls);}
+function addBrd(cls){
+  const name=document.getElementById('bn-'+cls).value.trim();
+  if(!name)return;
+  const s=getN(DB,['boards','c'+cls])||[];
+  s.push({
+    name,
+    rollNo:document.getElementById('broll-'+cls).value.trim(),
+    father:document.getElementById('bf-'+cls).value.trim(),
+    year:parseInt(document.getElementById('by-'+cls).value)||new Date().getFullYear(),
+    total:parseFloat(document.getElementById('bt-'+cls).value)||0,
+    obtained:parseFloat(document.getElementById('bo-'+cls).value)||0
+  });
+  setN(DB,['boards','c'+cls],s);
+  saveBrd(cls);
+  // Clear inputs
+  ['bn-','broll-','bf-','bt-','bo-'].forEach(p=>{const el=document.getElementById(p+cls);if(el)el.value='';});
+  document.getElementById('by-'+cls).value=new Date().getFullYear();
+}
 function updBrd(cls,i,f,v){const s=getN(DB,['boards','c'+cls])||[];if(s[i])s[i][f]=isNaN(parseFloat(v))?v:parseFloat(v)||v;setN(DB,['boards','c'+cls],s);markDirty('boards/c'+cls,s.length?s:null);}
 function delBrd(cls,i){const s=getN(DB,['boards','c'+cls])||[];s.splice(i,1);setN(DB,['boards','c'+cls],s);saveBrd(cls);}
+
+// ── BOARDS EXCEL IMPORT ───────────────────────────────────────────
+function importBrdExcel(input,cls){
+  const file=input.files[0];if(!file)return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+
+  if(ext==='csv'){
+    reader.onload=e=>{
+      const rows=e.target.result.split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      processBrdRows(rows,cls);
+    };
+    reader.readAsText(file);
+  } else {
+    // xlsx/xls — use SheetJS if available, else guide user to CSV
+    if(typeof XLSX!=='undefined'){
+      reader.onload=e=>{
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        processBrdRows(rows,cls);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Lazy-load SheetJS then retry
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=()=>{
+        reader.onload=e=>{
+          const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+          processBrdRows(rows,cls);
+        };
+        reader.readAsArrayBuffer(file);
+      };
+      document.head.appendChild(s);
+    }
+  }
+  input.value='';
+}
+
+function processBrdRows(rows,cls){
+  if(rows.length<2){showToast('File is empty or has no data rows','err');return;}
+  // Find column indices from header row (case-insensitive)
+  const hdr=rows[0].map(h=>String(h).toLowerCase().trim());
+  const col=name=>hdr.findIndex(h=>h.includes(name));
+  const iName=col('name'); const iRoll=col('roll'); const iFather=col('father');
+  const iYear=col('year'); const iTotal=col('total'); const iObt=col('obtain')||col('marks')||col('obt');
+
+  if(iName<0||iTotal<0||iObt<0){
+    showToast('Missing required columns: Name, Total, Obtained','err');return;
+  }
+  const existing=getN(DB,['boards','c'+cls])||[];
+  let added=0,skipped=0;
+  rows.slice(1).forEach(row=>{
+    const name=String(row[iName]||'').trim();
+    if(!name){skipped++;return;}
+    const total=parseFloat(row[iTotal])||0;
+    const obtained=parseFloat(row[iObt])||0;
+    // Skip duplicate names in same class
+    if(existing.some(e=>e.name.toLowerCase()===name.toLowerCase())){skipped++;return;}
+    existing.push({
+      name,
+      rollNo:iRoll>=0?String(row[iRoll]||'').trim():'',
+      father:iFather>=0?String(row[iFather]||'').trim():'',
+      year:iYear>=0?(parseInt(row[iYear])||new Date().getFullYear()):new Date().getFullYear(),
+      total,obtained
+    });
+    added++;
+  });
+  setN(DB,['boards','c'+cls],existing);
+  saveBrd(cls);
+  showToast(`✅ Imported ${added} students${skipped?` (${skipped} skipped)`:''}` ,'ok');
+}
+
+function downloadBrdTemplate(cls){
+  const csvContent='Name,RollNo,Father,Year,Total,Obtained\nAhmed Ali,123456,Muhammad Ali,2024,1100,987\nSara Khan,123457,Waqar Khan,2024,1100,1045\n';
+  const blob=new Blob([csvContent],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`board-import-template-class${cls}.csv`;a.click();
+}
 
 // ══════════════════════════════════════════════
 //  WEEKLY TESTS
@@ -1274,6 +1414,25 @@ function renderSettings(){
         </div>
       </div>
     </div>
+    <!-- BOARD RESULTS VISIBILITY -->
+    <div class="settings-card">
+      <div class="settings-card-hd">🏆 Board Results — Portal Visibility</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>What parents see</label>
+          <select class="s-inp" id="ss-brd-vis" style="width:180px;">
+            <option value="all"   ${(getN(DB,['settings','portal','boardResults'])||'all')==='all'  ?'selected':''}>Show all students</option>
+            <option value="top5"  ${(getN(DB,['settings','portal','boardResults'])||'all')==='top5' ?'selected':''}>Top 5 students only</option>
+            <option value="top3"  ${(getN(DB,['settings','portal','boardResults'])||'all')==='top3' ?'selected':''}>Top 3 (podium only)</option>
+            <option value="hide"  ${(getN(DB,['settings','portal','boardResults'])||'all')==='hide' ?'selected':''}>Hidden (not shown)</option>
+          </select>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">
+          <b>Show all</b> — full ranked table visible to everyone.<br>
+          <b>Top 5 / Top 3</b> — only highest scorers shown; full data stays in admin.<br>
+          <b>Hidden</b> — Boards tab still exists but shows "Results not published yet".
+        </p>
+      </div>
+    </div>
     <!-- PLANNER YEAR -->
     <div class="settings-card">
       <div class="settings-card-hd">📅 Planner Year Range</div>
@@ -1435,7 +1594,8 @@ function saveSettings(){
     fontSize:document.getElementById('ss-fs')?.value||'md',
     fontFamily:document.getElementById('ss-ff')?.value||'DM Sans',
     accentColor:document.getElementById('ss-ac')?.value||'#6366f1',
-    boldHeaders:document.getElementById('ss-bh')?.checked!==false
+    boldHeaders:document.getElementById('ss-bh')?.checked!==false,
+    boardResults:document.getElementById('ss-brd-vis')?.value||'all'
   };
   // Planner year
   const plannerYear={
