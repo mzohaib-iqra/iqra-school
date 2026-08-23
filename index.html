@@ -60,7 +60,7 @@
   <div class="sdot off" id="sdot"></div>
   <span id="sstat">Connecting…</span>
   <div class="teacher-chip" id="tchip" style="display:none">👤 <span id="tname"></span><span style="margin-left:6px;color:var(--muted);cursor:pointer" onclick="doLogout()">Sign out</span></div>
-  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled title="Changes auto-save within 1 second. Click to force-save if offline.">💾 Force Save</button>
+  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled>💾 Save Changes</button>
 </div>
 
 <!-- MARKS -->
@@ -468,7 +468,7 @@ function initFirebase(){
         db.ref('iqra').once('value',snap=>{
           DB=snap.val()||{};fbReady=true;applySettings();renderAll();
           if(currentTeacher) setTimeout(showTOTMLoginPopup,700);
-          attachSurgicalListeners();
+          attachLiveListener();
         });
       })
       .catch(e=>{
@@ -506,128 +506,85 @@ function applySettings(){
 //  SAVE
 // ══════════════════════════════════════════════
 // ══════════════════════════════════════════════
-//  SURGICAL REAL-TIME LISTENERS
-//  Each path updates ONLY its slice of DB and
-//  re-renders ONLY the affected section.
-//  Paths with pending local edits are skipped
-//  so in-progress work is never overwritten.
+//  REAL-TIME SYNC — smart live listener
+//  Uses one on('value') on the full DB, but
+//  re-renders ONLY the active section and
+//  preserves every active <input> / <textarea>
+//  so no one's typing is interrupted.
 // ══════════════════════════════════════════════
-const SURGICAL_PATHS=[
-  ['settings',    ['settings'],       ()=>{ applySettings(); if(currentSec==='settings') renderSettings(); }],
-  ['students',    ['students'],       ()=>{ if(currentSec==='students') renderStudentsPanels(); }],
-  ['marks/scores',['marks','scores'], ()=>{ if(currentSec==='marks') renderMarksPanels(); }],
-  ['marks/notes', ['marks','notes'],  ()=>{ if(currentSec==='marks') renderMarksPanels(); }],
-  ['planner',     ['planner'],        ()=>{ if(currentSec==='planner') renderPlannerPanels(); }],
-  ['timetable',   ['timetable'],      ()=>{ if(currentSec==='timetable') renderPeriodsPanel(); }],
-  ['boards',      ['boards'],         ()=>{ if(currentSec==='boards') { const ab=document.querySelector('#brdTabs .ctab.active'); if(ab) renderBrdPanel(ab.dataset.cls||'9'); } }],
-  ['weekly',      ['weekly'],         ()=>{ if(currentSec==='weekly') { const aw=document.querySelector('#wks-matric.active,#wks-fsc.active'); if(aw) renderWkPanel(aw.id.replace('wks-','')); } }],
-];
-let _surgListenersOn=false;
-function attachSurgicalListeners(){
-  if(_surgListenersOn||!db) return;
-  _surgListenersOn=true;
+function attachLiveListener(){
+  if(!db) return;
+  db.ref('iqra').on('value', snap=>{
+    const incoming = snap.val()||{};
 
-  // ── Standard path listeners ───────────────────────────────────────
-  SURGICAL_PATHS.forEach(([fbPath,dbKeys,rerender])=>{
-    db.ref('iqra/'+fbPath).on('value',snap=>{
-      const hasPending=Object.keys(pendingSaves).some(p=>p===fbPath||p.startsWith(fbPath+'/'));
-      if(hasPending) return;
-      const val=snap.val();
-      if(dbKeys.length===1){ DB[dbKeys[0]]=val; }
-      else { if(!DB[dbKeys[0]])DB[dbKeys[0]]={};DB[dbKeys[0]][dbKeys[1]]=val; }
-      try{ rerender(); }catch(e){ console.warn('Surgical rerender:',fbPath,e); }
+    // 1. Save every focused / non-empty input value before re-rendering
+    const saved = {};
+    document.querySelectorAll('input,textarea,select').forEach(el=>{
+      if(el.id && (el === document.activeElement || el.value)){
+        saved[el.id] = {v: el.value, sel: el.selectionStart};
+      }
+    });
+
+    // 2. Update DB fully
+    DB = incoming;
+    fbReady = true;
+    applySettings();
+
+    // 3. Re-render ONLY the currently visible section
+    try{
+      switch(currentSec){
+        case 'marks':        renderMarksPanels();        break;
+        case 'students':     renderStudentsPanels();     break;
+        case 'planner':      renderPlannerPanels();      break;
+        case 'diary':        rerenderDiarySection();     break;
+        case 'timetable':    renderPeriodsPanel();       break;
+        case 'report':       /* report is generated on-demand */ break;
+        case 'planner-report': /* generated on-demand */  break;
+        case 'boards':       rerenderBoardsSection();    break;
+        case 'weekly':       rerenderWeeklySection();    break;
+        case 'settings':     renderSettings();           break;
+        case 'totm':         /* generated on-demand */   break;
+        default:             break;
+      }
+    }catch(e){ console.warn('Live rerender error:',e); }
+
+    // 4. Restore every saved input value and cursor position
+    Object.entries(saved).forEach(([id,{v,sel}])=>{
+      const el = document.getElementById(id);
+      if(el && el.value !== v){
+        el.value = v;
+        try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(e){}
+      }
     });
   });
-
-  // ── Diary: child-level listeners ─────────────────────────────────
-  // child_added / child_changed fire only for the specific date node that changed.
-  // Each HW item has its own Firebase push-key — two teachers writing simultaneously
-  // to the same subject on the same date produce two separate keys, never a conflict.
-  attachDiaryListeners();
 }
 
-// Re-attached whenever class tabs change (new classes loaded).
-const _diaryListenerRefs=[];
-function attachDiaryListeners(){
-  if(!db) return;
-  _diaryListenerRefs.forEach(r=>r.off());
-  _diaryListenerRefs.length=0;
-
+// Section-safe re-render helpers (only re-render what's visible)
+function rerenderDiarySection(){
+  // Re-render every class diary panel that's currently mounted
   getClassIds().forEach(cls=>{
-    const clsRef=db.ref('iqra/diary/c'+cls);
-
-    function mergeDate(dk,dateData){
-      if(!DB.diary) DB.diary={};
-      if(!DB.diary['c'+cls]) DB.diary['c'+cls]={};
-      if(!DB.diary['c'+cls][dk]) DB.diary['c'+cls][dk]={};
-      Object.entries(dateData||{}).forEach(([sk,hwObj])=>{
-        if(typeof hwObj==='object'&&hwObj!==null){
-          if(!DB.diary['c'+cls][dk][sk]) DB.diary['c'+cls][dk][sk]={};
-          // Merge remote keys in
-          Object.assign(DB.diary['c'+cls][dk][sk], hwObj);
-          // Remove keys deleted remotely (but keep our own _tmp_ optimistic keys)
-          const remoteKeys=new Set(Object.keys(hwObj));
-          Object.keys(DB.diary['c'+cls][dk][sk]).forEach(k=>{
-            if(!remoteKeys.has(k)&&!k.startsWith('_tmp_')&&!k.startsWith('_local_'))
-              delete DB.diary['c'+cls][dk][sk][k];
-          });
-        } else {
-          DB.diary['c'+cls][dk][sk]=hwObj;
-        }
-      });
-      if(currentSec==='diary') _throttledDiaryRender(cls);
-    }
-
-    const fnAdded   = clsRef.on('child_added',   s=>mergeDate(s.key,s.val()));
-    const fnChanged = clsRef.on('child_changed',  s=>mergeDate(s.key,s.val()));
-    _diaryListenerRefs.push({off:()=>{
-      clsRef.off('child_added',fnAdded);
-      clsRef.off('child_changed',fnChanged);
-    }});
+    if(document.getElementById('dg-'+cls)) renderDiaryDay(cls);
   });
 }
-
-// Throttle to max one re-render per class per 400ms — prevents flicker
-// when multiple keys arrive in quick succession (e.g. import).
-const _diaryRenderTimers={};
-function _throttledDiaryRender(cls){
-  clearTimeout(_diaryRenderTimers[cls]);
-  _diaryRenderTimers[cls]=setTimeout(()=>{
-    // Skip if we have a pending optimistic write — our local state is already correct
-    const hasPending=Object.keys(pendingSaves).some(p=>p.startsWith('diary/c'+cls+'/'));
-    if(!hasPending) try{ renderDiaryDay(cls); }catch(e){}
-  },400);
+function rerenderBoardsSection(){
+  const ab=document.querySelector('[id^="brdTabs"] .ctab.active,[id^="brdTabs"] button.active');
+  const cls=ab?.dataset?.cls||ab?.getAttribute('onclick')?.match(/\d+/)?.[0];
+  if(cls) try{ renderBrdPanel(cls); }catch(e){}
+}
+function rerenderWeeklySection(){
+  const aw=document.querySelector('.wk-sec.active');
+  if(aw) try{ renderWkPanel(aw.id?.replace('wks-','')||'matric'); }catch(e){}
 }
 
 // ══════════════════════════════════════════════
-//  AUTO-SAVE (path-level, debounced 900ms)
-//  Each change writes only its own Firebase path.
-//  Two teachers editing different paths never
-//  overwrite each other.
+//  SAVE
 // ══════════════════════════════════════════════
-const _autoSaveTimers={};
-const AUTO_SAVE_MS=900;
 function markDirty(path,value){
   pendingSaves[path]=value;
   document.getElementById('saveBtn').disabled=false;
-  clearTimeout(_autoSaveTimers[path]);
-  _autoSaveTimers[path]=setTimeout(()=>_autoSavePath(path,value),AUTO_SAVE_MS);
 }
-function _autoSavePath(path,value){
-  if(!db||!fbReady) return;
-  setStat('saving','✏️ Auto-saving…');
-  db.ref('iqra/'+path).set(value===undefined?null:value)
-    .then(()=>{
-      delete pendingSaves[path]; delete _autoSaveTimers[path];
-      if(!Object.keys(pendingSaves).length){
-        document.getElementById('saveBtn').disabled=true;
-        setStat('live','🟢 Live');
-      }
-    })
-    .catch(e=>setStat('off','❌ '+e.message));
-}
+
 function doSave(){
-  // Manual flush — catches anything not yet auto-saved (e.g. offline edits)
   const btn=document.getElementById('saveBtn');
   if(!Object.keys(pendingSaves).length)return;
   btn.disabled=true;btn.textContent='💾 Saving…';setStat('saving','Saving…');
@@ -636,7 +593,6 @@ function doSave(){
     db.ref().update(u)
       .then(()=>{
         pendingSaves={};
-        Object.keys(_autoSaveTimers).forEach(k=>{clearTimeout(_autoSaveTimers[k]);delete _autoSaveTimers[k];});
         setStat('live','🟢 Live');showToast('☁️ Saved!','ok');
         btn.textContent='💾 Save Changes';btn.disabled=true;
       })
@@ -1009,70 +965,32 @@ function renderDiaryDay(cls){
   const grid=document.getElementById('dg-'+cls);if(!grid)return;
   grid.innerHTML='';
   getSubs(cls).forEach(sub=>{
-    const sk=fbKey(sub);
-    // HW stored as keyed object {pushKey:'text'} — sort by key for stable order
-    const hwRaw=getN(DB,['diary','c'+cls,dk,sk])||{};
-    const hwEntries=Array.isArray(hwRaw)
-      ? hwRaw.map((t,i)=>['_legacy_'+i,t])          // backward-compat with old array data
-      : Object.entries(hwRaw).sort(([a],[b])=>a<b?-1:1);
+    const sk=fbKey(sub),hws=getN(DB,['diary','c'+cls,dk,sk])||[];
     const periods=getN(DB,['timetable','c'+cls,sk])||[];
     const teacherInfo=periods.length?periods.map(p=>`P${p.period}: ${p.teacher}`).join(', '):'';
     const card=document.createElement('div');card.className='diary-subj-card';
     card.innerHTML=`<div class="diary-subj-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:400">${teacherInfo}</span></div>
-      <div class="diary-hw-list">${hwEntries.map(([hwKey,h])=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}','${hwKey}')">×</span>`:''}</div>`).join('')}${!hwEntries.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
+      <div class="diary-hw-list">${hws.map((h,i)=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}',${i})">×</span>`:''}</div>`).join('')}${!hws.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
       ${editable?`<div class="diary-add-row"><input class="diary-inp" id="di-${cls}-${sk}" placeholder="Add homework…" onkeydown="if(event.key==='Enter')addHw(${cls},'${sk}','${dk}')"><button class="diary-add-btn" onclick="addHw(${cls},'${sk}','${dk}')">+</button></div>`:''}`;
     grid.appendChild(card);
   });
 }
-// ── DIARY WRITE FUNCTIONS ─────────────────────────────────────────────────────
-// Each homework item gets its own Firebase-generated key via .push().
-// This means two teachers adding to the same subject-date simultaneously
-// NEVER overwrite each other — writes are fully atomic and non-conflicting.
-
 function addHw(cls,sk,dk){
   const inp=document.getElementById(`di-${cls}-${sk}`);
   const txt=inp.value.trim();if(!txt)return;
+  const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+  hws.push(txt);
+  setN(DB,['diary','c'+cls,dk,sk],hws);
+  markDirty(`diary/c${cls}/${dk}/${sk}`,hws);
   inp.value='';
-  if(db&&fbReady){
-    // Push creates a unique child key — completely safe for concurrent writers
-    const ref=db.ref(`iqra/diary/c${cls}/${dk}/${sk}`);
-    ref.push(txt)
-      .then(()=>{ /* listener fires and re-renders automatically */ })
-      .catch(e=>showToast('Save failed: '+e.message,'err'));
-    // Optimistic local update so the UI feels instant
-    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
-    const tmpKey='_tmp_'+Date.now();
-    hws[tmpKey]=txt;
-    setN(DB,['diary','c'+cls,dk,sk],hws);
-    renderDiaryDay(cls);
-  } else {
-    // Offline fallback — use array-based local storage
-    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
-    hws['_local_'+Date.now()]=txt;
-    setN(DB,['diary','c'+cls,dk,sk],hws);
-    markDirty(`diary/c${cls}/${dk}/${sk}`,hws);
-    renderDiaryDay(cls);
-  }
+  renderDiaryDay(cls);
 }
-
-function delHw(cls,sk,dk,hwKey){
-  if(db&&fbReady){
-    // Remove only this specific key — never touches other teachers' entries
-    db.ref(`iqra/diary/c${cls}/${dk}/${sk}/${hwKey}`).remove()
-      .catch(e=>showToast('Delete failed: '+e.message,'err'));
-    // Optimistic local removal
-    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
-    delete hws[hwKey];
-    setN(DB,['diary','c'+cls,dk,sk],Object.keys(hws).length?hws:null);
-    renderDiaryDay(cls);
-  } else {
-    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
-    delete hws[hwKey];
-    const newVal=Object.keys(hws).length?hws:null;
-    setN(DB,['diary','c'+cls,dk,sk],newVal);
-    markDirty(`diary/c${cls}/${dk}/${sk}`,newVal);
-    renderDiaryDay(cls);
-  }
+function delHw(cls,sk,dk,i){
+  const hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+  hws.splice(i,1);
+  setN(DB,['diary','c'+cls,dk,sk],hws);
+  markDirty(`diary/c${cls}/${dk}/${sk}`,hws.length?hws:null);
+  renderDiaryDay(cls);
 }
 
 // ══════════════════════════════════════════════
@@ -2972,12 +2890,9 @@ function scanDiaryDay(teacherSubjectMap,diaryRoot,dateKey){
     const dayData=classData?.[dateKey];
     subjectKeys.forEach(sk=>{
       totalSubjects++;
-      const hwRaw=dayData?.[sk];
-      // Support both legacy array format and new keyed-object format
-      let count=0;
-      if(Array.isArray(hwRaw)) count=hwRaw.length;
-      else if(hwRaw&&typeof hwRaw==='object') count=Object.keys(hwRaw).filter(k=>!k.startsWith('_tmp_')).length;
-      if(count>0){ submitted++; hwCount+=count; }
+      const hwArr=dayData?.[sk];
+      const count=Array.isArray(hwArr)?hwArr.length:0;
+      if(count>0){submitted++;hwCount+=count;}
     });
   });
   return{totalSubjects,submitted,hwCount,hasEntry:submitted>0};
