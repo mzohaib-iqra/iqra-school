@@ -472,8 +472,22 @@ function loadResults(cls,termId){
   if(!cls){cont.innerHTML='<div class="no-data"><h3>Select a class above</h3></div>';tabsEl.style.display='none';return;}
   tabsEl.style.display='flex';
   tabsEl.innerHTML=TERMS.map(t=>`<button class="ttab${t.id===termId?' active':''}" onclick="loadResults('${cls}','${t.id}')">${t.label}</button>`).join('');
+
+  // Read visibility setting
+  const vis=getN(DB,['settings','portal','termResults'])||'all';
+
+  if(vis==='hide'){
+    cont.innerHTML=`<div class="no-data" style="padding:40px 20px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+      <h3 style="margin-bottom:6px;">Results Not Published Yet</h3>
+      <p style="color:var(--muted);font-size:13px;">Term results have not been released yet.<br>Please check back after the result day.</p>
+    </div>`;
+    return;
+  }
+
   const students=getN(DB,['students','c'+cls])||[],total=getClassTMFromDB(cls),subs=getSubs(cls),term=TERMS.find(t=>t.id===termId);
   if(!students.length){cont.innerHTML='<div class="no-data"><h3>No students listed</h3></div>';return;}
+
   const rows=students.map((stu,si)=>{
     const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
     let totObt=0,maxObt=0;
@@ -481,11 +495,19 @@ function loadResults(cls,termId){
     const pctV=maxObt?(totObt/maxObt*100):0;
     return{...stu,si,totObt,pctV,res};
   }).sort((a,b)=>b.pctV-a.pctV);
+
   const medals=['🥇','🥈','🥉'];
-  const top5=rows.slice(0,5);
   const podColors=[['#f59e0b','#fffbeb'],['#9ca3af','#f9fafb'],['#d97706','#fefce8'],['#6366f1','#eef2ff'],['#10b981','#ecfdf5']];
+
+  // Determine limit
+  const limit=vis==='top10'?10:vis==='top5'?5:vis==='top3'?3:rows.length;
+  const visible=rows.slice(0,limit);
+  const hiddenCount=rows.length-visible.length;
+
+  // Podium — top 3 from visible set (or all if top3 mode)
+  const podRows=visible.slice(0,3);
   let podHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px;">
-    ${top5.map((s,i)=>{const g=grade(s.pctV);const[col,bg]=podColors[i]||podColors[4];return`<div style="border:2px solid ${col};border-radius:12px;padding:14px;background:${bg};text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+    ${podRows.map((s,i)=>{const g=grade(s.pctV);const[col,bg]=podColors[i]||podColors[4];return`<div style="border:2px solid ${col};border-radius:12px;padding:14px;background:${bg};text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06);">
       <div style="font-size:24px;margin-bottom:3px">${medals[i]||'#'+(i+1)}</div>
       <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px">${i===0?'1st':i===1?'2nd':i===2?'3rd':(i+1)+'th'} Position</div>
       <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(s.name)}</div>
@@ -493,24 +515,33 @@ function loadResults(cls,termId){
       <div style="font-size:22px;font-weight:900;color:${col};margin-top:5px">${s.pctV?s.pctV.toFixed(1)+'%':'—'}</div>
     </div>`}).join('')}
   </div>`;
-  cont.innerHTML=podHtml+`<div class="card"><div class="card-head">
-    <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${term?.label||termId}</div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div style="font-size:11px;color:var(--muted)">${students.length} students</div>
-      <button onclick="window.print()" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">🖨️ Print</button>
+
+  // Full table — skip for top3 mode
+  let tableHtml='';
+  if(vis!=='top3'){
+    tableHtml=`<div class="card"><div class="card-head">
+      <div class="card-title">${CLASSES[cls]?.name||'Class '+cls} · ${term?.label||termId}${vis!=='all'?' (Top '+limit+')':''}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:11px;color:var(--muted)">${visible.length} student${visible.length!==1?'s':''} shown</div>
+        <button onclick="window.print()" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">🖨️ Print</button>
+      </div>
     </div>
-  </div>
-  <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rank</th><th>Student</th><th>Father</th>
-    ${subs.map(s=>`<th style="font-size:9px">${s}</th>`).join('')}
-    <th>Total</th><th>%</th><th>Grade</th></tr></thead>
-  <tbody>${rows.map((s,ri)=>{const g=grade(s.pctV);return`<tr>
-    <td style="font-size:${ri<3?'16':'12'}px">${medals[ri]||ri+1}</td>
-    <td style="font-weight:700">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td>
-    ${subs.map(sub=>{const v=s.res[fbKey(sub)];return`<td>${v!==undefined?v:'—'}</td>`;}).join('')}
-    <td style="font-weight:700">${s.totObt||'—'}</td>
-    <td style="font-weight:700;color:${g.c}">${s.pctV?s.pctV.toFixed(1)+'%':'—'}</td>
-    <td><span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span></td>
-  </tr>`;}).join('')}</tbody></table></div></div>`;
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rank</th><th>Student</th><th>Father</th>
+      ${subs.map(s=>`<th style="font-size:9px">${s}</th>`).join('')}
+      <th>Total</th><th>%</th><th>Grade</th></tr></thead>
+    <tbody>${visible.map((s,ri)=>{const g=grade(s.pctV);return`<tr>
+      <td style="font-size:${ri<3?'16':'12'}px">${medals[ri]||ri+1}</td>
+      <td style="font-weight:700">${esc(s.name)}</td><td style="color:var(--muted)">${esc(s.father||'')}</td>
+      ${subs.map(sub=>{const v=s.res[fbKey(sub)];return`<td>${v!==undefined?v:'—'}</td>`;}).join('')}
+      <td style="font-weight:700">${s.totObt||'—'}</td>
+      <td style="font-weight:700;color:${g.c}">${s.pctV?s.pctV.toFixed(1)+'%':'—'}</td>
+      <td><span class="gbdg" style="background:${g.c}18;color:${g.c}">${g.l}</span></td>
+    </tr>`;}).join('')}</tbody></table></div>
+    ${hiddenCount>0?`<div style="padding:10px 16px;text-align:center;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">Showing top ${visible.length} of ${rows.length} students</div>`:''}
+    </div>`;
+  }
+
+  cont.innerHTML=podHtml+tableHtml;
 }
 
 // ── DAILY DIARY ───────────────────────────────────
@@ -586,7 +617,7 @@ function renderBrdContent(cls){
   const sorted=[...students].sort((a,b)=>(b.obtained/b.total)-(a.obtained/a.total));
 
   // Determine how many rows to show
-  const limit = vis==='top5'?5 : vis==='top3'?3 : sorted.length;
+  const limit = vis==='top10'?10 : vis==='top5'?5 : vis==='top3'?3 : sorted.length;
   const visible=sorted.slice(0,limit);
   const hiddenCount=sorted.length-visible.length;
 

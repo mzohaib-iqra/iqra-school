@@ -60,7 +60,7 @@
   <div class="sdot off" id="sdot"></div>
   <span id="sstat">Connecting…</span>
   <div class="teacher-chip" id="tchip" style="display:none">👤 <span id="tname"></span><span style="margin-left:6px;color:var(--muted);cursor:pointer" onclick="doLogout()">Sign out</span></div>
-  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled>💾 Save Changes</button>
+  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled title="Changes auto-save within 1 second. Click to force-save if offline.">💾 Force Save</button>
 </div>
 
 <!-- MARKS -->
@@ -395,7 +395,7 @@
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let db, DB={}, fbReady=false, currentTeacher=null, pendingSaves={};
+let db, DB={}, fbReady=false, currentTeacher=null, pendingSaves={}, currentSec='marks';
 
 // ══════════════════════════════════════════════
 //  AUTH
@@ -410,6 +410,11 @@ function afterLogin(){
   document.getElementById('loginOverlay').style.display='none';
   document.getElementById('tchip').style.display='flex';
   document.getElementById('tname').textContent=currentTeacher.name;
+  // Apply class access overrides saved by admin in Settings → Teacher Accounts
+  const savedAccess=getN(DB,['settings','teacherAccess'])||{};
+  if(savedAccess[currentTeacher.username]){
+    currentTeacher.classes=savedAccess[currentTeacher.username].map(Number);
+  }
   if(currentTeacher.role==='admin'){
     document.querySelectorAll('.admin-only').forEach(e=>e.style.display='');
     document.querySelectorAll('.teacher-visible').forEach(e=>e.style.display='');
@@ -460,9 +465,10 @@ function initFirebase(){
         db.ref('.info/connected').on('value',s=>{
           setStat(s.val()?'live':'off',s.val()?'🟢 Live – secured':'🔴 Offline');
         });
-        db.ref('iqra').on('value',s=>{
-          DB=s.val()||{};fbReady=true;applySettings();renderAll();
+        db.ref('iqra').once('value',snap=>{
+          DB=snap.val()||{};fbReady=true;applySettings();renderAll();
           if(currentTeacher) setTimeout(showTOTMLoginPopup,700);
+          attachSurgicalListeners();
         });
       })
       .catch(e=>{
@@ -499,17 +505,143 @@ function applySettings(){
 // ══════════════════════════════════════════════
 //  SAVE
 // ══════════════════════════════════════════════
-function markDirty(path,value){pendingSaves[path]=value;document.getElementById('saveBtn').disabled=false;}
+// ══════════════════════════════════════════════
+//  SURGICAL REAL-TIME LISTENERS
+//  Each path updates ONLY its slice of DB and
+//  re-renders ONLY the affected section.
+//  Paths with pending local edits are skipped
+//  so in-progress work is never overwritten.
+// ══════════════════════════════════════════════
+const SURGICAL_PATHS=[
+  ['settings',    ['settings'],       ()=>{ applySettings(); if(currentSec==='settings') renderSettings(); }],
+  ['students',    ['students'],       ()=>{ if(currentSec==='students') renderStudentsPanels(); }],
+  ['marks/scores',['marks','scores'], ()=>{ if(currentSec==='marks') renderMarksPanels(); }],
+  ['marks/notes', ['marks','notes'],  ()=>{ if(currentSec==='marks') renderMarksPanels(); }],
+  ['planner',     ['planner'],        ()=>{ if(currentSec==='planner') renderPlannerPanels(); }],
+  ['timetable',   ['timetable'],      ()=>{ if(currentSec==='timetable') renderPeriodsPanel(); }],
+  ['boards',      ['boards'],         ()=>{ if(currentSec==='boards') { const ab=document.querySelector('#brdTabs .ctab.active'); if(ab) renderBrdPanel(ab.dataset.cls||'9'); } }],
+  ['weekly',      ['weekly'],         ()=>{ if(currentSec==='weekly') { const aw=document.querySelector('#wks-matric.active,#wks-fsc.active'); if(aw) renderWkPanel(aw.id.replace('wks-','')); } }],
+];
+let _surgListenersOn=false;
+function attachSurgicalListeners(){
+  if(_surgListenersOn||!db) return;
+  _surgListenersOn=true;
+
+  // ── Standard path listeners ───────────────────────────────────────
+  SURGICAL_PATHS.forEach(([fbPath,dbKeys,rerender])=>{
+    db.ref('iqra/'+fbPath).on('value',snap=>{
+      const hasPending=Object.keys(pendingSaves).some(p=>p===fbPath||p.startsWith(fbPath+'/'));
+      if(hasPending) return;
+      const val=snap.val();
+      if(dbKeys.length===1){ DB[dbKeys[0]]=val; }
+      else { if(!DB[dbKeys[0]])DB[dbKeys[0]]={};DB[dbKeys[0]][dbKeys[1]]=val; }
+      try{ rerender(); }catch(e){ console.warn('Surgical rerender:',fbPath,e); }
+    });
+  });
+
+  // ── Diary: child-level listeners ─────────────────────────────────
+  // child_added / child_changed fire only for the specific date node that changed.
+  // Each HW item has its own Firebase push-key — two teachers writing simultaneously
+  // to the same subject on the same date produce two separate keys, never a conflict.
+  attachDiaryListeners();
+}
+
+// Re-attached whenever class tabs change (new classes loaded).
+const _diaryListenerRefs=[];
+function attachDiaryListeners(){
+  if(!db) return;
+  _diaryListenerRefs.forEach(r=>r.off());
+  _diaryListenerRefs.length=0;
+
+  getClassIds().forEach(cls=>{
+    const clsRef=db.ref('iqra/diary/c'+cls);
+
+    function mergeDate(dk,dateData){
+      if(!DB.diary) DB.diary={};
+      if(!DB.diary['c'+cls]) DB.diary['c'+cls]={};
+      if(!DB.diary['c'+cls][dk]) DB.diary['c'+cls][dk]={};
+      Object.entries(dateData||{}).forEach(([sk,hwObj])=>{
+        if(typeof hwObj==='object'&&hwObj!==null){
+          if(!DB.diary['c'+cls][dk][sk]) DB.diary['c'+cls][dk][sk]={};
+          // Merge remote keys in
+          Object.assign(DB.diary['c'+cls][dk][sk], hwObj);
+          // Remove keys deleted remotely (but keep our own _tmp_ optimistic keys)
+          const remoteKeys=new Set(Object.keys(hwObj));
+          Object.keys(DB.diary['c'+cls][dk][sk]).forEach(k=>{
+            if(!remoteKeys.has(k)&&!k.startsWith('_tmp_')&&!k.startsWith('_local_'))
+              delete DB.diary['c'+cls][dk][sk][k];
+          });
+        } else {
+          DB.diary['c'+cls][dk][sk]=hwObj;
+        }
+      });
+      if(currentSec==='diary') _throttledDiaryRender(cls);
+    }
+
+    const fnAdded   = clsRef.on('child_added',   s=>mergeDate(s.key,s.val()));
+    const fnChanged = clsRef.on('child_changed',  s=>mergeDate(s.key,s.val()));
+    _diaryListenerRefs.push({off:()=>{
+      clsRef.off('child_added',fnAdded);
+      clsRef.off('child_changed',fnChanged);
+    }});
+  });
+}
+
+// Throttle to max one re-render per class per 400ms — prevents flicker
+// when multiple keys arrive in quick succession (e.g. import).
+const _diaryRenderTimers={};
+function _throttledDiaryRender(cls){
+  clearTimeout(_diaryRenderTimers[cls]);
+  _diaryRenderTimers[cls]=setTimeout(()=>{
+    // Skip if we have a pending optimistic write — our local state is already correct
+    const hasPending=Object.keys(pendingSaves).some(p=>p.startsWith('diary/c'+cls+'/'));
+    if(!hasPending) try{ renderDiaryDay(cls); }catch(e){}
+  },400);
+}
+
+// ══════════════════════════════════════════════
+//  AUTO-SAVE (path-level, debounced 900ms)
+//  Each change writes only its own Firebase path.
+//  Two teachers editing different paths never
+//  overwrite each other.
+// ══════════════════════════════════════════════
+const _autoSaveTimers={};
+const AUTO_SAVE_MS=900;
+function markDirty(path,value){
+  pendingSaves[path]=value;
+  document.getElementById('saveBtn').disabled=false;
+  clearTimeout(_autoSaveTimers[path]);
+  _autoSaveTimers[path]=setTimeout(()=>_autoSavePath(path,value),AUTO_SAVE_MS);
+}
+function _autoSavePath(path,value){
+  if(!db||!fbReady) return;
+  setStat('saving','✏️ Auto-saving…');
+  db.ref('iqra/'+path).set(value===undefined?null:value)
+    .then(()=>{
+      delete pendingSaves[path]; delete _autoSaveTimers[path];
+      if(!Object.keys(pendingSaves).length){
+        document.getElementById('saveBtn').disabled=true;
+        setStat('live','🟢 Live');
+      }
+    })
+    .catch(e=>setStat('off','❌ '+e.message));
+}
 function doSave(){
+  // Manual flush — catches anything not yet auto-saved (e.g. offline edits)
   const btn=document.getElementById('saveBtn');
   if(!Object.keys(pendingSaves).length)return;
   btn.disabled=true;btn.textContent='💾 Saving…';setStat('saving','Saving…');
   if(db&&fbReady){
     const u={};Object.entries(pendingSaves).forEach(([p,v])=>u['iqra/'+p]=(v===undefined?null:v));
     db.ref().update(u)
-      .then(()=>{pendingSaves={};setStat('live','🟢 Live');showToast('☁️ Saved!','ok');btn.textContent='💾 Save Changes';})
+      .then(()=>{
+        pendingSaves={};
+        Object.keys(_autoSaveTimers).forEach(k=>{clearTimeout(_autoSaveTimers[k]);delete _autoSaveTimers[k];});
+        setStat('live','🟢 Live');showToast('☁️ Saved!','ok');
+        btn.textContent='💾 Save Changes';btn.disabled=true;
+      })
       .catch(e=>{setStat('off','❌ '+e.message);showToast('Save failed','err');btn.textContent='💾 Save Changes';btn.disabled=false;});
-  } else {pendingSaves={};btn.textContent='💾 Save Changes';showToast('Saved locally','info');}
+  } else {pendingSaves={};btn.textContent='💾 Save Changes';btn.disabled=true;showToast('Saved locally','info');}
 }
 function showToast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',2400);}
 
@@ -518,6 +650,7 @@ function showToast(msg,type='ok'){const el=document.getElementById('toast');el.t
 // ══════════════════════════════════════════════
 const SECS=['marks','students','planner','diary','timetable','report','planner-report','class-tests','boards','weekly','settings','announcements','toppers-admin','totm'];
 function switchSec(id){
+  currentSec=id;
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='sec-'+id));
   document.querySelectorAll('.hinner .ntab:not(.parent-link)').forEach((t,i)=>t.classList.toggle('active',SECS[i]===id));
   if(id==='class-tests'){ renderClassTestsTabs(); }
@@ -874,21 +1007,73 @@ function renderDiaryDay(cls){
   const editable=canEdit(cls),dk=document.getElementById('dd-'+cls)?.value||todayKey();
   const lbl=document.getElementById('ddlbl-'+cls);if(lbl)lbl.textContent=fmtDay(dk);
   const grid=document.getElementById('dg-'+cls);if(!grid)return;
-  // Get periods for teachers info
   grid.innerHTML='';
   getSubs(cls).forEach(sub=>{
-    const sk=fbKey(sub),hws=getN(DB,['diary','c'+cls,dk,sk])||[];
+    const sk=fbKey(sub);
+    // HW stored as keyed object {pushKey:'text'} — sort by key for stable order
+    const hwRaw=getN(DB,['diary','c'+cls,dk,sk])||{};
+    const hwEntries=Array.isArray(hwRaw)
+      ? hwRaw.map((t,i)=>['_legacy_'+i,t])          // backward-compat with old array data
+      : Object.entries(hwRaw).sort(([a],[b])=>a<b?-1:1);
     const periods=getN(DB,['timetable','c'+cls,sk])||[];
     const teacherInfo=periods.length?periods.map(p=>`P${p.period}: ${p.teacher}`).join(', '):'';
     const card=document.createElement('div');card.className='diary-subj-card';
     card.innerHTML=`<div class="diary-subj-hd">${esc(sub)}<span style="font-size:10px;color:var(--muted);font-weight:400">${teacherInfo}</span></div>
-      <div class="diary-hw-list">${hws.map((h,i)=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}',${i})">×</span>`:''}</div>`).join('')}${!hws.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
+      <div class="diary-hw-list">${hwEntries.map(([hwKey,h])=>`<div class="diary-hw-item"><span class="diary-hw-txt">${esc(h)}</span>${editable?`<span class="diary-hw-del" onclick="delHw(${cls},'${sk}','${dk}','${hwKey}')">×</span>`:''}</div>`).join('')}${!hwEntries.length?'<span style="font-size:10px;color:var(--muted);font-style:italic;">No homework</span>':''}</div>
       ${editable?`<div class="diary-add-row"><input class="diary-inp" id="di-${cls}-${sk}" placeholder="Add homework…" onkeydown="if(event.key==='Enter')addHw(${cls},'${sk}','${dk}')"><button class="diary-add-btn" onclick="addHw(${cls},'${sk}','${dk}')">+</button></div>`:''}`;
     grid.appendChild(card);
   });
 }
-function addHw(cls,sk,dk){const inp=document.getElementById(`di-${cls}-${sk}`);const txt=inp.value.trim();if(!txt)return;const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.push(txt);setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws);inp.value='';renderDiaryDay(cls);}
-function delHw(cls,sk,dk,i){const hws=getN(DB,['diary','c'+cls,dk,sk])||[];hws.splice(i,1);setN(DB,['diary','c'+cls,dk,sk],hws);markDirty(`diary/c${cls}/${dk}/${sk}`,hws.length?hws:null);renderDiaryDay(cls);}
+// ── DIARY WRITE FUNCTIONS ─────────────────────────────────────────────────────
+// Each homework item gets its own Firebase-generated key via .push().
+// This means two teachers adding to the same subject-date simultaneously
+// NEVER overwrite each other — writes are fully atomic and non-conflicting.
+
+function addHw(cls,sk,dk){
+  const inp=document.getElementById(`di-${cls}-${sk}`);
+  const txt=inp.value.trim();if(!txt)return;
+  inp.value='';
+  if(db&&fbReady){
+    // Push creates a unique child key — completely safe for concurrent writers
+    const ref=db.ref(`iqra/diary/c${cls}/${dk}/${sk}`);
+    ref.push(txt)
+      .then(()=>{ /* listener fires and re-renders automatically */ })
+      .catch(e=>showToast('Save failed: '+e.message,'err'));
+    // Optimistic local update so the UI feels instant
+    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
+    const tmpKey='_tmp_'+Date.now();
+    hws[tmpKey]=txt;
+    setN(DB,['diary','c'+cls,dk,sk],hws);
+    renderDiaryDay(cls);
+  } else {
+    // Offline fallback — use array-based local storage
+    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
+    hws['_local_'+Date.now()]=txt;
+    setN(DB,['diary','c'+cls,dk,sk],hws);
+    markDirty(`diary/c${cls}/${dk}/${sk}`,hws);
+    renderDiaryDay(cls);
+  }
+}
+
+function delHw(cls,sk,dk,hwKey){
+  if(db&&fbReady){
+    // Remove only this specific key — never touches other teachers' entries
+    db.ref(`iqra/diary/c${cls}/${dk}/${sk}/${hwKey}`).remove()
+      .catch(e=>showToast('Delete failed: '+e.message,'err'));
+    // Optimistic local removal
+    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
+    delete hws[hwKey];
+    setN(DB,['diary','c'+cls,dk,sk],Object.keys(hws).length?hws:null);
+    renderDiaryDay(cls);
+  } else {
+    const hws=getN(DB,['diary','c'+cls,dk,sk])||{};
+    delete hws[hwKey];
+    const newVal=Object.keys(hws).length?hws:null;
+    setN(DB,['diary','c'+cls,dk,sk],newVal);
+    markDirty(`diary/c${cls}/${dk}/${sk}`,newVal);
+    renderDiaryDay(cls);
+  }
+}
 
 // ══════════════════════════════════════════════
 //  PERIODS / TIMETABLE
@@ -1419,8 +1604,9 @@ function renderSettings(){
       <div class="settings-card-hd">🏆 Board Results — Portal Visibility</div>
       <div class="settings-card-body">
         <div class="settings-row"><label>What parents see</label>
-          <select class="s-inp" id="ss-brd-vis" style="width:180px;">
+          <select class="s-inp" id="ss-brd-vis" style="width:190px;">
             <option value="all"   ${(getN(DB,['settings','portal','boardResults'])||'all')==='all'  ?'selected':''}>Show all students</option>
+            <option value="top10" ${(getN(DB,['settings','portal','boardResults'])||'all')==='top10'?'selected':''}>Top 10 students only</option>
             <option value="top5"  ${(getN(DB,['settings','portal','boardResults'])||'all')==='top5' ?'selected':''}>Top 5 students only</option>
             <option value="top3"  ${(getN(DB,['settings','portal','boardResults'])||'all')==='top3' ?'selected':''}>Top 3 (podium only)</option>
             <option value="hide"  ${(getN(DB,['settings','portal','boardResults'])||'all')==='hide' ?'selected':''}>Hidden (not shown)</option>
@@ -1428,9 +1614,40 @@ function renderSettings(){
         </div>
         <p style="font-size:11px;color:var(--muted);margin-top:6px;">
           <b>Show all</b> — full ranked table visible to everyone.<br>
-          <b>Top 5 / Top 3</b> — only highest scorers shown; full data stays in admin.<br>
-          <b>Hidden</b> — Boards tab still exists but shows "Results not published yet".
+          <b>Top 10 / 5 / 3</b> — only highest scorers shown; full data stays in admin.<br>
+          <b>Hidden</b> — Boards tab shows "Results not published yet".
         </p>
+      </div>
+    </div>
+    <!-- TERM RESULTS VISIBILITY -->
+    <div class="settings-card">
+      <div class="settings-card-hd">📋 Term Results — Portal Visibility</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>What parents see</label>
+          <select class="s-inp" id="ss-res-vis" style="width:190px;">
+            <option value="all"   ${(getN(DB,['settings','portal','termResults'])||'all')==='all'  ?'selected':''}>Show all students</option>
+            <option value="top10" ${(getN(DB,['settings','portal','termResults'])||'all')==='top10'?'selected':''}>Top 10 students only</option>
+            <option value="top5"  ${(getN(DB,['settings','portal','termResults'])||'all')==='top5' ?'selected':''}>Top 5 students only</option>
+            <option value="top3"  ${(getN(DB,['settings','portal','termResults'])||'all')==='top3' ?'selected':''}>Top 3 (podium only)</option>
+            <option value="hide"  ${(getN(DB,['settings','portal','termResults'])||'all')==='hide' ?'selected':''}>Hidden (not shown)</option>
+          </select>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">
+          Controls what parents can see in the <b>Results</b> tab of the portal.<br>
+          <b>Hidden</b> — Results tab shows "Results not published yet".<br>
+          Full data always stays in admin panel regardless of this setting.
+        </p>
+      </div>
+    </div>
+    <!-- TEACHER CLASS ACCESS -->
+    <div class="settings-card" style="grid-column:1/-1;border-left:4px solid #f59e0b;">
+      <div class="settings-card-hd" style="background:rgba(245,158,11,.06);">👩‍🏫 Teacher Login Accounts &amp; Class Access</div>
+      <div class="settings-card-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+          Manage which classes each teacher can access. Changes are saved to Firebase and take effect on next login.
+          To add a new teacher, edit <code style="background:var(--surf2);padding:1px 5px;border-radius:4px;">js/firebase-config.js</code> and add an entry to <code style="background:var(--surf2);padding:1px 5px;border-radius:4px;">TEACHER_ACCOUNTS</code>.
+        </p>
+        <div id="teacherAccessPanel"></div>
       </div>
     </div>
     <!-- PLANNER YEAR -->
@@ -1464,6 +1681,7 @@ function renderSettings(){
   renderClassOrderPanel();
   renderTabOrderPanel();
   populateClearPlannerSelects();
+  renderTeacherAccessPanel();
   // Restore banner form values
   setTimeout(()=>{
     const b=getN(DB,['settings','banner'])||{};
@@ -1550,6 +1768,89 @@ function addNewClass(section='boys'){
   CLASSES[newId]={name:'Class '+(newId>100?newId-100:newId)+' ('+label+')',section,subjects:['English','Maths','Urdu'],totalMarks:100};
   renderClassesConfig();showToast('New '+label+' class added – fill subjects then Save','info');
 }
+// ══════════════════════════════════════════════
+//  TEACHER CLASS ACCESS MANAGEMENT
+// ══════════════════════════════════════════════
+function renderTeacherAccessPanel(){
+  const el=document.getElementById('teacherAccessPanel');
+  if(!el) return;
+  const allClasses=getClassIds();
+  // Read saved overrides from DB (admin may have changed classes without editing config file)
+  const savedAccess=getN(DB,['settings','teacherAccess'])||{};
+
+  el.innerHTML=TEACHER_ACCOUNTS.filter(t=>t.role!=='admin').map(t=>{
+    // Effective classes: DB override takes priority, else firebase-config default
+    const effectiveClasses=savedAccess[t.username]||t.classes||[];
+    const boys=allClasses.filter(c=>CLASSES[c]?.section!=='girls');
+    const girls=allClasses.filter(c=>CLASSES[c]?.section==='girls');
+
+    const renderGroup=(ids,label,color)=>{
+      if(!ids.length) return '';
+      return `<div style="margin-bottom:6px;">
+        <div style="font-size:10px;color:${color};font-weight:700;text-transform:uppercase;margin-bottom:4px;">${label}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          ${ids.map(cls=>{
+            const checked=effectiveClasses.includes(+cls)||effectiveClasses.includes(String(cls));
+            return`<label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid ${checked?color:'var(--border)'};background:${checked?color+'18':'var(--surf2)'};font-size:11px;">
+              <input type="checkbox" data-teacher="${t.username}" data-cls="${cls}" ${checked?'checked':''} onchange="updateTeacherClassAccess('${t.username}')" style="cursor:pointer;">
+              ${esc(CLASSES[cls]?.name||'Class '+cls)}
+            </label>`;
+          }).join('')}
+        </div>
+      </div>`;
+    };
+
+    return`<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--surf2);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">👩‍🏫</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;">${esc(t.name)}</div>
+          <div style="font-size:10px;color:var(--muted);">@${esc(t.username)} · ${effectiveClasses.length} class${effectiveClasses.length!==1?'es':''} assigned</div>
+        </div>
+        <button class="btn-sm btn-add" onclick="selectAllClasses('${t.username}',true)" style="font-size:10px;">✅ All</button>
+        <button class="btn-sm btn-del" onclick="selectAllClasses('${t.username}',false)" style="font-size:10px;">✕ None</button>
+      </div>
+      ${renderGroup(boys,'👦 Boys Classes','#3b82f6')}
+      ${renderGroup(girls,'👧 Girls Classes','#ec4899')}
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:12px;font-style:italic;padding:8px;">No teacher accounts found in firebase-config.js. Add entries to TEACHER_ACCOUNTS to manage access here.</div>';
+}
+
+function updateTeacherClassAccess(username){
+  // Read all checked boxes for this teacher and save immediately to DB
+  const checked=[...document.querySelectorAll(`input[data-teacher="${username}"]:checked`)]
+    .map(cb=>parseInt(cb.dataset.cls));
+  const savedAccess=getN(DB,['settings','teacherAccess'])||{};
+  savedAccess[username]=checked;
+  setN(DB,['settings','teacherAccess'],savedAccess);
+  markDirty('settings/teacherAccess',savedAccess);
+  // Refresh count display
+  const panel=document.getElementById('teacherAccessPanel');
+  if(panel){
+    panel.querySelectorAll(`[data-teacher="${username}"]`).forEach(cb=>{
+      const lbl=cb.closest('label');
+      const cls=parseInt(cb.dataset.cls);
+      const isChecked=cb.checked;
+      const color=CLASSES[cls]?.section==='girls'?'#ec4899':'#3b82f6';
+      if(lbl){
+        lbl.style.borderColor=isChecked?color:'var(--border)';
+        lbl.style.background=isChecked?color+'18':'var(--surf2)';
+      }
+    });
+    // Update the count line
+    const countEl=panel.querySelector(`[data-count="${username}"]`);
+    if(countEl) countEl.textContent=`@${username} · ${checked.length} class${checked.length!==1?'es':''} assigned`;
+  }
+  showToast(`Access updated for ${username}`,'ok');
+}
+
+function selectAllClasses(username,selectAll){
+  document.querySelectorAll(`input[data-teacher="${username}"]`).forEach(cb=>{
+    cb.checked=selectAll;
+  });
+  updateTeacherClassAccess(username);
+}
+
 function deleteClass(cls){
   if(!confirm('Remove '+(CLASSES[cls]?.name||'Class '+cls)+'?'))return;
   delete CLASSES[cls];renderClassesConfig();showToast('Removed – click Save Settings','info');
@@ -1595,7 +1896,8 @@ function saveSettings(){
     fontFamily:document.getElementById('ss-ff')?.value||'DM Sans',
     accentColor:document.getElementById('ss-ac')?.value||'#6366f1',
     boldHeaders:document.getElementById('ss-bh')?.checked!==false,
-    boardResults:document.getElementById('ss-brd-vis')?.value||'all'
+    boardResults:document.getElementById('ss-brd-vis')?.value||'all',
+    termResults:document.getElementById('ss-res-vis')?.value||'all'
   };
   // Planner year
   const plannerYear={
@@ -2670,11 +2972,12 @@ function scanDiaryDay(teacherSubjectMap,diaryRoot,dateKey){
     const dayData=classData?.[dateKey];
     subjectKeys.forEach(sk=>{
       totalSubjects++;
-      const hwArr=dayData?.[sk];
-      if(Array.isArray(hwArr)&&hwArr.length){
-        submitted++;
-        hwCount+=hwArr.length;
-      }
+      const hwRaw=dayData?.[sk];
+      // Support both legacy array format and new keyed-object format
+      let count=0;
+      if(Array.isArray(hwRaw)) count=hwRaw.length;
+      else if(hwRaw&&typeof hwRaw==='object') count=Object.keys(hwRaw).filter(k=>!k.startsWith('_tmp_')).length;
+      if(count>0){ submitted++; hwCount+=count; }
     });
   });
   return{totalSubjects,submitted,hwCount,hasEntry:submitted>0};
