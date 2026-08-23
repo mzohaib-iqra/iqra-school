@@ -485,18 +485,31 @@ function applySettings(){
     SETTINGS=Object.assign({},DEFAULT_SETTINGS,DB.settings);
     if(DB.settings.classOrder) SETTINGS.classOrder=DB.settings.classOrder;
     if(DB.settings.terms)  TERMS=DB.settings.terms;
-    // Use stored months from Firebase — do NOT auto-regenerate on load.
-    // Months are only regenerated when admin explicitly saves Settings with a new planner year.
-    if(DB.settings.months&&DB.settings.months.length) {
+    if(DB.settings.months&&DB.settings.months.length){
       MONTHS=DB.settings.months;
     }
-    // If no months stored yet, generate from plannerYear or use defaults
     if(!MONTHS||!MONTHS.length){
       MONTHS=DB.settings.plannerYear&&DB.settings.plannerYear.start
         ? generateMonthsFromYear(DB.settings.plannerYear.start,DB.settings.plannerYear.end,TERMS)
         : DEFAULT_SETTINGS.months;
     }
-    if(DB.settings.classes)CLASSES=DB.settings.classes;
+    if(DB.settings.classes){
+      // Firebase returns arrays as plain objects {0:'English',1:'Maths',...}
+      // Normalise every class's subjects and subjectMarks back to proper arrays/objects
+      const rawClasses=DB.settings.classes;
+      Object.keys(rawClasses).forEach(k=>{
+        const c=rawClasses[k];
+        if(!c) return;
+        // subjects: convert numeric-keyed object → array if needed
+        if(c.subjects&&!Array.isArray(c.subjects)){
+          c.subjects=Object.keys(c.subjects).sort((a,b)=>+a-+b).map(i=>c.subjects[i]);
+        }
+        // subjectMarks: ensure it stays as a plain named object (already fine from Firebase)
+        // totalMarks: ensure number
+        if(c.totalMarks) c.totalMarks=parseFloat(c.totalMarks)||100;
+      });
+      CLASSES=rawClasses;
+    }
     if(DB.settings.school) SCHOOL=Object.assign({},DEFAULT_SETTINGS.school,DB.settings.school);
     if(DB.settings.tabOrder) applyTabOrder(DB.settings.tabOrder);
   }
