@@ -514,7 +514,10 @@ function applySettings(){
 // ══════════════════════════════════════════════
 function attachLiveListener(){
   if(!db) return;
+  let isFirstFire=true; // Firebase on('value') fires immediately — skip it, we already have the data from once()
   db.ref('iqra').on('value', snap=>{
+    if(isFirstFire){ isFirstFire=false; return; }
+
     const incoming = snap.val()||{};
 
     // 1. Save every focused / non-empty input value before re-rendering
@@ -527,7 +530,6 @@ function attachLiveListener(){
 
     // 2. Update DB fully
     DB = incoming;
-    fbReady = true;
     applySettings();
 
     // 3. Re-render ONLY the currently visible section
@@ -538,12 +540,9 @@ function attachLiveListener(){
         case 'planner':      renderPlannerPanels();      break;
         case 'diary':        rerenderDiarySection();     break;
         case 'timetable':    renderPeriodsPanel();       break;
-        case 'report':       /* report is generated on-demand */ break;
-        case 'planner-report': /* generated on-demand */  break;
         case 'boards':       rerenderBoardsSection();    break;
         case 'weekly':       rerenderWeeklySection();    break;
         case 'settings':     renderSettings();           break;
-        case 'totm':         /* generated on-demand */   break;
         default:             break;
       }
     }catch(e){ console.warn('Live rerender error:',e); }
@@ -553,7 +552,7 @@ function attachLiveListener(){
       const el = document.getElementById(id);
       if(el && el.value !== v){
         el.value = v;
-        try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(e){}
+        try{ if(sel!=null && el.setSelectionRange) el.setSelectionRange(sel,sel); }catch(e){}
       }
     });
   });
