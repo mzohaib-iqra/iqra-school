@@ -60,7 +60,7 @@
   <div class="sdot off" id="sdot"></div>
   <span id="sstat">Connecting…</span>
   <div class="teacher-chip" id="tchip" style="display:none">👤 <span id="tname"></span><span style="margin-left:6px;color:var(--muted);cursor:pointer" onclick="doLogout()">Sign out</span></div>
-  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled>💾 Save Changes</button>
+  <button class="save-btn" id="saveBtn" onclick="doSave()" disabled>💾 Save Settings</button>
 </div>
 
 <!-- MARKS -->
@@ -632,25 +632,98 @@ function rerenderWeeklySection(){
 // ══════════════════════════════════════════════
 //  SAVE
 // ══════════════════════════════════════════════
-function markDirty(path,value){
-  pendingSaves[path]=value;
-  document.getElementById('saveBtn').disabled=false;
+// ── AUTO-SAVE ────────────────────────────────────────────────────────────────
+// Every markDirty call writes to Firebase at the exact path after 800ms of
+// inactivity on that path. No Save button click needed for data entry.
+// This means:
+//   • Teacher A typing marks → Firebase write at marks/scores/c9/Maths
+//   • Teacher B typing diary → Firebase write at diary/c9/2026-06-15/Urdu
+//   • Neither write touches the other's path → no conflict, no disruption.
+//
+// The Save button is kept only for Settings (school name, classes, months)
+// where an intentional commit makes sense.
+
+const _autoSaveTimers = {};
+const _AUTOSAVE_DELAY = 800; // ms after last keystroke
+
+function markDirty(path, value){
+  pendingSaves[path] = value;
+
+  // Show a subtle "unsaved" indicator without disabling anything
+  _showSavingIndicator();
+
+  // Debounce: reset timer every keystroke, fire 800ms after the last one
+  clearTimeout(_autoSaveTimers[path]);
+  _autoSaveTimers[path] = setTimeout(() => _writePath(path, value), _AUTOSAVE_DELAY);
 }
 
+function _writePath(path, value){
+  if(!db || !fbReady){
+    // Offline — keep in pendingSaves for when connection returns
+    _showOfflineIndicator();
+    return;
+  }
+  const writeVal = (value === undefined || value === null) ? null : value;
+  db.ref('iqra/' + path).set(writeVal)
+    .then(() => {
+      delete pendingSaves[path];
+      delete _autoSaveTimers[path];
+      // If all paths are flushed, show live indicator
+      if(Object.keys(pendingSaves).length === 0) _showLiveIndicator();
+    })
+    .catch(e => {
+      _showOfflineIndicator();
+      console.warn('Auto-save failed for', path, e.message);
+    });
+}
+
+function _showSavingIndicator(){
+  setStat('saving', '✏️ Saving…');
+  document.getElementById('saveBtn').textContent = '💾 Save Settings';
+}
+function _showLiveIndicator(){
+  setStat('live', '🟢 Live');
+  document.getElementById('saveBtn').textContent = '💾 Save Settings';
+  document.getElementById('saveBtn').disabled = true;
+}
+function _showOfflineIndicator(){
+  setStat('off', '🔴 Offline – changes pending');
+  document.getElementById('saveBtn').disabled = false;
+  document.getElementById('saveBtn').textContent = '💾 Retry Save';
+}
+
+// The Save button now only flushes Settings-related paths (school config,
+// classes, months, terms, portal settings) — structural data that teachers
+// intentionally commit. Data entry (marks, results, diary, students,
+// planner) is all auto-saved above and never needs the button.
 function doSave(){
-  const btn=document.getElementById('saveBtn');
-  if(!Object.keys(pendingSaves).length)return;
-  btn.disabled=true;btn.textContent='💾 Saving…';setStat('saving','Saving…');
-  if(db&&fbReady){
-    const u={};Object.entries(pendingSaves).forEach(([p,v])=>u['iqra/'+p]=(v===undefined?null:v));
+  const btn = document.getElementById('saveBtn');
+  const settingsPaths = Object.keys(pendingSaves).filter(p =>
+    p.startsWith('settings/') || p === 'settings'
+  );
+  if(!settingsPaths.length && Object.keys(pendingSaves).length === 0) return;
+
+  btn.disabled = true; btn.textContent = '💾 Saving…'; setStat('saving', 'Saving…');
+
+  if(db && fbReady){
+    // Flush ALL pending paths (catches anything not yet auto-saved, e.g. offline edits)
+    const u = {};
+    Object.entries(pendingSaves).forEach(([p,v]) => u['iqra/'+p] = (v === undefined ? null : v));
     db.ref().update(u)
-      .then(()=>{
-        pendingSaves={};
-        setStat('live','🟢 Live');showToast('☁️ Saved!','ok');
-        btn.textContent='💾 Save Changes';btn.disabled=true;
+      .then(() => {
+        pendingSaves = {};
+        Object.keys(_autoSaveTimers).forEach(k => { clearTimeout(_autoSaveTimers[k]); delete _autoSaveTimers[k]; });
+        setStat('live','🟢 Live'); showToast('☁️ Settings saved!','ok');
+        btn.textContent = '💾 Save Settings'; btn.disabled = true;
       })
-      .catch(e=>{setStat('off','❌ '+e.message);showToast('Save failed','err');btn.textContent='💾 Save Changes';btn.disabled=false;});
-  } else {pendingSaves={};btn.textContent='💾 Save Changes';btn.disabled=true;showToast('Saved locally','info');}
+      .catch(e => {
+        setStat('off','❌ '+e.message); showToast('Save failed','err');
+        btn.textContent = '💾 Retry Save'; btn.disabled = false;
+      });
+  } else {
+    pendingSaves = {}; btn.textContent = '💾 Save Settings'; btn.disabled = true;
+    showToast('Saved locally','info');
+  }
 }
 function showToast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',2400);}
 
@@ -788,14 +861,6 @@ function onM(inp){
   setN(DB,['marks','scores','c'+c,s],sd);
   const path='marks/scores/c'+c+'/'+s;
   const writeVal=Object.keys(sd).length?sd:null;
-  // Write directly to this subject's path — other teachers' subjects are untouched
-  if(db&&fbReady){
-    if(!onM._t) onM._t={};
-    clearTimeout(onM._t[path]);
-    onM._t[path]=setTimeout(()=>{
-      db.ref('iqra/'+path).set(writeVal).catch(e=>showToast('Save failed','err'));
-    },600);
-  }
   markDirty(path,writeVal);
   updM(+c);
 }
@@ -843,16 +908,7 @@ function selSInner(cls,tab,btn){
 }
 function getStudents(cls){return getN(DB,['students','c'+cls])||[];}
 function saveStudents(cls){
-  const val=getStudents(cls).length?getStudents(cls):null;
-  markDirty('students/c'+cls,val);
-  // Write directly to this class's path — other classes untouched
-  if(db&&fbReady){
-    if(!saveStudents._t) saveStudents._t={};
-    clearTimeout(saveStudents._t[cls]);
-    saveStudents._t[cls]=setTimeout(()=>{
-      db.ref('iqra/students/c'+cls).set(val).catch(e=>showToast('Save failed','err'));
-    },600);
-  }
+  markDirty('students/c'+cls, getStudents(cls).length?getStudents(cls):null);
 }
 function renderStudentList(cls){
   const editable=canEdit(cls),students=getStudents(cls);
@@ -931,14 +987,6 @@ function updResult(cls,tId,si,sk,val){
   setN(DB,['results','c'+cls,tId,'s'+si],res);
   const path=`results/c${cls}/${tId}/s${si}`;
   const writeVal=Object.keys(res).length?res:null;
-  // Write directly to this student's path — other teachers' students are untouched
-  if(db&&fbReady){
-    clearTimeout(updResult._t=updResult._t||{});
-    clearTimeout(updResult._t[path]);
-    updResult._t[path]=setTimeout(()=>{
-      db.ref('iqra/'+path).set(writeVal).catch(e=>showToast('Save failed','err'));
-    },600);
-  }
   markDirty(path,writeVal);
   let totObt=0,maxObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);});
   const pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
