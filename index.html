@@ -527,48 +527,89 @@ function applySettings(){
 // ══════════════════════════════════════════════
 function attachLiveListener(){
   if(!db) return;
-  let isFirstFire=true; // Firebase on('value') fires immediately — skip it, we already have the data from once()
+  let isFirstFire=true;
   db.ref('iqra').on('value', snap=>{
     if(isFirstFire){ isFirstFire=false; return; }
 
     const incoming = snap.val()||{};
 
-    // 1. Save every focused / non-empty input value before re-rendering
+    // 1. Snapshot every input/textarea/select value + cursor before touching the DOM
     const saved = {};
     document.querySelectorAll('input,textarea,select').forEach(el=>{
-      if(el.id && (el === document.activeElement || el.value)){
-        saved[el.id] = {v: el.value, sel: el.selectionStart};
+      if(el.id){
+        saved[el.id] = {
+          v: el.value,
+          sel: el.selectionStart,
+          focused: el === document.activeElement
+        };
       }
     });
+    const focusedId = document.activeElement?.id || null;
 
-    // 2. Update DB fully
+    // 2. Update DB
     DB = incoming;
     applySettings();
 
-    // 3. Re-render ONLY the currently visible section
-    try{
-      switch(currentSec){
-        case 'marks':        renderMarksPanels();        break;
-        case 'students':     renderStudentsPanels();     break;
-        case 'planner':      renderPlannerPanels();      break;
-        case 'diary':        rerenderDiarySection();     break;
-        case 'timetable':    renderPeriodsPanel();       break;
-        case 'boards':       rerenderBoardsSection();    break;
-        case 'weekly':       rerenderWeeklySection();    break;
-        case 'settings':     renderSettings();           break;
-        default:             break;
-      }
-    }catch(e){ console.warn('Live rerender error:',e); }
+    // 3. Re-render only the active section — and skip re-render entirely
+    //    for sections where the user is actively typing into a data input
+    //    (marks cells, result cells, student fields).
+    //    We detect this by checking if the focused element belongs to the section.
+    const activeEl = document.activeElement;
+    const activeSection = activeEl?.closest?.('.section')?.id || null;
+    const secId = 'sec-' + currentSec;
+    const userIsTypingInThisSection = activeSection === secId &&
+      ['INPUT','TEXTAREA','SELECT'].includes(activeEl?.tagName);
 
-    // 4. Restore every saved input value and cursor position
-    Object.entries(saved).forEach(([id,{v,sel}])=>{
+    if(!userIsTypingInThisSection){
+      try{
+        switch(currentSec){
+          case 'marks':        renderMarksPanels();       break;
+          case 'students':     renderStudentsPanels();    break;
+          case 'planner':      renderPlannerPanels();     break;
+          case 'diary':        rerenderDiarySection();    break;
+          case 'timetable':    renderPeriodsPanel();      break;
+          case 'boards':       rerenderBoardsSection();   break;
+          case 'weekly':       rerenderWeeklySection();   break;
+          case 'settings':     renderSettings();          break;
+          default:             break;
+        }
+      }catch(e){ console.warn('Live rerender error:',e); }
+    } else {
+      // User is actively typing — only update non-input display elements
+      // (totals, percentages, grade badges) without rebuilding the DOM.
+      // This keeps their cursor exactly where it is.
+      try{
+        if(currentSec==='marks')      _softUpdateMarks();
+        if(currentSec==='students')   _softUpdateStudents();
+      }catch(e){}
+    }
+
+    // 4. Restore all input values and cursors
+    Object.entries(saved).forEach(([id,{v,sel,focused}])=>{
       const el = document.getElementById(id);
-      if(el && el.value !== v){
-        el.value = v;
-        try{ if(sel!=null && el.setSelectionRange) el.setSelectionRange(sel,sel); }catch(e){}
+      if(!el) return;
+      if(el.value !== v) el.value = v;
+      if(focused && sel != null){
+        try{ el.setSelectionRange(sel,sel); }catch(e){}
       }
     });
+    // Re-focus the element the user was in
+    if(focusedId){
+      const el=document.getElementById(focusedId);
+      if(el && el !== document.activeElement) try{ el.focus(); }catch(e){}
+    }
   });
+}
+
+// Soft-update helpers: refresh only computed display cells without rebuilding inputs
+function _softUpdateMarks(){
+  getClassIds().forEach(cls=>{
+    try{ updM(cls); }catch(e){}
+  });
+}
+function _softUpdateStudents(){
+  // Students list itself doesn't have computed cells — nothing to soft-update
+  // The list will refresh on next tab switch
 }
 
 // Section-safe re-render helpers (only re-render what's visible)
@@ -745,7 +786,17 @@ function onM(inp){
   const sd=getN(DB,['marks','scores','c'+c,s])||{};
   if(v==='')delete sd[t];else sd[t]=parseFloat(v);
   setN(DB,['marks','scores','c'+c,s],sd);
-  markDirty('marks/scores/c'+c+'/'+s,Object.keys(sd).length?sd:null);
+  const path='marks/scores/c'+c+'/'+s;
+  const writeVal=Object.keys(sd).length?sd:null;
+  // Write directly to this subject's path — other teachers' subjects are untouched
+  if(db&&fbReady){
+    if(!onM._t) onM._t={};
+    clearTimeout(onM._t[path]);
+    onM._t[path]=setTimeout(()=>{
+      db.ref('iqra/'+path).set(writeVal).catch(e=>showToast('Save failed','err'));
+    },600);
+  }
+  markDirty(path,writeVal);
   updM(+c);
 }
 function updM(cls){
@@ -791,7 +842,18 @@ function selSInner(cls,tab,btn){
   document.getElementById(`si-${cls}-${tab}`).classList.add('active');
 }
 function getStudents(cls){return getN(DB,['students','c'+cls])||[];}
-function saveStudents(cls){markDirty('students/c'+cls,getStudents(cls).length?getStudents(cls):null);}
+function saveStudents(cls){
+  const val=getStudents(cls).length?getStudents(cls):null;
+  markDirty('students/c'+cls,val);
+  // Write directly to this class's path — other classes untouched
+  if(db&&fbReady){
+    if(!saveStudents._t) saveStudents._t={};
+    clearTimeout(saveStudents._t[cls]);
+    saveStudents._t[cls]=setTimeout(()=>{
+      db.ref('iqra/students/c'+cls).set(val).catch(e=>showToast('Save failed','err'));
+    },600);
+  }
+}
 function renderStudentList(cls){
   const editable=canEdit(cls),students=getStudents(cls);
   const el=document.getElementById(`si-${cls}-list`);if(!el)return;
@@ -867,7 +929,17 @@ function updResult(cls,tId,si,sk,val){
   const res=getN(DB,['results','c'+cls,tId,'s'+si])||{};
   if(val===''||isNaN(parseFloat(val)))delete res[sk];else res[sk]=parseFloat(val);
   setN(DB,['results','c'+cls,tId,'s'+si],res);
-  markDirty(`results/c${cls}/${tId}/s${si}`,Object.keys(res).length?res:null);
+  const path=`results/c${cls}/${tId}/s${si}`;
+  const writeVal=Object.keys(res).length?res:null;
+  // Write directly to this student's path — other teachers' students are untouched
+  if(db&&fbReady){
+    clearTimeout(updResult._t=updResult._t||{});
+    clearTimeout(updResult._t[path]);
+    updResult._t[path]=setTimeout(()=>{
+      db.ref('iqra/'+path).set(writeVal).catch(e=>showToast('Save failed','err'));
+    },600);
+  }
+  markDirty(path,writeVal);
   let totObt=0,maxObt=0;subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);});
   const pctV=maxObt?(totObt/maxObt*100):0,g=grade(pctV);
   const tEl=document.getElementById(`trT-${cls}-${tId}-${si}`);
@@ -971,12 +1043,25 @@ function renderDiaryPanels(){
     cont.appendChild(panel);renderDiaryDay(cls);
   });
 }
+function getSubsNorm(cls){
+  // Normalise subjects regardless of whether Firebase returned an array or numeric-keyed object
+  const raw=CLASSES[cls]?.subjects;
+  if(!raw) return [];
+  if(Array.isArray(raw)) return raw.filter(Boolean);
+  // Firebase sometimes serialises arrays as {0:'English',1:'Maths',...}
+  return Object.keys(raw).sort((a,b)=>+a-+b).map(k=>raw[k]).filter(Boolean);
+}
 function renderDiaryDay(cls){
   const editable=canEdit(cls),dk=document.getElementById('dd-'+cls)?.value||todayKey();
   const lbl=document.getElementById('ddlbl-'+cls);if(lbl)lbl.textContent=fmtDay(dk);
   const grid=document.getElementById('dg-'+cls);if(!grid)return;
   grid.innerHTML='';
-  getSubs(cls).forEach(sub=>{
+  const subs=getSubsNorm(cls);
+  if(!subs.length){
+    grid.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">No subjects configured for this class.<br>Go to <b>Settings → Classes</b> to add subjects, then Save.</div>';
+    return;
+  }
+  subs.forEach(sub=>{
     const sk=fbKey(sub),hws=getN(DB,['diary','c'+cls,dk,sk])||[];
     const periods=getN(DB,['timetable','c'+cls,sk])||[];
     const teacherInfo=periods.length?periods.map(p=>`P${p.period}: ${p.teacher}`).join(', '):'';
@@ -1661,7 +1746,11 @@ function renderClassSection(containerId, ids, section){
     return;
   }
   ids.forEach(cls=>{
-    const cc=CLASSES[cls];const subs=cc?.subjects||[];
+    const cc=CLASSES[cls];
+    // Normalise subjects — Firebase may return array as {0:'English',1:'Maths',...}
+    let subs=cc?.subjects||[];
+    if(!Array.isArray(subs)) subs=Object.keys(subs).sort((a,b)=>+a-+b).map(k=>subs[k]);
+    subs=subs.filter(Boolean);
     const hasPerSub=!!(cc?.subjectMarks);
     const accentColor=section==='girls'?'#ec4899':'#3b82f6';
     const div=document.createElement('div');
