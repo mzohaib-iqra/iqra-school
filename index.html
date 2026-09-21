@@ -531,6 +531,15 @@ function attachLiveListener(){
   db.ref('iqra').on('value', snap=>{
     if(isFirstFire){ isFirstFire=false; return; }
 
+    // If every currently-pending path was written by THIS device, this Firebase
+    // event is just the echo of our own save — skip it entirely.
+    // The teacher who made the change already has the correct data locally;
+    // they don't need a re-render and must not lose their scroll position or focus.
+    if(_localWritePaths.size > 0 && Object.keys(pendingSaves).length === 0){
+      // All writes were ours and are confirmed — pure echo, ignore completely
+      return;
+    }
+
     const incoming = snap.val()||{};
 
     // 1. Snapshot every input/textarea/select value + cursor before touching the DOM
@@ -646,32 +655,39 @@ function rerenderWeeklySection(){
 const _autoSaveTimers = {};
 const _AUTOSAVE_DELAY = 800; // ms after last keystroke
 
+// Tracks paths that THIS device is currently writing to Firebase.
+// The live listener ignores any Firebase event that was caused by our own write,
+// so the teacher who made the change never gets a re-render on their own device.
+const _localWritePaths = new Set();
+
 function markDirty(path, value){
   pendingSaves[path] = value;
-
-  // Show a subtle "unsaved" indicator without disabling anything
   _showSavingIndicator();
-
-  // Debounce: reset timer every keystroke, fire 800ms after the last one
   clearTimeout(_autoSaveTimers[path]);
   _autoSaveTimers[path] = setTimeout(() => _writePath(path, value), _AUTOSAVE_DELAY);
 }
 
 function _writePath(path, value){
   if(!db || !fbReady){
-    // Offline — keep in pendingSaves for when connection returns
     _showOfflineIndicator();
     return;
   }
   const writeVal = (value === undefined || value === null) ? null : value;
+
+  // Mark this path as a local write BEFORE sending to Firebase.
+  // The live listener will see this and skip re-rendering for this event.
+  _localWritePaths.add(path);
+
   db.ref('iqra/' + path).set(writeVal)
     .then(() => {
       delete pendingSaves[path];
       delete _autoSaveTimers[path];
-      // If all paths are flushed, show live indicator
       if(Object.keys(pendingSaves).length === 0) _showLiveIndicator();
+      // Keep path in _localWritePaths for 2s to absorb the Firebase echo
+      setTimeout(() => _localWritePaths.delete(path), 2000);
     })
     .catch(e => {
+      _localWritePaths.delete(path);
       _showOfflineIndicator();
       console.warn('Auto-save failed for', path, e.message);
     });
@@ -706,17 +722,23 @@ function doSave(){
   btn.disabled = true; btn.textContent = '💾 Saving…'; setStat('saving', 'Saving…');
 
   if(db && fbReady){
-    // Flush ALL pending paths (catches anything not yet auto-saved, e.g. offline edits)
     const u = {};
-    Object.entries(pendingSaves).forEach(([p,v]) => u['iqra/'+p] = (v === undefined ? null : v));
+    Object.entries(pendingSaves).forEach(([p,v]) => {
+      u['iqra/'+p] = (v === undefined ? null : v);
+      // Mark every path so the live listener ignores the echo on this device
+      _localWritePaths.add(p);
+    });
     db.ref().update(u)
       .then(() => {
+        const paths = Object.keys(pendingSaves);
         pendingSaves = {};
         Object.keys(_autoSaveTimers).forEach(k => { clearTimeout(_autoSaveTimers[k]); delete _autoSaveTimers[k]; });
         setStat('live','🟢 Live'); showToast('☁️ Settings saved!','ok');
         btn.textContent = '💾 Save Settings'; btn.disabled = true;
+        setTimeout(() => paths.forEach(p => _localWritePaths.delete(p)), 2000);
       })
       .catch(e => {
+        Object.keys(pendingSaves).forEach(p => _localWritePaths.delete(p));
         setStat('off','❌ '+e.message); showToast('Save failed','err');
         btn.textContent = '💾 Retry Save'; btn.disabled = false;
       });
