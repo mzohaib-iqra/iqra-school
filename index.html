@@ -525,101 +525,179 @@ function applySettings(){
 //  preserves every active <input> / <textarea>
 //  so no one's typing is interrupted.
 // ══════════════════════════════════════════════
+// ── Position snapshot / restore ───────────────────────────────────────────────
+// Called before any re-render. Captures everything needed to put the teacher
+// back exactly where they were after the DOM is rebuilt.
+function _capturePosition(){
+  const pos = {
+    scrollY: window.scrollY,
+    // Capture scroll position of every scrollable container
+    scrollers: [],
+    // Capture every input/textarea value and cursor
+    inputs: {},
+    focusedId: document.activeElement?.id || null,
+    // Active tab buttons per tab container
+    activeTabs: {}
+  };
+
+  // Scroll containers
+  document.querySelectorAll('.tbl-wrap, .cpanel.active, .section.active, [id$="Panels"]').forEach(el=>{
+    if(el.id) pos.scrollers.push({id: el.id, top: el.scrollTop, left: el.scrollLeft});
+  });
+
+  // Input values + cursors
+  document.querySelectorAll('input,textarea,select').forEach(el=>{
+    if(el.id) pos.inputs[el.id] = {
+      v: el.value,
+      selStart: el.selectionStart,
+      selEnd: el.selectionEnd,
+      focused: el === document.activeElement
+    };
+  });
+
+  // Active tabs (find which button has class 'active' in each tab container)
+  document.querySelectorAll('.ctabs, .term-tabs, .inner-tabs').forEach(container=>{
+    const active = container.querySelector('.ctab.active, .ttab.active, .itab.active, button.active');
+    if(container.id && active){
+      pos.activeTabs[container.id] = active.dataset?.c || active.dataset?.t || active.textContent?.trim();
+    }
+  });
+
+  return pos;
+}
+
+function _restorePosition(pos){
+  if(!pos) return;
+
+  // Restore window scroll
+  window.scrollTo(0, pos.scrollY);
+
+  // Restore scrollable containers
+  pos.scrollers.forEach(({id, top, left})=>{
+    const el = document.getElementById(id);
+    if(el){ el.scrollTop = top; el.scrollLeft = left; }
+  });
+
+  // Restore input values and cursors
+  Object.entries(pos.inputs).forEach(([id, {v, selStart, selEnd, focused}])=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(el.value !== v) el.value = v;
+    if(focused){
+      try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
+    }
+  });
+
+  // Re-focus
+  if(pos.focusedId){
+    const el = document.getElementById(pos.focusedId);
+    if(el && el !== document.activeElement) try{ el.focus(); }catch(e){}
+  }
+
+  // Restore active tabs — click the matching tab button silently
+  Object.entries(pos.activeTabs).forEach(([containerId, val])=>{
+    const container = document.getElementById(containerId);
+    if(!container) return;
+    const btn = [...container.querySelectorAll('button')].find(b=>
+      b.dataset?.c === val || b.dataset?.t === val || b.textContent?.trim() === val
+    );
+    if(btn && !btn.classList.contains('active')){
+      // Switch tab without scrolling the page
+      const prevScroll = window.scrollY;
+      btn.click();
+      window.scrollTo(0, prevScroll);
+    }
+  });
+}
+
+// ── Path-level live listeners ─────────────────────────────────────────────────
+// Each data path gets its own listener. When a path fires:
+//   1. If it was written by THIS device (_localWritePaths) → skip entirely
+//   2. Otherwise → merge the new data into DB, re-render only the relevant section
+//      while preserving scroll + tabs + inputs
 function attachLiveListener(){
   if(!db) return;
-  let isFirstFire=true;
-  db.ref('iqra').on('value', snap=>{
-    if(isFirstFire){ isFirstFire=false; return; }
 
-    // If every currently-pending path was written by THIS device, this Firebase
-    // event is just the echo of our own save — skip it entirely.
-    // The teacher who made the change already has the correct data locally;
-    // they don't need a re-render and must not lose their scroll position or focus.
-    if(_localWritePaths.size > 0 && Object.keys(pendingSaves).length === 0){
-      // All writes were ours and are confirmed — pure echo, ignore completely
-      return;
-    }
+  // Map of Firebase path prefix → { dbKeys, rerenderFn }
+  const PATH_LISTENERS = [
+    {
+      path: 'marks',
+      merge: (val)=>{ DB.marks = val; },
+      rerender: ()=>{ if(currentSec==='marks'){ const p=_capturePosition(); renderMarksPanels(); _restorePosition(p); } }
+    },
+    {
+      path: 'results',
+      merge: (val)=>{ DB.results = val; },
+      rerender: ()=>{ /* results shown in report tab, generated on-demand */ }
+    },
+    {
+      path: 'students',
+      merge: (val)=>{ DB.students = val; },
+      rerender: ()=>{ if(currentSec==='students'){ const p=_capturePosition(); renderStudentsPanels(); _restorePosition(p); } }
+    },
+    {
+      path: 'planner',
+      merge: (val)=>{ DB.planner = val; },
+      rerender: ()=>{ if(currentSec==='planner'){ const p=_capturePosition(); renderPlannerPanels(); _restorePosition(p); } }
+    },
+    {
+      path: 'diary',
+      merge: (val)=>{ DB.diary = val; },
+      rerender: ()=>{ if(currentSec==='diary'){ const p=_capturePosition(); rerenderDiarySection(); _restorePosition(p); } }
+    },
+    {
+      path: 'timetable',
+      merge: (val)=>{ DB.timetable = val; },
+      rerender: ()=>{ if(currentSec==='timetable'){ const p=_capturePosition(); renderPeriodsPanel(); _restorePosition(p); } }
+    },
+    {
+      path: 'boards',
+      merge: (val)=>{ DB.boards = val; },
+      rerender: ()=>{ if(currentSec==='boards'){ const p=_capturePosition(); rerenderBoardsSection(); _restorePosition(p); } }
+    },
+    {
+      path: 'weekly',
+      merge: (val)=>{ DB.weekly = val; },
+      rerender: ()=>{ if(currentSec==='weekly'){ const p=_capturePosition(); rerenderWeeklySection(); _restorePosition(p); } }
+    },
+    {
+      path: 'settings',
+      merge: (val)=>{ DB.settings = val; applySettings(); },
+      rerender: ()=>{ if(currentSec==='settings'){ const p=_capturePosition(); renderSettings(); _restorePosition(p); } }
+    },
+    {
+      path: 'announcements',
+      merge: (val)=>{ DB.announcements = val; },
+      rerender: ()=>{ if(currentSec==='announcements') try{ renderAnnList(); }catch(e){} }
+    },
+    {
+      path: 'totm',
+      merge: (val)=>{ DB.totm = val; },
+      rerender: ()=>{ /* generated on-demand in TOTM section */ }
+    },
+  ];
 
-    const incoming = snap.val()||{};
+  PATH_LISTENERS.forEach(({path, merge, rerender})=>{
+    let firstFire = true;
+    db.ref('iqra/' + path).on('value', snap=>{
+      // Always skip the immediate first fire (Firebase echoes current state on attach)
+      if(firstFire){ firstFire = false; return; }
 
-    // 1. Snapshot every input/textarea/select value + cursor before touching the DOM
-    const saved = {};
-    document.querySelectorAll('input,textarea,select').forEach(el=>{
-      if(el.id){
-        saved[el.id] = {
-          v: el.value,
-          sel: el.selectionStart,
-          focused: el === document.activeElement
-        };
+      // Skip if THIS device wrote to this path — we already have the data locally
+      // and do not need a re-render. This is the key fix: the teacher who made
+      // the change is never disturbed by their own save echoing back.
+      if(_localWritePaths.has(path) || [..._localWritePaths].some(p => p.startsWith(path+'/'))){
+        return;
       }
+
+      // Real change from another device — merge data and re-render
+      try{ merge(snap.val()); }catch(e){}
+      try{ rerender(); }catch(e){ console.warn('Live rerender error:', path, e); }
     });
-    const focusedId = document.activeElement?.id || null;
-
-    // 2. Update DB
-    DB = incoming;
-    applySettings();
-
-    // 3. Re-render only the active section — and skip re-render entirely
-    //    for sections where the user is actively typing into a data input
-    //    (marks cells, result cells, student fields).
-    //    We detect this by checking if the focused element belongs to the section.
-    const activeEl = document.activeElement;
-    const activeSection = activeEl?.closest?.('.section')?.id || null;
-    const secId = 'sec-' + currentSec;
-    const userIsTypingInThisSection = activeSection === secId &&
-      ['INPUT','TEXTAREA','SELECT'].includes(activeEl?.tagName);
-
-    if(!userIsTypingInThisSection){
-      try{
-        switch(currentSec){
-          case 'marks':        renderMarksPanels();       break;
-          case 'students':     renderStudentsPanels();    break;
-          case 'planner':      renderPlannerPanels();     break;
-          case 'diary':        rerenderDiarySection();    break;
-          case 'timetable':    renderPeriodsPanel();      break;
-          case 'boards':       rerenderBoardsSection();   break;
-          case 'weekly':       rerenderWeeklySection();   break;
-          case 'settings':     renderSettings();          break;
-          default:             break;
-        }
-      }catch(e){ console.warn('Live rerender error:',e); }
-    } else {
-      // User is actively typing — only update non-input display elements
-      // (totals, percentages, grade badges) without rebuilding the DOM.
-      // This keeps their cursor exactly where it is.
-      try{
-        if(currentSec==='marks')      _softUpdateMarks();
-        if(currentSec==='students')   _softUpdateStudents();
-      }catch(e){}
-    }
-
-    // 4. Restore all input values and cursors
-    Object.entries(saved).forEach(([id,{v,sel,focused}])=>{
-      const el = document.getElementById(id);
-      if(!el) return;
-      if(el.value !== v) el.value = v;
-      if(focused && sel != null){
-        try{ el.setSelectionRange(sel,sel); }catch(e){}
-      }
-    });
-    // Re-focus the element the user was in
-    if(focusedId){
-      const el=document.getElementById(focusedId);
-      if(el && el !== document.activeElement) try{ el.focus(); }catch(e){}
-    }
   });
 }
 
-// Soft-update helpers: refresh only computed display cells without rebuilding inputs
-function _softUpdateMarks(){
-  getClassIds().forEach(cls=>{
-    try{ updM(cls); }catch(e){}
-  });
-}
-function _softUpdateStudents(){
-  // Students list itself doesn't have computed cells — nothing to soft-update
-  // The list will refresh on next tab switch
-}
+
 
 // Section-safe re-render helpers (only re-render what's visible)
 function rerenderDiarySection(){
@@ -674,20 +752,28 @@ function _writePath(path, value){
   }
   const writeVal = (value === undefined || value === null) ? null : value;
 
-  // Mark this path as a local write BEFORE sending to Firebase.
-  // The live listener will see this and skip re-rendering for this event.
+  // Register BOTH the full path and its top-level prefix so the path-level
+  // listeners can match either form (e.g. 'diary' matches 'diary/c9/...')
+  const topLevel = path.split('/')[0];
   _localWritePaths.add(path);
+  _localWritePaths.add(topLevel);
 
   db.ref('iqra/' + path).set(writeVal)
     .then(() => {
       delete pendingSaves[path];
       delete _autoSaveTimers[path];
       if(Object.keys(pendingSaves).length === 0) _showLiveIndicator();
-      // Keep path in _localWritePaths for 2s to absorb the Firebase echo
-      setTimeout(() => _localWritePaths.delete(path), 2000);
+      // Hold for 3s to absorb delayed Firebase echoes then release
+      setTimeout(() => {
+        _localWritePaths.delete(path);
+        // Only remove top-level if no other pending paths share it
+        const stillHasTopLevel = [..._localWritePaths].some(p => p !== topLevel && p.startsWith(topLevel+'/'));
+        if(!stillHasTopLevel) _localWritePaths.delete(topLevel);
+      }, 3000);
     })
     .catch(e => {
       _localWritePaths.delete(path);
+      _localWritePaths.delete(topLevel);
       _showOfflineIndicator();
       console.warn('Auto-save failed for', path, e.message);
     });
@@ -723,22 +809,28 @@ function doSave(){
 
   if(db && fbReady){
     const u = {};
+    const writtenPaths = [];
     Object.entries(pendingSaves).forEach(([p,v]) => {
       u['iqra/'+p] = (v === undefined ? null : v);
-      // Mark every path so the live listener ignores the echo on this device
       _localWritePaths.add(p);
+      _localWritePaths.add(p.split('/')[0]);
+      writtenPaths.push(p);
     });
     db.ref().update(u)
       .then(() => {
-        const paths = Object.keys(pendingSaves);
         pendingSaves = {};
         Object.keys(_autoSaveTimers).forEach(k => { clearTimeout(_autoSaveTimers[k]); delete _autoSaveTimers[k]; });
         setStat('live','🟢 Live'); showToast('☁️ Settings saved!','ok');
         btn.textContent = '💾 Save Settings'; btn.disabled = true;
-        setTimeout(() => paths.forEach(p => _localWritePaths.delete(p)), 2000);
+        setTimeout(() => {
+          writtenPaths.forEach(p => {
+            _localWritePaths.delete(p);
+            _localWritePaths.delete(p.split('/')[0]);
+          });
+        }, 3000);
       })
       .catch(e => {
-        Object.keys(pendingSaves).forEach(p => _localWritePaths.delete(p));
+        writtenPaths.forEach(p => { _localWritePaths.delete(p); _localWritePaths.delete(p.split('/')[0]); });
         setStat('off','❌ '+e.message); showToast('Save failed','err');
         btn.textContent = '💾 Retry Save'; btn.disabled = false;
       });
