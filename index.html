@@ -385,7 +385,6 @@
     <button class="ctab" onclick="selTopperAdminTab('middle_girls',this)">Middle Girls</button>
     <button class="ctab" onclick="selTopperAdminTab('high_boys',this)">High Boys</button>
     <button class="ctab" onclick="selTopperAdminTab('high_girls',this)">High Girls</button>
-    <button class="ctab" onclick="selTopperAdminTab('classwise',this)" style="background:rgba(99,102,241,.12);border-color:#6366f1;color:#6366f1;font-weight:700;">🏆 Class-wise Positions</button>
   </div>
   <div id="topperAdminPanel"></div>
 </div>
@@ -855,12 +854,7 @@ function switchSec(id){
   if(id==='weekly') renderWkPanel('matric');
   if(id==='settings') renderSettings();
   if(id==='announcements'){ renderAnnList(); renderPopupAnnList(); }
-  if(id==='toppers-admin'){
-    const activeTab=document.querySelector('#topperAdminTabs .ctab.active');
-    const key=activeTab?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1]||'primary_boys';
-    if(key==='classwise') renderClasswiseToppers();
-    else renderTopperAdminPanel(key);
-  }
+  if(id==='toppers-admin') renderTopperAdminPanel('primary_boys');
   if(id==='totm'){ populateTOTMMonthSel(); renderFinalizedTOTMBanner(); setTimeout(renderAttendanceRows,100); }
   if(id==='planner-report') populatePlannerReportSelects();
   if(id==='report'){
@@ -2556,8 +2550,7 @@ const LEVEL_MAP={
 function selTopperAdminTab(key,btn){
   document.querySelectorAll('#topperAdminTabs .ctab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if(key==='classwise') renderClasswiseToppers();
-  else renderTopperAdminPanel(key);
+  renderTopperAdminPanel(key);
 }
 
 // Auto-calculate toppers from term results
@@ -2675,260 +2668,6 @@ function autoFillToppers(levelKey){
   setN(DB,['settings','toppers',levelKey],overrides);
   markDirty('settings/toppers/'+levelKey,overrides);
   renderTopperAdminPanel(levelKey);
-}
-
-// ══════════════════════════════════════════════
-//  CLASS-WISE POSITION HOLDERS
-// ══════════════════════════════════════════════
-
-/**
- * Calculate top-N students per class from term results + roll numbers.
- * Returns: [ { cls, className, section, students: [{rank,name,father,rollNo,pct,totalObt,maxObt}] } ]
- */
-function calcClassToppers(topN=5){
-  const result=[];
-  getClassIds().forEach(cls=>{
-    const students=getN(DB,['students','c'+cls])||[];
-    if(!students.length) return;
-    const subs=getSubs(cls);
-    const scored=[];
-    students.forEach((stu,si)=>{
-      let totalObt=0,maxObt=0;
-      TERMS.forEach(t=>{
-        const res=getN(DB,['results','c'+cls,t.id,'s'+si])||{};
-        subs.forEach(s=>{
-          const v=res[fbKey(s)];
-          if(v!==undefined&&!isNaN(v)){totalObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);}
-        });
-      });
-      if(maxObt>0){
-        scored.push({
-          name:stu.name||'—',
-          father:stu.father||'—',
-          rollNo:stu.rollNo||stu.roll||stu.admissionNo||'—',
-          pct:parseFloat((totalObt/maxObt*100).toFixed(1)),
-          totalObt,maxObt
-        });
-      }
-    });
-    if(!scored.length) return;
-    scored.sort((a,b)=>b.pct-a.pct);
-    result.push({
-      cls,
-      className:CLASSES[cls]?.name||'Class '+cls,
-      section:CLASSES[cls]?.section||'boys',
-      students:scored.slice(0,topN).map((s,i)=>({rank:i+1,...s}))
-    });
-  });
-  return result;
-}
-
-function renderClasswiseToppers(){
-  const el=document.getElementById('topperAdminPanel');if(!el)return;
-  const topN=parseInt(document.getElementById('cwTopN')?.value||'5');
-  const data=calcClassToppers(topN);
-  const medals=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
-  const podColors=['#f59e0b','#9ca3af','#d97706','#6366f1','#10b981'];
-
-  el.innerHTML=`
-    <!-- Controls bar -->
-    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <span style="font-size:13px;font-weight:700;">🏆 Class-wise Position Holders</span>
-      <label style="font-size:11px;color:var(--muted);">Show top:</label>
-      <select class="s-inp" id="cwTopN" style="width:100px;" onchange="renderClasswiseToppers()">
-        <option value="3" ${topN===3?'selected':''}>Top 3</option>
-        <option value="5" ${topN===5?'selected':''}>Top 5</option>
-        <option value="10" ${topN===10?'selected':''}>Top 10</option>
-      </select>
-      <div style="margin-left:auto;display:flex;gap:8px;">
-        <button class="print-btn" onclick="window.print()">🖨️ Print</button>
-        <button class="pdf-btn" onclick="downloadPositionHoldersPDF()">⬇️ Download PDF</button>
-        <select class="s-inp" id="pdfTopN" style="width:90px;">
-          <option value="3">PDF: Top 3</option>
-          <option value="5" selected>PDF: Top 5</option>
-          <option value="10">PDF: Top 10</option>
-        </select>
-      </div>
-    </div>
-
-    ${!data.length?'<div style="text-align:center;padding:40px;color:var(--muted);">No term results found. Enter results in the Marks/Results section first.</div>':''}
-
-    <!-- Class cards -->
-    <div id="cwTopperCards">
-      ${data.map(({cls,className,section,students})=>{
-        const secColor=section==='girls'?'#ec4899':'#3b82f6';
-        return`<div class="report-card" style="margin-bottom:16px;border-left:4px solid ${secColor};">
-          <div class="report-card-hd" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:20px;">${section==='girls'?'👧':'👦'}</span>
-              <span style="font-size:15px;font-weight:900;">${esc(className)}</span>
-              <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${secColor}18;color:${secColor};font-weight:700;text-transform:uppercase;">${section}</span>
-            </div>
-            <span style="font-size:11px;color:var(--muted);">${students.length} position holder${students.length!==1?'s':''}</span>
-          </div>
-
-          <!-- Podium (top 3) -->
-          <div style="padding:12px 14px 0;">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:12px;">
-              ${students.slice(0,3).map((s,i)=>{
-                const col=podColors[i]||podColors[4];
-                return`<div style="border:1.5px solid ${col};border-radius:10px;padding:12px;background:${col}10;text-align:center;">
-                  <div style="font-size:22px;margin-bottom:2px;">${medals[i]||i+1}</div>
-                  <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px;">${s.rank===1?'1st':s.rank===2?'2nd':'3rd'}</div>
-                  <div style="font-size:13px;font-weight:700;">${esc(s.name)}</div>
-                  <div style="font-size:10px;color:var(--muted);">S/O ${esc(s.father)}</div>
-                  ${s.rollNo&&s.rollNo!=='—'?`<div style="font-size:10px;color:${col};font-weight:600;">Roll# ${esc(s.rollNo)}</div>`:''}
-                  <div style="font-size:18px;font-weight:900;color:${col};margin-top:4px;">${s.pct}%</div>
-                </div>`;
-              }).join('')}
-            </div>
-
-            <!-- Full ranked table -->
-            ${students.length>0?`<div class="tbl-wrap" style="margin-bottom:12px;">
-              <table class="tbl"><thead><tr>
-                <th>Rank</th><th>Student Name</th><th>Father Name</th><th>Roll No</th><th>Score</th>
-              </tr></thead><tbody>
-              ${students.map(s=>{
-                const col=s.rank<=3?(podColors[s.rank-1]||'#6366f1'):'var(--muted)';
-                return`<tr>
-                  <td style="font-size:${s.rank<=3?'16':'12'}px;text-align:center;">${medals[s.rank-1]||s.rank}</td>
-                  <td style="font-weight:700;">${esc(s.name)}</td>
-                  <td style="color:var(--muted);">${esc(s.father)}</td>
-                  <td style="color:var(--muted);font-size:11px;">${esc(s.rollNo)}</td>
-                  <td><span style="font-weight:900;color:${col};">${s.pct}%</span></td>
-                </tr>`;
-              }).join('')}
-              </tbody></table>
-            </div>`:''}
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
-}
-
-// ── PDF Download ────────────────────────────────────────────────────────
-function downloadPositionHoldersPDF(){
-  const topN=parseInt(document.getElementById('pdfTopN')?.value||'5');
-  const data=calcClassToppers(topN);
-  if(!data.length){showToast('No results data available to generate PDF','info');return;}
-
-  const schoolName=esc(SCHOOL?.name||'IQRA PUBLIC SCHOOL');
-  const schoolSub=esc(SCHOOL?.phone1||'');
-  const medals=['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
-  const podColors=['#d4a017','#9ca3af','#cd7f32','#6366f1','#10b981'];
-  const today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-
-  // Build a full self-contained HTML document for pdf generation
-  const classPages=data.map(({className,section,students})=>{
-    const secColor=section==='girls'?'#be185d':'#1d4ed8';
-    const podHtml=students.slice(0,3).map((s,i)=>{
-      const col=podColors[i];
-      return`<div style="border:2px solid ${col};border-radius:10px;padding:14px;text-align:center;background:${col}12;flex:1;min-width:130px;">
-        <div style="font-size:28px;margin-bottom:4px;">${['🥇','🥈','🥉'][i]}</div>
-        <div style="font-size:9px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:4px;">${medals[i]} Position</div>
-        <div style="font-size:14px;font-weight:800;color:#111;">${s.name}</div>
-        <div style="font-size:9px;color:#666;margin-top:2px;">S/O ${s.father}</div>
-        ${s.rollNo&&s.rollNo!=='—'?`<div style="font-size:9px;color:${col};font-weight:700;margin-top:1px;">Roll# ${s.rollNo}</div>`:''}
-        <div style="font-size:22px;font-weight:900;color:${col};margin-top:6px;">${s.pct}%</div>
-      </div>`;
-    }).join('');
-
-    const tableRows=students.map((s,i)=>`
-      <tr style="background:${i%2?'#f9fafb':'#fff'};">
-        <td style="padding:7px 10px;font-size:12px;text-align:center;font-weight:700;color:${podColors[i]||'#555'}">${medals[i]||s.rank}</td>
-        <td style="padding:7px 10px;font-size:12px;font-weight:700;color:#111;">${s.name}</td>
-        <td style="padding:7px 10px;font-size:11px;color:#555;">${s.father}</td>
-        <td style="padding:7px 10px;font-size:11px;color:#555;">${s.rollNo}</td>
-        <td style="padding:7px 10px;font-size:12px;font-weight:800;color:${podColors[i]||'#374151'};text-align:center;">${s.pct}%</td>
-      </tr>`).join('');
-
-    return`<div style="page-break-after:always;padding:20px 24px;font-family:Arial,sans-serif;max-width:750px;margin:0 auto;">
-      <!-- Class header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid ${secColor};padding-bottom:10px;margin-bottom:16px;">
-        <div>
-          <div style="font-size:18px;font-weight:900;color:${secColor};">${className}</div>
-          <div style="font-size:10px;color:#888;margin-top:2px;">Top ${students.length} Position Holders · ${section.charAt(0).toUpperCase()+section.slice(1)} Section</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:11px;font-weight:700;color:#333;">${schoolName}</div>
-          <div style="font-size:9px;color:#888;">${today}</div>
-        </div>
-      </div>
-
-      <!-- Podium -->
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-        ${podHtml}
-      </div>
-
-      <!-- Full ranked table -->
-      <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-        <thead>
-          <tr style="background:${secColor};">
-            <th style="padding:8px 10px;font-size:11px;color:#fff;text-align:center;font-weight:700;">Rank</th>
-            <th style="padding:8px 10px;font-size:11px;color:#fff;text-align:left;font-weight:700;">Student Name</th>
-            <th style="padding:8px 10px;font-size:11px;color:#fff;text-align:left;font-weight:700;">Father Name</th>
-            <th style="padding:8px 10px;font-size:11px;color:#fff;text-align:left;font-weight:700;">Roll No</th>
-            <th style="padding:8px 10px;font-size:11px;color:#fff;text-align:center;font-weight:700;">Score %</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>`;
-  }).join('');
-
-  const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <style>
-      body{margin:0;padding:0;font-family:Arial,sans-serif;}
-      .cover{page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90vh;text-align:center;padding:40px;}
-    </style>
-  </head><body>
-    <!-- Cover page -->
-    <div class="cover">
-      <div style="font-size:36px;margin-bottom:12px;">🏆</div>
-      <div style="font-size:28px;font-weight:900;color:#1F3A8A;margin-bottom:8px;">${schoolName}</div>
-      ${schoolSub?`<div style="font-size:14px;color:#555;margin-bottom:20px;">${schoolSub}</div>`:''}
-      <div style="font-size:22px;font-weight:700;color:#374151;margin-bottom:6px;">Position Holders Report</div>
-      <div style="font-size:14px;color:#6b7280;">Top ${topN} students per class · All classes</div>
-      <div style="margin-top:30px;padding:12px 30px;background:#1F3A8A;color:#fff;border-radius:8px;font-size:13px;font-weight:600;">Generated: ${today}</div>
-    </div>
-    ${classPages}
-  </body></html>`;
-
-  // Create hidden iframe, write the HTML, and print-to-PDF
-  showToast('Preparing PDF…','info');
-
-  // Use html2pdf if available, otherwise fallback to iframe print
-  if(typeof html2pdf!=='undefined'){
-    const wrap=document.createElement('div');
-    wrap.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;';
-    wrap.innerHTML=fullHtml.replace(/<!DOCTYPE[^>]*>/i,'').replace(/<\/?html[^>]*>/gi,'').replace(/<\/?head[^>]*>[\s\S]*?<\/head>/i,'').replace(/<\/?body[^>]*>/gi,'');
-    document.body.appendChild(wrap);
-    html2pdf().set({
-      margin:[0,0,0,0],
-      filename:`Position-Holders-Top${topN}-${today.replace(/ /g,'-')}.pdf`,
-      image:{type:'jpeg',quality:0.97},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-    }).from(wrap).save().then(()=>{
-      document.body.removeChild(wrap);
-      showToast('PDF downloaded ✓','ok');
-    }).catch(e=>{
-      document.body.removeChild(wrap);
-      console.error(e);
-      _printPositionHoldersFallback(fullHtml,topN);
-    });
-  } else {
-    _printPositionHoldersFallback(fullHtml,topN);
-  }
-}
-
-function _printPositionHoldersFallback(html,topN){
-  const win=window.open('','_blank','width=900,height=700');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(()=>{ win.print(); showToast('Print dialog opened — save as PDF','info'); },600);
-}
   showToast('Toppers recalculated from term results','ok');
 }
 
