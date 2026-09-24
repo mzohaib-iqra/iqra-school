@@ -1092,10 +1092,20 @@ function renderTermResult(cls,termId){
   const getSTM=(sub)=>getSubjectTM(cls,sub);
   if(!el)return;
   if(!students.length){el.innerHTML='<div style="padding:18px;color:var(--muted);text-align:center;font-size:12px;">No students. Add in Student List tab.</div>';return;}
-  el.innerHTML=`<div style="margin-bottom:8px;padding:8px 12px;background:var(--surf2);border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  el.innerHTML=`<div style="margin-bottom:8px;padding:8px 12px;background:var(--surf2);border-radius:var(--radius);border:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <span class="tl tl${termId.slice(1)}" style="padding:3px 10px;border-radius:100px;">${term?.label||termId}</span>
-    <span style="font-size:11px;color:var(--muted)">Total marks: <strong style="color:var(--gold)">${hasPerSubjectMarks(cls)?'Per-subject':total}</strong></span>
-    <button class="print-btn" style="margin-left:auto" onclick="window.print()">🖨️ Print Results</button>
+    <span style="font-size:11px;color:var(--muted)">Total: <strong style="color:var(--gold)">${hasPerSubjectMarks(cls)?'Per-subject':total}</strong></span>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--muted);">Print/PDF:</span>
+      <select class="s-inp" id="trPrintSel-${cls}-${termId}" style="width:130px;font-size:11px;">
+        <option value="this">This class only</option>
+        <option value="boys">All boys classes</option>
+        <option value="girls">All girls classes</option>
+        <option value="all">All classes</option>
+      </select>
+      <button class="print-btn" onclick="printTermResults('${cls}','${termId}',document.getElementById('trPrintSel-${cls}-${termId}').value)">🖨️ Print</button>
+      <button class="pdf-btn" onclick="downloadTermResultsPDF('${cls}','${termId}',document.getElementById('trPrintSel-${cls}-${termId}').value)">⬇️ PDF</button>
+    </div>
   </div>
   <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th>Father</th>
     ${subs.map(s=>`<th style="white-space:nowrap;font-size:9px">${s}</th>`).join('')}<th>Total</th><th>%</th><th>Grade</th>
@@ -1130,6 +1140,164 @@ function updResult(cls,tId,si,sk,val){
   if(tEl)tEl.textContent=totObt||'—';
   if(pEl){pEl.textContent=pctV?pctV.toFixed(1)+'%':'—';pEl.style.color=g.c;}
   if(gEl){gEl.textContent=g.l;gEl.style.cssText=`background:${g.c}22;color:${g.c}`;}
+}
+
+// ══════════════════════════════════════════════
+//  TERM RESULT PRINT / PDF
+// ══════════════════════════════════════════════
+
+/**
+ * Determine which class IDs to include based on scope selector.
+ */
+function _getResultClasses(cls, scope){
+  const all=getClassIds();
+  if(scope==='this') return [+cls];
+  if(scope==='boys') return all.filter(c=>CLASSES[c]?.section!=='girls');
+  if(scope==='girls') return all.filter(c=>CLASSES[c]?.section==='girls');
+  return all; // 'all'
+}
+
+/**
+ * Build a self-contained HTML document for term results.
+ * Each class gets its own page. Layout is compact for legal/A4 landscape.
+ */
+function _buildTermResultHTML(clsList, termId){
+  const term=TERMS.find(t=>t.id===termId);
+  const termLabel=term?.label||termId;
+  const schoolName=SCHOOL?.name||'IQRA PUBLIC SCHOOL';
+  const today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+  const pages=clsList.map(cls=>{
+    const students=getStudents(cls);
+    const subs=getSubs(cls);
+    const className=CLASSES[cls]?.name||'Class '+cls;
+    const section=CLASSES[cls]?.section||'boys';
+    const secColor=section==='girls'?'#be185d':'#1d4ed8';
+
+    // Build ranked list
+    const ranked=students.map((stu,si)=>{
+      const res=getN(DB,['results','c'+cls,termId,'s'+si])||{};
+      let totObt=0,maxObt=0;
+      subs.forEach(s=>{const v=res[fbKey(s)];if(v!==undefined&&!isNaN(v))totObt+=parseFloat(v);maxObt+=getSubjectTM(cls,s);});
+      const pctV=maxObt?(totObt/maxObt*100):0;
+      return{name:stu.name||'—',father:stu.father||'—',rollNo:stu.rollNo||stu.roll||'',res,totObt,maxObt,pctV,g:grade(pctV)};
+    }).sort((a,b)=>b.pctV-a.pctV);
+
+    // Assign tied ranks
+    let rk=1;
+    ranked.forEach((s,i)=>{
+      if(i>0&&s.pctV===ranked[i-1].pctV){s.rank=ranked[i-1].rank;s.tied=true;}
+      else{s.rank=rk;s.tied=false;}
+      rk++;
+    });
+
+    if(!students.length) return '';
+
+    // Subject columns — abbreviated for space
+    const subCols=subs.map(s=>`<th style="padding:3px 4px;font-size:7.5px;font-weight:700;color:#fff;border-right:1px solid rgba(255,255,255,.2);white-space:nowrap;max-width:45px;overflow:hidden;">${s.length>8?s.slice(0,7)+'…':s}</th>`).join('');
+
+    const dataRows=ranked.map((s,i)=>{
+      const rankBadge=s.rank===1?'🥇':s.rank===2?'🥈':s.rank===3?'🥉':s.rank+(s.tied?'*':'');
+      const bg=i%2===0?'#ffffff':'#f8fafc';
+      return`<tr style="background:${bg};">
+        <td style="padding:3px 5px;font-size:9px;text-align:center;font-weight:700;color:${s.rank<=3?'#b45309':'#374151'};">${rankBadge}</td>
+        <td style="padding:3px 5px;font-size:9px;font-weight:600;color:#111;">${s.name}</td>
+        <td style="padding:3px 5px;font-size:8px;color:#6b7280;">${s.rollNo||'—'}</td>
+        <td style="padding:3px 5px;font-size:8px;color:#6b7280;">${s.father}</td>
+        ${subs.map(sub=>{const v=s.res[fbKey(sub)];return`<td style="padding:3px 4px;font-size:9px;text-align:center;color:#374151;border-right:1px solid #e5e7eb;">${v!==undefined?v:'—'}</td>`;}).join('')}
+        <td style="padding:3px 5px;font-size:9px;font-weight:700;text-align:center;">${s.totObt||'—'}</td>
+        <td style="padding:3px 5px;font-size:9px;font-weight:800;text-align:center;color:${s.g.c};">${s.pctV?s.pctV.toFixed(1)+'%':'—'}</td>
+        <td style="padding:3px 5px;font-size:9px;text-align:center;"><span style="padding:1px 5px;border-radius:4px;font-weight:700;font-size:8px;background:${s.g.c}18;color:${s.g.c};">${s.g.l}</span></td>
+      </tr>`;
+    }).join('');
+
+    return`<div style="page-break-after:always;padding:10px 14px;font-family:Arial,sans-serif;">
+      <!-- Compact class header strip -->
+      <div style="background:${secColor};color:#fff;padding:6px 12px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:15px;font-weight:900;">${className}</span>
+          <span style="font-size:9px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;">${section} section · ${termLabel}</span>
+        </div>
+        <div style="text-align:right;font-size:9px;opacity:.85;">
+          <div style="font-weight:700;">${schoolName}</div>
+          <div>${today} · ${ranked.length} students</div>
+        </div>
+      </div>
+
+      <!-- Results table -->
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;font-size:9px;">
+        <thead>
+          <tr style="background:${secColor}dd;">
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:center;white-space:nowrap;">Rank</th>
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:left;">Student Name</th>
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:left;">Roll#</th>
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:left;">Father</th>
+            ${subCols}
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:center;">Total</th>
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:center;">%</th>
+            <th style="padding:4px 5px;font-size:8px;color:#fff;text-align:center;">Grade</th>
+          </tr>
+        </thead>
+        <tbody>${dataRows}</tbody>
+      </table>
+      ${ranked.some(s=>s.tied)?'<div style="font-size:7.5px;color:#6b7280;margin-top:4px;">* Tied rank</div>':''}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <style>
+      @page{size:legal landscape;margin:8mm 10mm;}
+      body{margin:0;padding:0;font-family:Arial,sans-serif;}
+      @media print{.no-print{display:none!important;}}
+    </style>
+  </head><body>${pages}</body></html>`;
+}
+
+function printTermResults(cls, termId, scope){
+  const clsList=_getResultClasses(cls,scope);
+  const html=_buildTermResultHTML(clsList,termId);
+  const win=window.open('','_blank','width=1100,height=750');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); },500);
+}
+
+function downloadTermResultsPDF(cls, termId, scope){
+  const clsList=_getResultClasses(cls,scope);
+  if(!clsList.length){showToast('No classes to export','info');return;}
+  const term=TERMS.find(t=>t.id===termId);
+  const termLabel=(term?.label||termId).replace(/\s+/g,'-');
+  const scopeLabel=scope==='this'?(CLASSES[cls]?.name||'Class'+cls):scope;
+  const filename=`Results-${termLabel}-${scopeLabel}-${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'-')}.pdf`;
+
+  if(typeof html2pdf==='undefined'){
+    showToast('pdf lib not loaded — using print instead','info');
+    printTermResults(cls,termId,scope);
+    return;
+  }
+
+  const html=_buildTermResultHTML(clsList,termId);
+  const wrap=document.createElement('div');
+  // Strip DOCTYPE/html/head/body tags for html2pdf
+  wrap.innerHTML=html
+    .replace(/<!DOCTYPE[^>]*>/i,'')
+    .replace(/<html[^>]*>/i,'').replace(/<\/html>/i,'')
+    .replace(/<head>[\s\S]*?<\/head>/i,'')
+    .replace(/<body[^>]*>/i,'').replace(/<\/body>/i,'');
+  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:1050px;background:#fff;';
+  document.body.appendChild(wrap);
+
+  showToast('Preparing PDF…','info');
+  html2pdf().set({
+    margin:[5,7,5,7],
+    filename,
+    image:{type:'jpeg',quality:0.98},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+    jsPDF:{unit:'mm',format:'legal',orientation:'landscape'}
+  }).from(wrap).save()
+    .then(()=>{ document.body.removeChild(wrap); showToast('PDF downloaded ✓','ok'); })
+    .catch(e=>{ document.body.removeChild(wrap); console.error(e); showToast('PDF failed — try Print instead','err'); });
 }
 
 // ══════════════════════════════════════════════
@@ -1836,6 +2004,22 @@ function renderSettings(){
         </p>
       </div>
     </div>
+    <!-- SCHOOL TOPPERS VISIBILITY -->
+    <div class="settings-card">
+      <div class="settings-card-hd">⭐ School Toppers — Portal Visibility</div>
+      <div class="settings-card-body">
+        <div class="settings-row"><label>School Toppers tab</label>
+          <select class="s-inp" id="ss-top-vis" style="width:190px;">
+            <option value="show"  ${(getN(DB,['settings','portal','schoolToppers'])||'show')==='show' ?'selected':''}>Visible to parents</option>
+            <option value="hide"  ${(getN(DB,['settings','portal','schoolToppers'])||'show')==='hide' ?'selected':''}>Hidden from parents</option>
+          </select>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">
+          Controls whether the <b>School Toppers</b> tab appears in the parent portal.<br>
+          Data is always kept in the admin panel regardless of this setting.
+        </p>
+      </div>
+    </div>
     <!-- TEACHER CLASS ACCESS -->
     <div class="settings-card" style="grid-column:1/-1;border-left:4px solid #f59e0b;">
       <div class="settings-card-hd" style="background:rgba(245,158,11,.06);">👩‍🏫 Teacher Login Accounts &amp; Class Access</div>
@@ -2098,7 +2282,8 @@ function saveSettings(){
     accentColor:document.getElementById('ss-ac')?.value||'#6366f1',
     boldHeaders:document.getElementById('ss-bh')?.checked!==false,
     boardResults:document.getElementById('ss-brd-vis')?.value||'all',
-    termResults:document.getElementById('ss-res-vis')?.value||'all'
+    termResults:document.getElementById('ss-res-vis')?.value||'all',
+    schoolToppers:document.getElementById('ss-top-vis')?.value||'show'
   };
   // Planner year
   const plannerYear={
@@ -2699,9 +2884,10 @@ function autoFillToppers(levelKey){
  * Calculate top-N students per class from term results + roll numbers.
  * Returns: [ { cls, className, section, students: [{rank,name,father,rollNo,pct,totalObt,maxObt}] } ]
  */
-function calcClassToppers(topN=5){
+function calcClassToppers(topN=5, filterCls=null){
+  const clsIds = filterCls ? [+filterCls] : getClassIds();
   const result=[];
-  getClassIds().forEach(cls=>{
+  clsIds.forEach(cls=>{
     const students=getN(DB,['students','c'+cls])||[];
     if(!students.length) return;
     const subs=getSubs(cls);
@@ -2726,12 +2912,28 @@ function calcClassToppers(topN=5){
       }
     });
     if(!scored.length) return;
-    scored.sort((a,b)=>b.pct-a.pct);
+    scored.sort((a,b)=>b.pct-a.pct||b.totalObt-a.totalObt);
+
+    // Assign tied ranks: students with same % get the same rank
+    let rank=1;
+    const ranked=[];
+    scored.forEach((s,i)=>{
+      if(i>0 && s.pct===scored[i-1].pct && s.totalObt===scored[i-1].totalObt){
+        ranked.push({...s, rank:ranked[i-1].rank, tied:true});
+      } else {
+        ranked.push({...s, rank, tied:false});
+      }
+      rank++;
+    });
+
+    // Slice to topN but include ties at the boundary
+    let cutoff=topN;
+    while(cutoff<ranked.length && ranked[cutoff].pct===ranked[cutoff-1].pct && ranked[cutoff].totalObt===ranked[cutoff-1].totalObt) cutoff++;
     result.push({
       cls,
       className:CLASSES[cls]?.name||'Class '+cls,
       section:CLASSES[cls]?.section||'boys',
-      students:scored.slice(0,topN).map((s,i)=>({rank:i+1,...s}))
+      students:ranked.slice(0,cutoff)
     });
   });
   return result;
@@ -2740,34 +2942,40 @@ function calcClassToppers(topN=5){
 function renderClasswiseToppers(){
   const el=document.getElementById('topperAdminPanel');if(!el)return;
   const topN=parseInt(document.getElementById('cwTopN')?.value||'5');
-  const data=calcClassToppers(topN);
+  const filterCls=document.getElementById('cwClass')?.value||'';
+  const prevPdfTopN=document.getElementById('pdfTopN')?.value||'5';
+  const data=calcClassToppers(topN,filterCls||null);
   const medals=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
   const podColors=['#f59e0b','#9ca3af','#d97706','#6366f1','#10b981'];
+  const rankLabel=r=>r===1?'1st':r===2?'2nd':r===3?'3rd':r+'th';
+  const classOpts=getClassIds().map(c=>`<option value="${c}" ${String(filterCls)===String(c)?'selected':''}>${esc(CLASSES[c]?.name||'Class '+c)}</option>`).join('');
 
   el.innerHTML=`
-    <!-- Controls bar -->
-    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span style="font-size:13px;font-weight:700;">🏆 Class-wise Position Holders</span>
-      <label style="font-size:11px;color:var(--muted);">Show top:</label>
-      <select class="s-inp" id="cwTopN" style="width:100px;" onchange="renderClasswiseToppers()">
+      <label style="font-size:11px;color:var(--muted);">Class:</label>
+      <select class="s-inp" id="cwClass" style="width:160px;" onchange="renderClasswiseToppers()">
+        <option value="">All Classes</option>${classOpts}
+      </select>
+      <label style="font-size:11px;color:var(--muted);">Top:</label>
+      <select class="s-inp" id="cwTopN" style="width:90px;" onchange="renderClasswiseToppers()">
         <option value="3" ${topN===3?'selected':''}>Top 3</option>
         <option value="5" ${topN===5?'selected':''}>Top 5</option>
         <option value="10" ${topN===10?'selected':''}>Top 10</option>
       </select>
-      <div style="margin-left:auto;display:flex;gap:8px;">
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select class="s-inp" id="pdfTopN" style="width:105px;">
+          <option value="3" ${prevPdfTopN==='3'?'selected':''}>PDF: Top 3</option>
+          <option value="5" ${prevPdfTopN!=='3'&&prevPdfTopN!=='10'?'selected':''}>PDF: Top 5</option>
+          <option value="10" ${prevPdfTopN==='10'?'selected':''}>PDF: Top 10</option>
+        </select>
         <button class="print-btn" onclick="window.print()">🖨️ Print</button>
         <button class="pdf-btn" onclick="downloadPositionHoldersPDF()">⬇️ Download PDF</button>
-        <select class="s-inp" id="pdfTopN" style="width:90px;">
-          <option value="3">PDF: Top 3</option>
-          <option value="5" selected>PDF: Top 5</option>
-          <option value="10">PDF: Top 10</option>
-        </select>
       </div>
     </div>
 
-    ${!data.length?'<div style="text-align:center;padding:40px;color:var(--muted);">No term results found. Enter results in the Marks/Results section first.</div>':''}
+    ${!data.length?`<div style="text-align:center;padding:40px;color:var(--muted);">No term results found. Enter results in Marks / Students section first.</div>`:''}
 
-    <!-- Class cards -->
     <div id="cwTopperCards">
       ${data.map(({cls,className,section,students})=>{
         const secColor=section==='girls'?'#ec4899':'#3b82f6';
@@ -2778,42 +2986,40 @@ function renderClasswiseToppers(){
               <span style="font-size:15px;font-weight:900;">${esc(className)}</span>
               <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${secColor}18;color:${secColor};font-weight:700;text-transform:uppercase;">${section}</span>
             </div>
-            <span style="font-size:11px;color:var(--muted);">${students.length} position holder${students.length!==1?'s':''}</span>
+            <span style="font-size:11px;color:var(--muted);">${students.length} student${students.length!==1?'s':''}</span>
           </div>
-
-          <!-- Podium (top 3) -->
           <div style="padding:12px 14px 0;">
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:12px;">
-              ${students.slice(0,3).map((s,i)=>{
-                const col=podColors[i]||podColors[4];
+              ${students.filter(s=>s.rank<=3).map(s=>{
+                const col=podColors[s.rank-1]||podColors[2];
                 return`<div style="border:1.5px solid ${col};border-radius:10px;padding:12px;background:${col}10;text-align:center;">
-                  <div style="font-size:22px;margin-bottom:2px;">${medals[i]||i+1}</div>
-                  <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px;">${s.rank===1?'1st':s.rank===2?'2nd':'3rd'}</div>
+                  <div style="font-size:22px;margin-bottom:2px;">${medals[s.rank-1]||s.rank}</div>
+                  <div style="font-size:10px;text-transform:uppercase;color:${col};font-weight:800;margin-bottom:3px;">${rankLabel(s.rank)}${s.tied?' 🤝':''}</div>
                   <div style="font-size:13px;font-weight:700;">${esc(s.name)}</div>
                   <div style="font-size:10px;color:var(--muted);">S/O ${esc(s.father)}</div>
                   ${s.rollNo&&s.rollNo!=='—'?`<div style="font-size:10px;color:${col};font-weight:600;">Roll# ${esc(s.rollNo)}</div>`:''}
                   <div style="font-size:18px;font-weight:900;color:${col};margin-top:4px;">${s.pct}%</div>
+                  <div style="font-size:10px;color:var(--muted);">${s.totalObt}/${s.maxObt} marks</div>
                 </div>`;
               }).join('')}
             </div>
-
-            <!-- Full ranked table -->
-            ${students.length>0?`<div class="tbl-wrap" style="margin-bottom:12px;">
+            <div class="tbl-wrap" style="margin-bottom:12px;">
               <table class="tbl"><thead><tr>
-                <th>Rank</th><th>Student Name</th><th>Father Name</th><th>Roll No</th><th>Score</th>
+                <th>Rank</th><th>Student Name</th><th>Father</th><th>Roll No</th><th>Marks</th><th>%</th>
               </tr></thead><tbody>
               ${students.map(s=>{
-                const col=s.rank<=3?(podColors[s.rank-1]||'#6366f1'):'var(--muted)';
+                const col=s.rank===1?podColors[0]:s.rank===2?podColors[1]:s.rank===3?podColors[2]:'var(--text)';
                 return`<tr>
-                  <td style="font-size:${s.rank<=3?'16':'12'}px;text-align:center;">${medals[s.rank-1]||s.rank}</td>
+                  <td style="text-align:center;font-weight:700;color:${col};">${s.rank<=3?medals[s.rank-1]:s.rank}${s.tied?'<span style="font-size:9px;color:var(--muted);margin-left:2px;">tie</span>':''}</td>
                   <td style="font-weight:700;">${esc(s.name)}</td>
-                  <td style="color:var(--muted);">${esc(s.father)}</td>
+                  <td style="color:var(--muted);font-size:11px;">${esc(s.father)}</td>
                   <td style="color:var(--muted);font-size:11px;">${esc(s.rollNo)}</td>
+                  <td style="font-size:11px;">${s.totalObt}/${s.maxObt}</td>
                   <td><span style="font-weight:900;color:${col};">${s.pct}%</span></td>
                 </tr>`;
               }).join('')}
               </tbody></table>
-            </div>`:''}
+            </div>
           </div>
         </div>`;
       }).join('')}
