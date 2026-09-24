@@ -1183,12 +1183,14 @@ function _buildTermResultHTML(clsList, termId){
       return{name:stu.name||'—',father:stu.father||'—',rollNo:stu.rollNo||stu.roll||'',res,totObt,maxObt,pctV,g:grade(pctV)};
     }).sort((a,b)=>b.pctV-a.pctV);
 
-    // Assign tied ranks
-    let rk=1;
+    // Dense ranking: 1,1,2,3 (not 1,1,3,4)
+    // rk only increments when the score is different from the previous student
+    let rk=0;
     ranked.forEach((s,i)=>{
-      if(i>0&&s.pctV===ranked[i-1].pctV){s.rank=ranked[i-1].rank;s.tied=true;}
-      else{s.rank=rk;s.tied=false;}
-      rk++;
+      const prevPct=i>0?ranked[i-1].pctV:null;
+      if(prevPct===null||s.pctV!==prevPct) rk++;
+      s.rank=rk;
+      s.tied=prevPct!==null&&s.pctV===prevPct;
     });
 
     if(!students.length) return '';
@@ -2914,16 +2916,13 @@ function calcClassToppers(topN=5, filterCls=null){
     if(!scored.length) return;
     scored.sort((a,b)=>b.pct-a.pct||b.totalObt-a.totalObt);
 
-    // Assign tied ranks: students with same % get the same rank
-    let rank=1;
-    const ranked=[];
-    scored.forEach((s,i)=>{
-      if(i>0 && s.pct===scored[i-1].pct && s.totalObt===scored[i-1].totalObt){
-        ranked.push({...s, rank:ranked[i-1].rank, tied:true});
-      } else {
-        ranked.push({...s, rank, tied:false});
-      }
-      rank++;
+    // Dense ranking: 1,1,2,3 not 1,1,3,4
+    let rank=0;
+    const ranked=scored.map((s,i)=>{
+      const prev=i>0?scored[i-1]:null;
+      const isTied=prev!==null&&s.pct===prev.pct&&s.totalObt===prev.totalObt;
+      if(!isTied) rank++;
+      return{...s, rank, tied:isTied};
     });
 
     // Slice to topN but include ties at the boundary
